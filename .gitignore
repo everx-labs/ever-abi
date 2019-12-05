@@ -1,0 +1,8 @@
+/.idea/
+/target/
+/Cargo.lock
+/libs/
+/*.dylib
+/*.so
+/*.lib
+/*.dll
