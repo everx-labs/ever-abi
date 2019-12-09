@@ -7,7 +7,7 @@ G_test = "none"
 pipeline {
     triggers {
         upstream(
-            upstreamProjects: 'ton-block/master,ton-vm/master',
+            upstreamProjects: 'Node/ton-labs-abi/master',
             threshold: hudson.model.Result.SUCCESS
         )
     }
