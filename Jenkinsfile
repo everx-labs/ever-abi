@@ -1,5 +1,5 @@
 G_gitcred = 'TonJenSSH'
-G_container = "atomxy/empty-ton-sdk-js:20191128"
+G_container = "rust:1.39"
 G_update = "none"
 G_build = "none"
 G_test = "none"
@@ -7,12 +7,12 @@ G_test = "none"
 pipeline {
     triggers {
         upstream(
-            upstreamProjects: 'ton-block/master,ton-vm/master',
+            upstreamProjects: 'Node/ton-labs-block/master,Node/ton-labs-vm/master',
             threshold: hudson.model.Result.SUCCESS
         )
     }
     options {
-        buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '1')
+        buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '10')
         disableConcurrentBuilds()
         parallelsAlwaysFailFast()
     }
