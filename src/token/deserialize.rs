@@ -15,7 +15,6 @@
 use int::{Int, Uint};
 use {Param, ParamType};
 use serde_json;
-use std::sync::Arc;
 use super::*;
 use crate::error::*;
 

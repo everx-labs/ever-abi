@@ -18,7 +18,6 @@ use {Param, ParamType};
 
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::Arc;
 use ton_block::{Grams, MsgAddress};
 use ton_vm::stack::Cell;
 
