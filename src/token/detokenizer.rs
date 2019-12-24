@@ -18,7 +18,7 @@ use std::sync::Arc;
 use {Param, ParamType, Token, TokenValue};
 use num_bigint::{BigInt, BigUint};
 use ton_types::cells_serialization::serialize_tree_of_cells;
-use ton_vm::stack::CellData;
+use ton_vm::stack::Cell;
 use crate::error::*;
 
 pub struct Detokenizer;
@@ -94,7 +94,7 @@ impl Token {
         map.end()
     }
 
-    pub fn detokenize_cell<S>(cell: &Arc<CellData>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn detokenize_cell<S>(cell: &Cell, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {

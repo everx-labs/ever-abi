@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::Arc;
 use ton_block::{Grams, MsgAddress};
-use ton_vm::stack::CellData;
+use ton_vm::stack::Cell;
 
 mod tokenizer;
 mod detokenizer;
@@ -83,7 +83,7 @@ pub enum TokenValue {
     FixedArray(Vec<TokenValue>),
     /// TVM Cell
     ///
-    Cell(Arc<CellData>),
+    Cell(Cell),
     /// Dictionary of values
     ///
     Map(ParamType, HashMap<String, TokenValue>),
