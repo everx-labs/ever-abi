@@ -27,7 +27,10 @@ impl Detokenizer {
         //println!("Params len = {}, tokens len = {}", params.len(), tokens.len());
 
         if params.len() != tokens.len() {
-            bail!(AbiErrorKind::WrongParametersCount(params.len(), tokens.len()));
+            bail!(AbiErrorKind::WrongParametersCount { 
+                expected: params.len(),
+                provided: tokens.len()
+            });
         }
 
         if !Token::types_check(tokens, params) {

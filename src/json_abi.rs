@@ -32,7 +32,7 @@ pub fn encode_function_call(
 
     let function = contract.function(&function)?;
 
-    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError(err))?;
+    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError { err } )?;
 
     let tokens = Tokenizer::tokenize_all(&function.input_params(), &v)?;
 
@@ -51,7 +51,7 @@ pub fn prepare_function_call_for_sign(
 
     let function = contract.function(&function)?;
 
-    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError(err))?;
+    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError { err } )?;
 
     let tokens = Tokenizer::tokenize_all(&function.input_params(), &v)?;
 
