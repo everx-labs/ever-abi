@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 TON DEV SOLUTIONS LTD.
+* Copyright 2018-2020 TON DEV SOLUTIONS LTD.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.  You may obtain a copy of the
@@ -75,7 +75,7 @@ impl Event {
 
         let id = cursor.get_next_u32()?;
 
-        if id != self.get_id() { Err(AbiErrorKind::WrongId(id))? }
+        if id != self.get_id() { Err(AbiErrorKind::WrongId { id } )? }
 
         for param in params {
             let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor)?;
@@ -85,7 +85,7 @@ impl Event {
         }
 
         if cursor.remaining_references() != 0 || cursor.remaining_bits() != 0 {
-            bail!(AbiErrorKind::IncompleteDeserializationError(original))
+            bail!(AbiErrorKind::IncompleteDeserializationError { cursor: original } )
         } else {
             Ok(tokens)
         }
@@ -102,7 +102,7 @@ impl Event {
     }
 
     /// Check if message body is related to this event
-    pub fn is_my_message(&self, data: SliceData, _internal: bool) -> Result<bool, AbiErrorKind> {
+    pub fn is_my_message(&self, data: SliceData, _internal: bool) -> AbiResult<bool> {
         let decoded_id = Self::decode_id(data)?;
         Ok(self.get_id() == decoded_id)
     }

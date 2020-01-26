@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 TON DEV SOLUTIONS LTD.
+* Copyright 2018-2020 TON DEV SOLUTIONS LTD.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.  You may obtain a copy of the
@@ -27,7 +27,10 @@ impl Detokenizer {
         //println!("Params len = {}, tokens len = {}", params.len(), tokens.len());
 
         if params.len() != tokens.len() {
-            bail!(AbiErrorKind::WrongParametersCount(params.len(), tokens.len()));
+            bail!(AbiErrorKind::WrongParametersCount { 
+                expected: params.len(),
+                provided: tokens.len()
+            });
         }
 
         if !Token::types_check(tokens, params) {

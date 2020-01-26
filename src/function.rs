@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 TON DEV SOLUTIONS LTD.
+* Copyright 2018-2020 TON DEV SOLUTIONS LTD.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.  You may obtain a copy of the
@@ -137,7 +137,7 @@ impl Function {
 
         let id = cursor.get_next_u32()?;
 
-        if id != expected_id { Err(AbiErrorKind::WrongId(id))? }
+        if id != expected_id { Err(AbiErrorKind::WrongId { id } )? }
 
         if exctract_time {
             cursor.get_next_u64()?;
@@ -152,7 +152,7 @@ impl Function {
         }
 
         if cursor.remaining_references() != 0 || cursor.remaining_bits() != 0 {
-            bail!(AbiErrorKind::IncompleteDeserializationError(original))
+            bail!(AbiErrorKind::IncompleteDeserializationError { cursor: original })
         } else {
             Ok(tokens)
         }
@@ -167,7 +167,7 @@ impl Function {
     pub fn decode_input(&self, mut data: SliceData, internal: bool) -> AbiResult<Vec<Token>> {
         if !internal {
             data.checked_drain_reference()
-                .map_err(|err| AbiErrorKind::InvalidInputData(err.to_string()))?;
+                .map_err(|err| AbiErrorKind::InvalidInputData { msg: err.to_string() } )?;
         }
 
         self.decode_params(self.input_params(), data, self.get_input_id(), self.set_time && !internal)
@@ -254,7 +254,7 @@ impl Function {
         let mut builder = BuilderData::from_slice(&function_call);
 
         if builder.references_free() == 0 {
-            bail!(AbiErrorKind::InvalidInputData("No free reference for signature".to_owned()));
+            bail!(AbiErrorKind::InvalidInputData { msg: "No free reference for signature".to_owned() } );
         }
 
         let mut signature = signature.to_vec();
@@ -268,7 +268,7 @@ impl Function {
     }
 
     /// Check if message body is related to this function
-    pub fn is_my_message(&self, data: SliceData, _internal: bool) -> Result<bool, AbiErrorKind> {
+    pub fn is_my_message(&self, data: SliceData, _internal: bool) -> AbiResult<bool> {
         let decoded_id = Self::decode_id(data)?;
         Ok(self.get_input_id() == decoded_id || self.get_output_id() == decoded_id)
     }
