@@ -218,7 +218,9 @@ fn test_signed_call() {
     )
     .unwrap();
 
-    assert_eq!(response.params, expected_params);
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&response.params).unwrap(),
+        serde_json::from_str::<serde_json::Value>(&expected_params).unwrap());
     assert_eq!(response.function_name, "createArbitraryLimit");
 
     let mut vec = vec![0x3C, 0x0B, 0xB9, 0xBC];
