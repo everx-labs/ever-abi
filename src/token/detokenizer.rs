@@ -24,6 +24,14 @@ pub struct Detokenizer;
 
 impl Detokenizer {
     pub fn detokenize(params: &[Param], tokens: &[Token]) -> AbiResult<String> {
+        Ok(
+            serde_json::to_string(
+                &Self::detokenize_to_json_value(params, tokens)?
+            )?
+        )
+    }
+
+    pub fn detokenize_to_json_value(params: &[Param], tokens: &[Token]) -> AbiResult<serde_json::Value> {
         //println!("Params len = {}, tokens len = {}", params.len(), tokens.len());
 
         if params.len() != tokens.len() {
@@ -37,7 +45,7 @@ impl Detokenizer {
              bail!(AbiErrorKind::WrongParameterType);
         }
 
-        Ok(serde_json::to_string(&FunctionParams{params: tokens})?)
+        Ok(serde_json::to_value(&FunctionParams{params: tokens})?)
     }
 }
 
