@@ -27,7 +27,8 @@ impl TokenValue {
     /// Deserializes value from `SliceData` to `TokenValue`
     pub fn read_from(param_type: &ParamType, mut cursor: SliceData) -> AbiResult<(Self, SliceData)> {
         match param_type {
-            ParamType::Unknown => bail!(AbiErrorKind::DeserializationError("Unknown ParamType", cursor)),
+            ParamType::Unknown => 
+                bail!(AbiErrorKind::DeserializationError { msg: "Unknown ParamType", cursor } ),
             ParamType::Uint(size) => Self::read_uint(*size, cursor),
             ParamType::Int(size) => Self::read_int(*size, cursor),
             ParamType::Bool => {
@@ -96,11 +97,11 @@ impl TokenValue {
                 Ok(Some(item_slice)) => {
                     let (token, item_slice) = Self::read_from(param_type, item_slice)?;
                     if item_slice.remaining_references() != 0 || item_slice.remaining_bits() != 0 {
-                        bail!(AbiErrorKind::IncompleteDeserializationError(original))
+                        bail!(AbiErrorKind::IncompleteDeserializationError { cursor: original } )
                     }
                     result.push(token);
                 }
-                _ => bail!(AbiErrorKind::DeserializationError("", original))
+                _ => bail!(AbiErrorKind::DeserializationError { msg: "", cursor: original } )
             }
         }
 
@@ -162,7 +163,10 @@ impl TokenValue {
         }
         match size {
             Some(size) if size == data.len() => Ok((TokenValue::FixedBytes(data), cursor)),
-            Some(_) => bail!(AbiErrorKind::DeserializationError("Size of fixed bytes is not correspond to expected size", original)),
+            Some(_) => bail!(AbiErrorKind::DeserializationError {
+                msg: "Size of fixed bytes is not correspond to expected size",
+                cursor: original
+            }),
             None => Ok((TokenValue::Bytes(data), cursor))
         }
     }
@@ -178,12 +182,15 @@ fn find_next_bits(mut cursor: SliceData, bits: usize) -> AbiResult<SliceData> {
     let original = cursor.clone();
     if cursor.remaining_bits() == 0 {
         if cursor.reference(1).is_ok() {
-            bail!(AbiErrorKind::IncompleteDeserializationError(original))
+            bail!(AbiErrorKind::IncompleteDeserializationError { cursor: original } )
         }
         cursor = cursor.reference(0)?.into();
     }
     match cursor.remaining_bits() >= bits  {
         true => Ok(cursor),
-        false => bail!(AbiErrorKind::DeserializationError("Not enought remaining bits in the cell", original))
+        false => bail!(AbiErrorKind::DeserializationError { 
+            msg: "Not enought remaining bits in the cell", 
+            cursor: original
+        })
     }
 }

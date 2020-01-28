@@ -124,7 +124,7 @@ impl Contract {
 
     /// Returns `Function` struct with provided function name.
     pub fn function(&self, name: &str) -> AbiResult<&Function> {
-        self.functions.get(name).ok_or(AbiErrorKind::InvalidName(name.to_owned()).into())
+        self.functions.get(name).ok_or(AbiErrorKind::InvalidName { name: name.to_owned() }.into())
     }
 
     /// Returns `Function` struct with provided function id.
@@ -136,7 +136,7 @@ impl Contract {
             }
         }
 
-        bail!(AbiErrorKind::InvalidFunctionId(id))
+        bail!(AbiErrorKind::InvalidFunctionId { id })
     }
 
     /// Returns `Event` struct with provided function id.
@@ -147,7 +147,7 @@ impl Contract {
             }
         }
 
-        bail!(AbiErrorKind::InvalidFunctionId(id))
+        bail!(AbiErrorKind::InvalidFunctionId { id })
     }
 
     /// Returns functions collection
@@ -221,7 +221,7 @@ impl Contract {
             let key = self.data
                 .get(&token.name)
                 .ok_or(
-                    AbiErrorKind::InvalidData(format!("data item {} not found in contract ABI", token.name))
+                    AbiErrorKind::InvalidData { msg: format!("data item {} not found in contract ABI", token.name) }
                 )?.key;
 
                 map.set(

@@ -12,93 +12,172 @@
 * limitations under the License.
 */
 
-use ton_types::SliceData;
+use failure::{Context, Fail, Backtrace};
+use std::fmt::{Formatter, Result, Display};
 
-error_chain! {
+#[derive(Debug)]
+pub struct AbiError {
+    inner: Context<AbiErrorKind>,
+}
 
-    types {
-        AbiError, AbiErrorKind, AbiResultExt, AbiResult;
-    }
+pub type AbiResult<T> = std::result::Result<T, failure::Error>;
 
-    foreign_links {
-        Io(std::io::Error);
-        TvmError(ton_vm::error::TvmError);
-        SerdeError(serde_json::Error);
-        TvmException(ton_vm::types::Exception);
-        TvmExceptionCode(ton_vm::types::ExceptionCode);
-        TryFromIntError(std::num::TryFromIntError);
-    }
+#[derive(Debug, Fail)]
+pub enum AbiErrorKind {
 
-    errors {
-        FailureError(error: failure::Error) {
-            description("Failure error"),
-            display("Failure error: {}", error.to_string())
-        }
-        BlockError(error: ton_block::BlockError) {
-            description("Block error"),
-            display("Block error: {}", error.to_string())
-        }
-        InvalidData(msg: String) {
-            description("Invalid data"),
-            display("Invalid data: {}", msg)
-        }
-        InvalidName(name: String) {
-            description("Invalid name"),
-            display("Invalid name: {}", name)
-        }
-        InvalidFunctionId(id: u32) {
-            description("Invalid function id"),
-            display("Invalid function id: {}", id)
-        }
-        DeserializationError(description: &'static str, cursor: SliceData) {
-            description("Deserialization error"),
-            display("Deserialization error {}: {}", description, cursor)
-        }
-        NotImplemented {
-            description("Not implemented"),
-            display("Not implemented")
-        }
-        WrongParametersCount(expected: usize, provided: usize) {
-            description("Wrong parameters count"),
-            display("Wrong parameters count. Expected: {}, provided: {}", expected, provided)
-        }
-        WrongParameterType {
-            description("Not implemented"),
-            display("Not implemented")
-        }
-        WrongDataFormat(val: serde_json::Value) {
-            description("Wrong data format"),
-            display("Wrong data format:\n{}", val)
-        }
-        InvalidParameterLength(val: serde_json::Value) {
-            description("Invalid parameter length"),
-            display("Invalid parameter length:\n{}", val)
-        }
-        InvalidParameterValue(val: serde_json::Value) {
-            description("Invalid parameter value"),
-            display("Invalid parameter value:\n{}", val)
-        }
-        IncompleteDeserializationError(cursor: SliceData) {
-            description("Incomplete deserialization error"),
-            display("Incomplete deserialization error: {}", cursor)
-        }
-        InvalidInputData(msg: String) {
-            description("Invalid input data"),
-            display("Invalid input data: {}", msg)
-        }
-        WrongVersion(version: u8) {
-            description("Wrong version"),
-            display("Wrong version: {}", version)
-        }
-        WrongId(id: u32) {
-            description("Wrong function ID"),
-            display("Wrong function ID: {:x}", id)
-        }
+    #[fail(display = "Block error: {}", error)]
+    BlockError {
+        error: ton_block::BlockError
+    },
+
+    #[fail(display = "Invalid data: {}", msg)]
+    InvalidData {
+        msg: String
+    },
+
+    #[fail(display = "Invalid name: {}", name)]
+    InvalidName {
+        name: String
+    },
+
+    #[fail(display = "Invalid function id: {}", id)]
+    InvalidFunctionId {
+        id: u32
+    },
+
+    #[fail(display = "Deserialization error {}: {}", msg, cursor)]
+    DeserializationError {
+        msg: &'static str,
+        cursor: ton_types::SliceData
+    },
+
+    #[fail(display = "Not implemented")]
+    NotImplemented,
+
+    #[fail(display = "Wrong parameters count. Expected: {}, provided: {}", expected, provided)]
+    WrongParametersCount {
+        expected: usize,
+        provided: usize
+    },
+
+    #[fail(display = "Wrong parameter type")]
+    WrongParameterType,
+
+    #[fail(display = "Wrong data format:\n{}", val)]
+    WrongDataFormat {
+        val: serde_json::Value
+    },
+
+    #[fail(display = "Invalid parameter length:\n{}", val)]
+    InvalidParameterLength {
+        val: serde_json::Value
+    },
+
+    #[fail(display = "Invalid parameter value:\n{}", val)]
+    InvalidParameterValue {
+        val: serde_json::Value
+    },
+
+    #[fail(display = "Incomplete deserialization error: {}", cursor)]
+    IncompleteDeserializationError {
+        cursor: ton_types::SliceData
+    },
+
+    #[fail(display = "Invalid input data: {}", msg)]
+    InvalidInputData {
+        msg: String
+    },
+
+    #[fail(display = "Wrong version: {}", version)]
+    WrongVersion {
+        version: u8
+    },
+
+    #[fail(display = "Wrong function ID: {:x}", id)]
+    WrongId {
+        id: u32
+    },
+
+    #[fail(display = "IO error: {}", err)]
+    Io { 
+        err: std::io::Error
+    },
+
+    #[fail(display = "Serde json error: {}", err)]
+    SerdeError {
+        err: serde_json::Error
+    },
+
+    #[fail(display = "VM exception: {}", ex)]
+    TvmException {
+        ex: ton_vm::types::Exception,
+    },
+
+    #[fail(display = "VM exception, code: {}", code)]
+    TvmExceptionCode {
+        code: ton_types::types::ExceptionCode,
+    },
+
+    #[fail(display = "Try from int error: {}", err)]
+    TryFromIntError {
+        err: std::num::TryFromIntError
+    },
+}
+
+impl AbiError {
+    pub fn kind(&self) -> &AbiErrorKind {
+        self.inner.get_context()
     }
 }
 
-impl From<failure::Error> for AbiError {
-    fn from(error: failure::Error) -> Self {
-        AbiErrorKind::FailureError(error).into()
+impl Fail for AbiError {
+    fn cause(&self) -> Option<&dyn Fail> {
+        self.inner.cause()
+    }
+
+    fn backtrace(&self) -> Option<&Backtrace> {
+        self.inner.backtrace()
+    }
+}
+
+impl Display for AbiError {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        Display::fmt(&self.inner, f)
+    }
+}
+
+impl From<AbiErrorKind> for AbiError {
+    fn from(kind: AbiErrorKind) -> AbiError {
+        AbiError { inner: Context::new(kind) }
+    }
+}
+
+impl From<ton_types::types::ExceptionCode> for AbiError {
+    fn from(code: ton_types::types::ExceptionCode) -> AbiError {
+        AbiError::from(AbiErrorKind::TvmExceptionCode { code })
+    }
+}
+
+impl From<ton_vm::types::Exception> for AbiError {
+    fn from(ex: ton_vm::types::Exception) -> AbiError {
+        AbiError::from(AbiErrorKind::TvmException { ex })
+    }
+}
+
+impl From<std::num::TryFromIntError> for AbiError {
+    fn from(err: std::num::TryFromIntError) -> AbiError {
+        AbiError::from(AbiErrorKind::TryFromIntError { err })
+    }
+}
+
+impl From<std::io::Error> for AbiError {
+    fn from(err: std::io::Error) -> AbiError {
+        AbiError::from(AbiErrorKind::Io { err })
+    }
+}
+
+impl From<serde_json::Error> for AbiError {
+    fn from(err: serde_json::Error) -> AbiError {
+        AbiError::from(AbiErrorKind::SerdeError { err })
     }
 }

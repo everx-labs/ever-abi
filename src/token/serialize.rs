@@ -39,7 +39,7 @@ impl TokenValue {
         cells.reverse();
         let mut packed_cells = match cells.pop() {
             Some(cell) => vec![cell],
-            None => bail!(AbiErrorKind::InvalidData("No cells".to_owned()))
+            None => bail!(AbiErrorKind::InvalidData { msg: "No cells".to_owned() } )
         };
         while let Some(cell) = cells.pop() {
             let builder = packed_cells.last_mut().unwrap();
@@ -186,7 +186,7 @@ impl TokenValue {
     fn write_map(key_type: &ParamType, value: &HashMap<String, TokenValue>) -> AbiResult<Vec<BuilderData>> {
         let bit_len = match key_type {
             ParamType::Int(size) | ParamType::Uint(size) => *size,
-            _ => bail!(AbiErrorKind::InvalidData("Only int and uint types can be map keys".to_owned()))
+            _ => bail!(AbiErrorKind::InvalidData { msg: "Only int and uint types can be map keys".to_owned() } )
         };
         let mut hashmap = HashmapE::with_bit_len(bit_len);
 
@@ -195,7 +195,7 @@ impl TokenValue {
 
             let mut key_vec = key.write_to_cells()?;
             if key_vec.len() != 1 {
-                bail!(AbiErrorKind::InvalidData("Map key must 1-cell length".to_owned()))
+                bail!(AbiErrorKind::InvalidData { msg: "Map key must 1-cell length".to_owned() } )
             };
 
             let data = Self::pack_cells_into_chain(value.write_to_cells()?)?;
