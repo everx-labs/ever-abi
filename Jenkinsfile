@@ -85,9 +85,9 @@ pipeline {
                 script {
                     sh """
 (cat Cargo.toml | \
-sed 's/ton_types = .*/ton_types = { path = \"\\/ton-types\" }/g' | \
-sed 's/ton_block = .*/ton_block = { path = \"\\/ton-block\" }/g' | \
-sed 's/ton_vm = .*/ton_vm = { path = \"\\/ton-vm\", default-features = false }/g') > tmp.toml
+sed 's/ton_types = .*/ton_types = { path = \"\\/tonlabs\\/ton-types\" }/g' | \
+sed 's/ton_block = .*/ton_block = { path = \"\\/tonlabs\\/ton-block\" }/g' | \
+sed 's/ton_vm = .*/ton_vm = { path = \"\\/tonlabs\\/ton-vm\", default-features = false }/g') > tmp.toml
 rm Cargo.toml
 mv ./tmp.toml ./Cargo.toml
                     """
@@ -119,7 +119,7 @@ mv ./tmp.toml ./Cargo.toml
                                     docker.image(params.dockerImage_ton_vm).withRun() { ton_vm_dep ->
                                         docker.image(G_image_base).inside("--volumes-from ${c.id} --volumes-from ${ton_types_dep.id} --volumes-from ${ton_block_dep.id} --volumes-from ${ton_vm_dep.id}") {
                                             sh """
-                                                cd /ton-labs-abi
+                                                cd /tonlabs/ton-labs-abi
                                                 cargo update
                                                 cargo build --release
                                             """
@@ -146,7 +146,7 @@ mv ./tmp.toml ./Cargo.toml
                                     docker.image(params.dockerImage_ton_vm).withRun() { ton_vm_dep ->
                                         docker.image(G_image_base).inside("--volumes-from ${c.id} --volumes-from ${ton_types_dep.id} --volumes-from ${ton_block_dep.id} --volumes-from ${ton_vm_dep.id}") {
                                             sh """
-                                                cd /ton-labs-abi
+                                                cd /tonlabs/ton-labs-abi
                                                 cargo test --release --features ci_run
                                             """
                                         }
