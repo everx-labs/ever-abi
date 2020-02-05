@@ -161,7 +161,7 @@ mv ./tmp.toml ./Cargo.toml
                 success { script { G_test = "success" } }
                 failure { script { G_test = "failure" } }
             }
-        }/*
+        }
         stage('Build tvm_linker') {
             steps {
                 script {
@@ -209,7 +209,7 @@ mv ./tmp.toml ./Cargo.toml
                 success { script { G_test = "success" } }
                 failure { script { G_test = "failure" } }
             }
-        }*/
+        }
         stage('Tag as latest') {
             steps {
                 script {
