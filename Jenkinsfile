@@ -211,9 +211,6 @@ mv ./tmp.toml ./Cargo.toml
             }
         }
         stage('Tag as latest') {
-            when {
-                branch 'master'
-            }
             steps {
                 script {
                     docker.withRegistry('', G_docker_creds) {
