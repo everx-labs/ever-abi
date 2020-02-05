@@ -162,6 +162,54 @@ mv ./tmp.toml ./Cargo.toml
                 failure { script { G_test = "failure" } }
             }
         }
+        stage('Build tvm_linker') {
+            steps {
+                script {
+                    def params_linker = [
+                        [
+                            $class: 'BooleanParameterValue',
+                            name: 'FORCE_PROMOTE_LATEST',
+                            value: false
+                        ],
+                        [
+                            $class: 'StringParameterValue',
+                            name: 'dockerImage_ton_types',
+                            value: params.dockerImage_ton_types
+                        ],
+                        [
+                            $class: 'StringParameterValue',
+                            name: 'dockerImage_ton_block',
+                            value: params.dockerImage_ton_block
+                        ],
+                        [
+                            $class: 'StringParameterValue',
+                            name: 'dockerImage_ton_vm',
+                            value: params.dockerImage_ton_vm
+                        ],
+                        [
+                            $class: 'StringParameterValue',
+                            name: 'dockerImage_ton_labs_abi',
+                            value: G_image_target
+                        ],
+                        [
+                            $class: 'StringParameterValue',
+                            name: 'dockerImage_tvm_linker',
+                            value: ''
+                        ],
+                        [
+                            $class: 'StringParameterValue',
+                            name: 'ton_sdk_branch',
+                            value: params.ton_sdk_branch
+                        ]
+                    ]
+                    build job: "TVM-linker/${params.tvm_linker_branch}", parameters: params_linker
+                }
+            }
+            post {
+                success { script { G_test = "success" } }
+                failure { script { G_test = "failure" } }
+            }
+        }
         stage('Tag as latest') {
             when {
                 branch 'master'
