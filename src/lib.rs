@@ -30,6 +30,7 @@ extern crate error_chain;
 extern crate base64;
 extern crate chrono;
 extern crate failure;
+extern crate num_traits;
 
 pub mod contract;
 pub mod function;

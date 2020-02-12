@@ -23,6 +23,7 @@ use ton_types::BuilderData;
 use ton_types::cells_serialization::deserialize_tree_of_cells;
 use crate::error::*;
 use std::str::FromStr;
+use num_traits::cast::ToPrimitive;
 
 /// This struct should be used to parse string values as tokens.
 pub struct Tokenizer;
@@ -50,11 +51,14 @@ impl Tokenizer {
             ParamType::Bytes => Self::tokenize_bytes(value, None),
             ParamType::FixedBytes(size) => Self::tokenize_bytes(value, Some(*size)),
             ParamType::Gram => Self::tokenize_gram(value),
+            ParamType::Time => Self::tokenize_time(value),
+            ParamType::Expire => Self::tokenize_expire(value),
+            ParamType::PublicKey => Self::tokenize_public_key(value),
         }
     }
 
     /// Tries to parse parameters from JSON values to tokens.
-    pub fn tokenize_all(params: &[Param], values: &Value) -> AbiResult<Vec<Token>> {
+    pub fn tokenize_all_params(params: &[Param], values: &Value) -> AbiResult<Vec<Token>> {
         if let Value::Object(map) = values {
             if map.len() != params.len() {
                 bail!(AbiErrorKind::WrongParametersCount { 
@@ -69,6 +73,22 @@ impl Tokenizer {
                 tokens.push(Token { name: param.name.clone(), value: token_value});
             }
 
+            Ok(tokens)
+        } else {
+            bail!(AbiErrorKind::WrongDataFormat { val: values.clone() } )
+        }
+    }
+
+    /// Tries to parse parameters from JSON values to tokens.
+    pub fn tokenize_optional_params(params: &[Param], values: &Value) -> AbiResult<HashMap<String, TokenValue>> {
+        if let Value::Object(map) = values {
+            let mut tokens = HashMap::new();
+            for param in params {
+                if let Some(value) = map.get(&param.name) {
+                    let token_value = Self::tokenize_parameter(&param.kind, &value)?;
+                    tokens.insert(param.name.clone(), token_value);
+                }
+            }
             Ok(tokens)
         } else {
             bail!(AbiErrorKind::WrongDataFormat { val: values.clone() } )
@@ -264,8 +284,47 @@ impl Tokenizer {
 
     /// Tries to parse a value as tuple.
     fn tokenize_tuple(params: &Vec<Param>, value: &Value) -> AbiResult<TokenValue> {
-        let tokens = Self::tokenize_all(params, value)?;
+        let tokens = Self::tokenize_all_params(params, value)?;
 
         Ok(TokenValue::Tuple(tokens))
+    }
+
+    /// Tries to parse a value as time.
+    fn tokenize_time(value: &Value) -> AbiResult<TokenValue> {
+        let number = Self::read_uint(value)?;
+
+        let time = number.to_u64().ok_or(AbiError::from(AbiErrorKind::InvalidInputData {
+            msg: "`time` value should fit into u64".into()
+        }))?;
+
+        Ok(TokenValue::Time(time))
+    }
+
+    /// Tries to parse a value as expire.
+    fn tokenize_expire(value: &Value) -> AbiResult<TokenValue> {
+        let number = Self::read_uint(value)?;
+
+        let expire = number.to_u32().ok_or(AbiError::from(AbiErrorKind::InvalidInputData {
+            msg: "`expire` value should fit into u32".into()
+        }))?;
+
+        Ok(TokenValue::Expire(expire))
+    }
+
+    fn tokenize_public_key(value: &Value) -> AbiResult<TokenValue> {
+        let string = value
+            .as_str()
+            .ok_or(AbiErrorKind::WrongDataFormat { val: value.clone() } )?;
+
+        if string.len() == 0 {
+            Ok(TokenValue::PublicKey(None))
+        } else {
+            let data = hex::decode(string)
+                .map_err(|_| AbiErrorKind::InvalidParameterValue { val: value.clone() } )?;
+            if data.len() != ed25519_dalek::PUBLIC_KEY_LENGTH {
+                bail!(AbiErrorKind::InvalidParameterLength { val: value.clone() } )
+            };
+            Ok(TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&data)?)))
+        }
     }
 }

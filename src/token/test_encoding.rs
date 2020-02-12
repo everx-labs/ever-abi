@@ -12,30 +12,13 @@
 * limitations under the License.
 */
 
-use ed25519_dalek::*;
 use num_bigint::{BigInt, BigUint};
-use sha2::{Digest, Sha256, Sha512};
-use chrono::prelude::*;
 
-use ton_types::{BuilderData, IBitstring, SliceData};
+use ton_types::{BuilderData, Cell, IBitstring, SliceData};
 use ton_types::dictionary::{HashmapE, HashmapType};
 use ton_block::{AccountId, AnycastInfo, BlockResult, Grams, MsgAddress, Serializable};
 
-use {Function, Event, Int, Param, ParamType, Token, TokenValue, Uint};
-
-fn get_function_id(signature: &[u8]) -> u32 {
-    // Sha256 hash of signature
-    let mut hasher = Sha256::new();
-
-    hasher.input(signature);
-
-    let function_hash = hasher.result();
-
-    let mut bytes = [0; 4];
-    bytes.copy_from_slice(&function_hash[..4]);
-
-    u32::from_be_bytes(bytes)
-}
+use {Int, Param, ParamType, Token, TokenValue, Uint};
 
 fn put_array_into_map<T: Serializable>(array: &[T]) -> HashmapE {
     let mut map = HashmapE::with_bit_len(32);
@@ -66,106 +49,35 @@ fn add_array_as_map<T: Serializable>(builder: &mut BuilderData, array: &[T], fix
 }
 
 fn test_parameters_set(
-    func_name: &str,
-    func_signature: &[u8],
-    timed_signature: &[u8],
     inputs: &[Token],
     params: Option<&[Param]>,
     params_tree: BuilderData,
 ) {
-    let check_time = params_tree.bits_free() > 64;
+    let mut prefix = BuilderData::new();
+    prefix.append_reference(BuilderData::new());
+    prefix.append_u32(0).unwrap();
 
-    let mut params_slice = SliceData::from(&params_tree);
-    params_slice.get_next_u32().unwrap();
-    params_slice.checked_drain_reference().unwrap();
-    let func_id = get_function_id(func_signature);
+    // tree check
+    let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix]).unwrap();
 
-    let input_params: Vec<Param> = if let Some(params) = params {
+    println!("{:#.2}", Cell::from(&test_tree));
+    println!("{:#.2}", Cell::from(&params_tree));
+    assert_eq!(test_tree, params_tree);
+
+    // check decoding
+
+    let params: Vec<Param> = if let Some(params) = params {
         params.to_vec()
     } else {
         params_from_tokens(inputs)
     };
 
-    let function = Function {
-        name: func_name.to_owned(),
-        inputs: input_params.clone(),
-        outputs: input_params.clone(),
-        set_time: false,
-        id: None
-    };
+    let mut slice = SliceData::from(test_tree);
+    slice.checked_drain_reference().unwrap();
+    slice.get_next_u32().unwrap();
 
-    let mut timed_function = function.clone();
-    timed_function.set_time = true;
-
-    // simple tree check
-    let test_tree = function
-        .encode_input(inputs.clone(), false, None)
-        .unwrap();
-
-    let mut test_tree = SliceData::from(&test_tree);
-    assert_eq!(test_tree.get_next_u32().unwrap(), func_id & 0x7FFFFFFF);
-    assert_eq!(test_tree.checked_drain_reference().unwrap(), SliceData::new_empty().into_cell());
-    println!("{:#.2}", test_tree.into_cell());
-    println!("{:#.2}", params_slice.into_cell());
-    assert_eq!(test_tree, params_slice);
-
-    if check_time {
-        // timed tree check
-        let test_tree = timed_function
-            .encode_input(inputs.clone(), false, None)
-            .unwrap();
-
-        let mut test_tree = SliceData::from(&test_tree);
-        let func_id = get_function_id(timed_signature);
-        assert_eq!(test_tree.get_next_u32().unwrap(), func_id & 0x7FFFFFFF);
-        
-        // check time is correct
-        let tree_time = test_tree.get_next_u64().unwrap();
-        let now = Utc::now().timestamp_millis() as u64;
-        assert!(tree_time <= now && tree_time >= now - 1000);
-
-        assert_eq!(test_tree.checked_drain_reference().unwrap(), SliceData::new_empty().into_cell());
-        assert_eq!(test_tree, params_slice);
-    }
-    
-
-    // check signing
-
-    let pair = Keypair::generate::<Sha512, _>(&mut rand::rngs::OsRng::new().unwrap());
-
-    let test_tree = function
-        .encode_input(inputs.clone(), false, Some(&pair))
-        .unwrap();
-    let mut test_tree = SliceData::from(test_tree);
-    let input_copy = test_tree.clone();
-
-    let mut signature = SliceData::from(test_tree.checked_drain_reference().unwrap());
-    let signature_data = Signature::from_bytes(signature.get_next_bytes(64).unwrap().as_slice()).unwrap();
-    let bag_hash = test_tree.into_cell().repr_hash();
-    pair.verify::<Sha512>(bag_hash.as_slice(), &signature_data).unwrap();
-
-    let public_key = signature.get_next_bytes(32).unwrap();
-    assert_eq!(public_key, pair.public.to_bytes());
-
-    assert_eq!(test_tree.get_next_u32().unwrap(), func_id & 0x7FFFFFFF);
-    assert_eq!(test_tree, params_slice);
-
-    // check inputs decoding
-
-    let test_inputs = function.decode_input(input_copy, false).unwrap();
-    assert_eq!(test_inputs, inputs);
-
-    // check outputs decoding
-
-    let mut test_tree = BuilderData::new();
-    test_tree.append_reference(BuilderData::new());
-    test_tree.append_u32(func_id | 0x80000000).unwrap();
-    test_tree.checked_append_references_and_data(&params_slice).unwrap();
-    let mut test_tree = SliceData::from(test_tree);
-    test_tree.checked_drain_reference().unwrap();
-
-    let test_outputs = function.decode_output(test_tree, false).unwrap();
-    assert_eq!(test_outputs, inputs);
+    let decoded_tokens = TokenValue::decode_params(&params, slice).unwrap();
+    assert_eq!(decoded_tokens, inputs);
 }
 
 fn params_from_tokens(tokens: &[Token]) -> Vec<Param> {
@@ -190,7 +102,7 @@ fn tokens_from_values(values: Vec<TokenValue>) -> Vec<Token> {
 
 #[test]
 fn test_one_input_and_output() {
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
@@ -203,9 +115,6 @@ fn test_one_input_and_output() {
     })];
 
     test_parameters_set(
-        "test_one_input_and_output",
-        b"test_one_input_and_output(uint128)(uint128)v1",
-        b"test_one_input_and_output(time,uint128)(uint128)v1",
         &tokens_from_values(values),
         None,
         builder,
@@ -214,7 +123,7 @@ fn test_one_input_and_output() {
 
 #[test]
 fn test_with_grams() {
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
@@ -225,9 +134,6 @@ fn test_with_grams() {
     let values = vec![TokenValue::Gram(grams)];
 
     test_parameters_set(
-        "test_with_grams",
-        b"test_with_grams(gram)(gram)v1",
-        b"test_with_grams(time,gram)(gram)v1",
         &tokens_from_values(values),
         None,
         builder,
@@ -236,7 +142,7 @@ fn test_with_grams() {
 
 #[test]
 fn test_with_address() {
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
@@ -260,9 +166,6 @@ fn test_with_address() {
     });
 
     test_parameters_set(
-        "test_with_address",
-        b"test_with_address(cell,address,address,address,address,address,address)(cell,address,address,address,address,address,address)v1",
-        b"test_with_address(time,cell,address,address,address,address,address,address)(cell,address,address,address,address,address,address)v1",
         &tokens_from_values(values),
         None,
         builder,
@@ -271,7 +174,7 @@ fn test_with_address() {
 
 #[test]
 fn test_one_input_and_output_by_data() {
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut expected_tree = BuilderData::with_bitstring(vec![
         0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x75, 0x0C, 0xE4, 0x7B, 0xAC, 0x80,
     ]).unwrap();
@@ -283,9 +186,6 @@ fn test_one_input_and_output_by_data() {
     })];
 
     test_parameters_set(
-        "test_one_input_and_output_by_data",
-        b"test_one_input_and_output_by_data(int64)(int64)v1",
-        b"test_one_input_and_output_by_data(time,int64)(int64)v1",
         &tokens_from_values(values),
         None,
         expected_tree,
@@ -294,15 +194,12 @@ fn test_one_input_and_output_by_data() {
 
 #[test]
 fn test_empty_params() {
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
 
     test_parameters_set(
-        "test_empty_params",
-        b"test_empty_params()()v1",
-        b"test_empty_params(time)()v1",
         &[],
         None,
         builder);
@@ -310,7 +207,7 @@ fn test_empty_params() {
 
 #[test]
 fn test_two_params() {
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
@@ -327,9 +224,6 @@ fn test_two_params() {
     ];
 
     test_parameters_set(
-        "test_two_params",
-        b"test_two_params(bool,int32)(bool,int32)v1",
-        b"test_two_params(time,bool,int32)(bool,int32)v1",
         &tokens_from_values(values),
         None,
         builder,
@@ -338,7 +232,7 @@ fn test_two_params() {
 
 #[test]
 fn test_four_refs() {
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let bytes = vec![0x55; 300]; // 300 = 127 + 127 + 46
     let mut builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
     builder.append_reference(BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap());
@@ -368,9 +262,6 @@ fn test_four_refs() {
     ];
 
     test_parameters_set(
-        "test_four_refs",
-        b"test_four_refs(bool,bytes,bytes,bytes,bytes,int32)(bool,bytes,bytes,bytes,bytes,int32)v1",
-        b"test_four_refs(time,bool,bytes,bytes,bytes,bytes,int32)(bool,bytes,bytes,bytes,bytes,int32)v1",
         &tokens_from_values(values),
         None,
         builder,
@@ -379,7 +270,7 @@ fn test_four_refs() {
 
 #[test]
 fn test_nested_tuples_with_all_simples() {
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
@@ -420,9 +311,6 @@ fn test_nested_tuples_with_all_simples() {
     ];
 
     test_parameters_set(
-        "test_nested_tuples_with_all_simples",
-        b"test_nested_tuples_with_all_simples(bool,(int8,int16,(int32,int64,int128)),(uint8,uint16,(uint32,uint64,uint128)))(bool,(int8,int16,(int32,int64,int128)),(uint8,uint16,(uint32,uint64,uint128)))v1",
-        b"test_nested_tuples_with_all_simples(time,bool,(int8,int16,(int32,int64,int128)),(uint8,uint16,(uint32,uint64,uint128)))(bool,(int8,int16,(int32,int64,int128)),(uint8,uint16,(uint32,uint64,uint128)))v1",
         &tokens_from_values(values),
         None,
         builder,
@@ -433,7 +321,7 @@ fn test_nested_tuples_with_all_simples() {
 fn test_static_array_of_ints() {
     let input_array: [u32; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
 
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
@@ -448,9 +336,6 @@ fn test_static_array_of_ints() {
     )];
 
     test_parameters_set(
-        "test_static_array_of_ints",
-        b"test_static_array_of_ints(uint32[8])(uint32[8])v1",
-        b"test_static_array_of_ints(time,uint32[8])(uint32[8])v1",
         &tokens_from_values(values),
         None,
         builder,
@@ -459,7 +344,7 @@ fn test_static_array_of_ints() {
 
 #[test]
 fn test_empty_dynamic_array() {
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
@@ -474,9 +359,6 @@ fn test_empty_dynamic_array() {
     }];
 
     test_parameters_set(
-        "test_empty_dynamic_array",
-        b"test_empty_dynamic_array(uint16[])(uint16[])v1",
-        b"test_empty_dynamic_array(time,uint16[])(uint16[])v1",
         &tokens_from_values(values),
         Some(&params),
         builder,
@@ -487,7 +369,7 @@ fn test_empty_dynamic_array() {
 fn test_dynamic_array_of_ints() {
     let input_array: Vec<u16> = vec![1, 2, 3, 4, 5, 6, 7, 8];
 
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
@@ -502,9 +384,6 @@ fn test_dynamic_array_of_ints() {
     )];
 
     test_parameters_set(
-        "test_dynamic_array_of_ints",
-        b"test_dynamic_array_of_ints(uint16[])(uint16[])v1",
-        b"test_dynamic_array_of_ints(time,uint16[])(uint16[])v1",
         &tokens_from_values(values),
         None,
         builder,
@@ -532,7 +411,7 @@ fn test_dynamic_array_of_tuples() {
     let input_array: Vec<(u32, bool)> =
         vec![(1, true), (2, false), (3, true), (4, false), (5, true)];
 
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
@@ -559,9 +438,6 @@ fn test_dynamic_array_of_tuples() {
     )];
 
     test_parameters_set(
-        "test_dynamic_array_of_tuples",
-        b"test_dynamic_array_of_tuples((uint32,bool)[])((uint32,bool)[])v1",
-        b"test_dynamic_array_of_tuples(time,(uint32,bool)[])((uint32,bool)[])v1",
         &tokens_from_values(values),
         None,
         expected_tree,
@@ -582,7 +458,7 @@ fn test_tuples_with_combined_types() {
         input_array2.push(i * i);
     }
 
-    // builder with reserved signature reference and function ID
+    // test prefix with one ref and u32
     let mut chain_builder = BuilderData::new();
     chain_builder.append_u32(0).unwrap();
     chain_builder.append_reference(BuilderData::new());
@@ -659,50 +535,38 @@ fn test_tuples_with_combined_types() {
     ];
 
     test_parameters_set(
-        "test_tuples_with_combined_types",
-        b"test_tuples_with_combined_types(uint8,((uint32,bool)[],int16),(int64[],int64[][5]))(uint8,((uint32,bool)[],int16),(int64[],int64[][5]))v1",
-        b"test_tuples_with_combined_types(time,uint8,((uint32,bool)[],int16),(int64[],int64[][5]))(uint8,((uint32,bool)[],int16),(int64[],int64[][5]))v1",
         &tokens_from_values(values),
         None,
         chain_builder,
     );
 }
 
-#[test]
-fn test_add_signature() {
-    let tokens = tokens_from_values(vec![TokenValue::Uint(Uint::new(456, 32))]);
-
-    let function = Function {
-        name: "test_add_signature".to_owned(),
-        inputs: params_from_tokens(&tokens),
-        outputs: vec![],
-        set_time: false,
-        id: None
-    };
-
-    let (msg, data_to_sign) = function.create_unsigned_call(&tokens, false).unwrap();
-
-    let pair = Keypair::generate::<Sha512, _>(&mut rand::rngs::OsRng::new().unwrap());
-    let signature = pair.sign::<Sha512>(&data_to_sign).to_bytes().to_vec();
-
-    let msg = Function::add_sign_to_encoded_input(&signature, &pair.public.to_bytes(), msg.into()).unwrap();
-
-    assert_eq!(function.decode_input(msg.into(), false).unwrap(), tokens);
-}
 
 #[test]
-fn test_decode_event() {
+fn test_header_params() {
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
-    builder.append_u32(get_function_id(b"event(uint64)v1")).unwrap();
-    builder.append_u64(123).unwrap();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
 
-    let tokens = tokens_from_values(vec![TokenValue::Uint(Uint::new(123, 64))]);
+    let public_key = ed25519_dalek::PublicKey::from_bytes(&[0u8; ed25519_dalek::PUBLIC_KEY_LENGTH]).unwrap();
 
-    let event = Event {
-        name: "event".to_owned(),
-        inputs: params_from_tokens(&tokens),
-        id: None
-    };
+    builder.append_bit_zero().unwrap();
+    builder.append_bit_one().unwrap();
+    builder.append_raw(&public_key.to_bytes(), ed25519_dalek::PUBLIC_KEY_LENGTH * 8).unwrap();
+    builder.append_u64(12345).unwrap();
+    builder.append_u32(67890).unwrap();
 
-    assert_eq!(event.decode_input(builder.into()).unwrap(), tokens);
+    let values = vec![
+        TokenValue::PublicKey(None),
+        TokenValue::PublicKey(Some(public_key)),
+        TokenValue::Time(12345),
+        TokenValue::Expire(67890)
+    ];
+
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder,
+    );
 }

@@ -16,7 +16,6 @@ use int::{Int, Uint};
 use {Param, ParamType};
 use serde_json;
 use super::*;
-use crate::error::*;
 
 use num_bigint::{BigInt, BigUint};
 use ton_types::{Cell, BuilderData, SliceData, IBitstring};
@@ -54,7 +53,10 @@ impl TokenValue {
                 cursor = find_next_bits(cursor, 1)?;
                 let gram = <Grams as ton_block::Deserializable>::construct_from(&mut cursor)?;
                 Ok((TokenValue::Gram(gram), cursor))
-            }
+            },
+            ParamType::Time => Self::read_time(cursor),
+            ParamType::Expire => Self::read_expire(cursor),
+            ParamType::PublicKey => Self::read_public_key(cursor)
         }
     }
 
@@ -168,6 +170,45 @@ impl TokenValue {
                 cursor: original
             }),
             None => Ok((TokenValue::Bytes(data), cursor))
+        }
+    }
+
+    fn read_time(mut cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+        cursor = find_next_bits(cursor, 64)?;
+        Ok((TokenValue::Time(cursor.get_next_u64()?), cursor))
+    }
+
+    fn read_expire(mut cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+        cursor = find_next_bits(cursor, 32)?;
+        Ok((TokenValue::Expire(cursor.get_next_u32()?), cursor))
+    }
+
+    fn read_public_key(mut cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+        cursor = find_next_bits(cursor, 1)?;
+        if cursor.get_next_bit()? {
+            let (vec, cursor) = get_next_bits_from_chain(cursor, 256)?;
+            Ok((TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&vec)?)), cursor))
+        } else {
+            Ok((TokenValue::PublicKey(None), cursor))
+        }
+    }
+
+    /// Decodes provided params from SliceData
+    pub fn decode_params(params: &Vec<Param>, mut cursor: SliceData) -> AbiResult<Vec<Token>> {
+        let mut tokens = vec![];
+
+        for param in params {
+            // println!("{:?}", param);
+            let (token_value, new_cursor) = Self::read_from(&param.kind, cursor)?;
+
+            cursor = new_cursor;
+            tokens.push(Token { name: param.name.clone(), value: token_value });
+        }
+
+        if cursor.remaining_references() != 0 || cursor.remaining_bits() != 0 {
+            bail!(AbiErrorKind::IncompleteDeserializationError { cursor })
+        } else {
+            Ok(tokens)
         }
     }
 }

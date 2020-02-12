@@ -16,7 +16,7 @@ use ed25519_dalek::*;
 use serde_json::Value;
 use token::{Detokenizer, Tokenizer};
 use ton_types::{BuilderData, SliceData};
-use {Contract, Function};
+use {Contract};
 use crate::error::*;
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
@@ -24,6 +24,7 @@ use crate::error::*;
 pub fn encode_function_call(
     abi: String,
     function: String,
+    header: String,
     parameters: String,
     internal: bool,
     pair: Option<&Keypair>,
@@ -32,11 +33,13 @@ pub fn encode_function_call(
 
     let function = contract.function(&function)?;
 
+    let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+    let header_tokens = Tokenizer::tokenize_optional_params(function.header_params(), &v)?;
+
     let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+    let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
 
-    let tokens = Tokenizer::tokenize_all(&function.input_params(), &v)?;
-
-    function.encode_input(&tokens, internal, pair)
+    function.encode_input(&header_tokens, &input_tokens, internal, pair)
 }
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
@@ -45,26 +48,31 @@ pub fn encode_function_call(
 pub fn prepare_function_call_for_sign(
     abi: String,
     function: String,
+    header: String,
     parameters: String,
 ) -> AbiResult<(BuilderData, Vec<u8>)> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let function = contract.function(&function)?;
 
+    let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+    let header_tokens = Tokenizer::tokenize_optional_params(function.header_params(), &v)?;
+
     let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+    let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
 
-    let tokens = Tokenizer::tokenize_all(&function.input_params(), &v)?;
-
-    function.create_unsigned_call(&tokens, false)
+    function.create_unsigned_call(&header_tokens, &input_tokens, false, true)
 }
 
 /// Add sign to messsage body returned by `prepare_function_call_for_sign` function
 pub fn add_sign_to_function_call(
+    abi: String,
     signature: &[u8],
-    public_key: &[u8],
+    public_key: Option<&[u8]>,
     function_call: SliceData
 ) -> AbiResult<BuilderData> {
-    Function::add_sign_to_encoded_input(signature, public_key, function_call)
+    let contract = Contract::load(abi.as_bytes())?;
+    contract.add_sign_to_encoded_input(signature, public_key, function_call)
 }
 
 /// Decodes output parameters returned by contract function call
@@ -136,11 +144,15 @@ pub fn update_contract_data(abi: &str, parameters: &str, data: SliceData) -> Abi
         .map(|item| item.value.clone())
         .collect();
 
-    let tokens = Tokenizer::tokenize_all(&params[..], &data_json)?;
+    let tokens = Tokenizer::tokenize_all_params(&params[..], &data_json)?;
 
     contract.update_data(data, &tokens)
 }
 
 #[cfg(test)]
-#[path = "tests/full_stack_tests.rs"]
-mod tests;
+#[path = "tests/v1/full_stack_tests.rs"]
+mod tests_v1;
+
+#[cfg(test)]
+#[path = "tests/v2/full_stack_tests.rs"]
+mod tests_v2;

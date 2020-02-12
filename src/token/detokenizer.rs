@@ -123,6 +123,17 @@ impl Token {
         let data = hex::encode(arr);
         serializer.serialize_str(&data)
     }
+
+    pub fn detokenize_public_key<S>(value: &Option<ed25519_dalek::PublicKey>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(key) = value {
+            Self::detokenize_bytes(&key.to_bytes().to_vec(), serializer)
+        } else {
+            serializer.serialize_str("")
+        }
+    }
 }
 
 impl Serialize for TokenValue {
@@ -145,6 +156,9 @@ impl Serialize for TokenValue {
             TokenValue::Bytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::FixedBytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::Gram(gram) => Token::detokenize_big_int(gram.value(), serializer),
+            TokenValue::Time(time) => Token::detokenize_big_uint(&BigUint::from(*time), serializer),
+            TokenValue::Expire(expire) => Token::detokenize_big_uint(&BigUint::from(*expire), serializer),
+            TokenValue::PublicKey(key) => Token::detokenize_public_key(&key, serializer),
         }
     }
 }

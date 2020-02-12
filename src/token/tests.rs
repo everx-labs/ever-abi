@@ -26,9 +26,10 @@ mod tokenize_tests {
         let input = r#"{
             "a" : 123,
             "b" : -456,
+            "c" : "-0xabcdef",
             "e" : "789",
             "f" : "-12345678900987654321",
-            "g" : "664613997892457936451903530140172287"
+            "g" : "0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
         }"#;
 
         let params = vec![
@@ -39,6 +40,10 @@ mod tokenize_tests {
             Param {
                 name: "b".to_owned(),
                 kind: ParamType::Int(16),
+            },
+            Param {
+                name: "c".to_owned(),
+                kind: ParamType::Int(32),
             },
             Param {
                 name: "e".to_owned(),
@@ -64,6 +69,10 @@ mod tokenize_tests {
                 value: TokenValue::Int(Int::new(-456, 16)),
             },
             Token {
+                name: "c".to_owned(),
+                value: TokenValue::Int(Int::new(-0xabcdef, 32)),
+            },
+            Token {
                 name: "e".to_owned(),
                 value: TokenValue::Uint(Uint::new(789, 13)),
             },
@@ -75,7 +84,7 @@ mod tokenize_tests {
         ];
 
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
             expected_tokens
         );
 
@@ -83,7 +92,7 @@ mod tokenize_tests {
         let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
         println!("{}", input);
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
             expected_tokens
         );
     }
@@ -97,7 +106,7 @@ mod tokenize_tests {
             kind: ParamType::Uint(7),
         }];
 
-        assert!(Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).is_err());
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).is_err());
 
         // number doesn't fit into i64 range used in serde_json
         let input = r#"{ "a" : 12345678900987654321 }"#;
@@ -106,7 +115,7 @@ mod tokenize_tests {
             kind: ParamType::Int(64),
         }];
 
-        assert!(Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).is_err());
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).is_err());
 
         // test BigInt::bits() case for -2^n values
 
@@ -118,12 +127,23 @@ mod tokenize_tests {
         }];
 
         assert!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input_fit).unwrap()).is_ok()
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input_fit).unwrap()).is_ok()
         );
         assert!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input_not_fit).unwrap())
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input_not_fit).unwrap())
                 .is_err()
         );
+
+        // negative values for uint
+        let input_num = r#"{ "a" : -1 }"#;
+        let input_str = r#"{ "a" : "-5" }"#;
+        let params = vec![Param {
+            name: "a".to_owned(),
+            kind: ParamType::Uint(8),
+        }];
+
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input_num).unwrap()).is_err());
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input_str).unwrap()).is_err());
     }
 
     #[test]
@@ -156,7 +176,7 @@ mod tokenize_tests {
         ];
 
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
             expected_tokens
         );
 
@@ -164,7 +184,7 @@ mod tokenize_tests {
         let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
         println!("{}", input);
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
             expected_tokens
         );
     }
@@ -178,7 +198,7 @@ mod tokenize_tests {
         let expected_tokens = vec![];
 
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
             expected_tokens
         );
 
@@ -186,7 +206,7 @@ mod tokenize_tests {
         let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
         println!("{}", input);
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
             expected_tokens
         );
     }
@@ -245,7 +265,7 @@ mod tokenize_tests {
         ];
 
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
             expected_tokens
         );
 
@@ -253,7 +273,7 @@ mod tokenize_tests {
         let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
         println!("{}", input);
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
             expected_tokens
         );
     }
@@ -379,7 +399,7 @@ mod tokenize_tests {
         ];
 
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
             expected_tokens
         );
 
@@ -387,7 +407,7 @@ mod tokenize_tests {
         let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
         println!("{}", input);
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
             expected_tokens
         );
     }
@@ -412,7 +432,7 @@ mod tokenize_tests {
         expected_tokens.push(Token::new("b", TokenValue::Cell(BuilderData::new().into())));
 
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
             expected_tokens
         );
 
@@ -420,7 +440,7 @@ mod tokenize_tests {
         let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
         println!("{}", input);
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
             expected_tokens
         );
     }
@@ -482,7 +502,7 @@ mod tokenize_tests {
         expected_tokens.push(Token::new("c", TokenValue::Map(ParamType::Int(8), map)));
 
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
             expected_tokens
         );
 
@@ -490,7 +510,7 @@ mod tokenize_tests {
         let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
         println!("{}", input);
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
             expected_tokens
         );
     }
@@ -521,7 +541,7 @@ mod tokenize_tests {
         ];
 
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
             expected_tokens
         );
 
@@ -529,7 +549,7 @@ mod tokenize_tests {
         let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
         println!("{}", input);
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
             expected_tokens
         );
     }
@@ -555,7 +575,7 @@ mod tokenize_tests {
         ];
 
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
             expected_tokens
         );
 
@@ -563,10 +583,232 @@ mod tokenize_tests {
         let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
         println!("{}", input);
         assert_eq!(
-            Tokenizer::tokenize_all(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
             expected_tokens
         );
     }
+
+    #[test]
+    fn test_tokenize_time() {
+        let input = r#"{
+            "a" : 123,
+            "b" : "456",
+            "c" : "0x789",
+            "d": "0xffffffffffffffff"
+        }"#;
+
+        let params = vec![
+            Param {
+                name: "a".to_owned(),
+                kind: ParamType::Time,
+            },
+            Param {
+                name: "b".to_owned(),
+                kind: ParamType::Time,
+            },
+            Param {
+                name: "c".to_owned(),
+                kind: ParamType::Time,
+            },
+            Param {
+                name: "d".to_owned(),
+                kind: ParamType::Time,
+            }
+        ];
+
+        let expected_tokens = vec![
+            Token {
+                name: "a".to_owned(),
+                value: TokenValue::Time(123),
+            },
+            Token {
+                name: "b".to_owned(),
+                value: TokenValue::Time(456),
+            },
+            Token {
+                name: "c".to_owned(),
+                value: TokenValue::Time(0x789),
+            },
+            Token {
+                name: "d".to_owned(),
+                value: TokenValue::Time(0xffffffffffffffff),
+            }
+        ];
+
+        assert_eq!(
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            expected_tokens
+        );
+
+        // check that detokenizer gives the same result
+        let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
+        println!("{}", input);
+        assert_eq!(
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            expected_tokens
+        );
+    }
+
+    
+    #[test]
+    fn test_time_checks() {
+        // number doesn't fit into parameter size
+        let input = r#"{ "a" : "0x10000000000000000" }"#;
+        let params = vec![Param {
+            name: "a".to_owned(),
+            kind: ParamType::Time,
+        }];
+
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).is_err());
+
+        // negative values for time
+        let input_num = r#"{ "a" : -1 }"#;
+        let input_str = r#"{ "a" : "-5" }"#;
+        let params = vec![Param {
+            name: "a".to_owned(),
+            kind: ParamType::Time,
+        }];
+
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input_num).unwrap()).is_err());
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input_str).unwrap()).is_err());
+    }
+
+    #[test]
+    fn test_tokenize_expire() {
+        let input = r#"{
+            "a" : 123,
+            "b" : "456",
+            "c" : "0x789",
+            "d": "0xffffffff"
+        }"#;
+
+        let params = vec![
+            Param {
+                name: "a".to_owned(),
+                kind: ParamType::Expire,
+            },
+            Param {
+                name: "b".to_owned(),
+                kind: ParamType::Expire,
+            },
+            Param {
+                name: "c".to_owned(),
+                kind: ParamType::Expire,
+            },
+            Param {
+                name: "d".to_owned(),
+                kind: ParamType::Expire,
+            }
+        ];
+
+        let expected_tokens = vec![
+            Token {
+                name: "a".to_owned(),
+                value: TokenValue::Expire(123),
+            },
+            Token {
+                name: "b".to_owned(),
+                value: TokenValue::Expire(456),
+            },
+            Token {
+                name: "c".to_owned(),
+                value: TokenValue::Expire(0x789),
+            },
+            Token {
+                name: "d".to_owned(),
+                value: TokenValue::Expire(0xffffffff),
+            }
+        ];
+
+        assert_eq!(
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            expected_tokens
+        );
+
+        // check that detokenizer gives the same result
+        let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
+        println!("{}", input);
+        assert_eq!(
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            expected_tokens
+        );
+    }
+    
+    #[test]
+    fn test_expire_checks() {
+        // number doesn't fit into parameter size
+        let input = r#"{ "a" : "0x100000000" }"#;
+        let params = vec![Param {
+            name: "a".to_owned(),
+            kind: ParamType::Expire,
+        }];
+
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).is_err());
+
+        // negative values for expire
+        let input_num = r#"{ "a" : -1 }"#;
+        let input_str = r#"{ "a" : "-5" }"#;
+        let params = vec![Param {
+            name: "a".to_owned(),
+            kind: ParamType::Expire,
+        }];
+
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input_num).unwrap()).is_err());
+        assert!(Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input_str).unwrap()).is_err());
+    }
+
+    
+    #[test]
+    fn test_tokenize_pubkey() {
+        let input = r#"{
+            "a": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "b": ""
+        }"#;
+
+        let params = vec![
+            Param::new("a", ParamType::PublicKey),
+            Param::new("b", ParamType::PublicKey)
+        ];
+
+        let expected_tokens = vec![
+            Token::new("a", TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&[0xcc; 32]).unwrap()))),
+            Token::new("b", TokenValue::PublicKey(None))
+        ];
+
+        assert_eq!(
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            expected_tokens
+        );
+
+        // check that detokenizer gives the same result
+        let input = Detokenizer::detokenize(&params, &expected_tokens).unwrap();
+        println!("{}", input);
+        assert_eq!(
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(&input).unwrap()).unwrap(),
+            expected_tokens
+        );
+    }
+
+    #[test]
+    fn test_tokenize_optional() {
+        let input = r#"{
+            "a": 123
+        }"#;
+
+        let params = vec![
+            Param::new("a", ParamType::Time),
+            Param::new("b", ParamType::Expire)
+        ];
+
+        let mut expected_tokens = HashMap::new();
+        expected_tokens.insert("a".to_owned(), TokenValue::Time(123));
+
+        assert_eq!(
+            Tokenizer::tokenize_optional_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            expected_tokens
+        );
+    }
+
 }
 
 mod types_check_tests {
@@ -655,6 +897,18 @@ mod types_check_tests {
                 name: "p".to_owned(),
                 value: TokenValue::Gram(17u16.into())
             },
+            Token {
+                name: "q".to_owned(),
+                value: TokenValue::Time(123)
+            },
+            Token {
+                name: "r".to_owned(),
+                value: TokenValue::Expire(456)
+            },
+            Token {
+                name: "s".to_owned(),
+                value: TokenValue::PublicKey(None)
+            },
         ];
 
         let tuple_params = vec![
@@ -721,6 +975,18 @@ mod types_check_tests {
                 name: "p".to_owned(),
                 kind: ParamType::Gram,
             },
+            Param {
+                name: "q".to_owned(),
+                kind: ParamType::Time,
+            },
+            Param {
+                name: "r".to_owned(),
+                kind: ParamType::Expire,
+            },
+            Param {
+                name: "s".to_owned(),
+                kind: ParamType::PublicKey,
+            },
         ];
 
         assert_type_check(&tokens, &params);
@@ -775,5 +1041,30 @@ mod types_check_tests {
             ]),
         };
         assert_not_type_check(&tokens_wrong_tuple_type, &params);
+    }
+}
+
+mod default_values_tests {
+    use {ParamType, TokenValue};
+    use chrono::prelude::Utc;
+
+    #[test]
+    fn test_time_default_value() {
+        if let TokenValue::Time(time) = TokenValue::get_default_value_for_header(&ParamType::Time).unwrap() {
+            let now = Utc::now().timestamp_millis() as u64;
+            assert!(time <= now && time >= now - 1000);
+        } else {
+            panic!("Wrong value type");
+        }
+    }
+
+    #[test]
+    fn test_default_values() {
+        let param_types = vec![ParamType::Expire, ParamType::PublicKey];
+        let default_values = vec![TokenValue::Expire(0xffffffff), TokenValue::PublicKey(None)];
+
+        for (param_type, value) in param_types.iter().zip(default_values) {
+            assert_eq!(TokenValue::get_default_value_for_header(&param_type).unwrap(), value);
+        }
     }
 }

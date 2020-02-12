@@ -13,24 +13,40 @@
 */
 
 use {Function, Param, Token, TokenValue};
+use contract::SerdeEvent;
 use ton_types::SliceData;
 use crate::error::*;
-use super::contract::ABI_VERSION;
 
 /// Contract event specification.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Event {
+    /// ABI version
+    pub abi_version: u8,
     /// Event name.
     pub name: String,
     /// Event input.
-    #[serde(default)]
     pub inputs: Vec<Param>,
-    #[serde(default)]
-    #[serde(deserialize_with = "super::function::deserialize_opt_u32_from_string")]
-    pub id: Option<u32>
+    /// Event ID
+    pub id: u32
 }
 
 impl Event {
+    /// Creates `Function` struct from parsed JSON struct `SerdeFunction`
+    pub(crate) fn from_serde(abi_version: u8, serde_event: SerdeEvent) -> Self {
+        let mut event = Event {
+            abi_version,
+            name: serde_event.name,
+            inputs: serde_event.inputs,
+            id: 0
+        };
+        event.id = if let Some(id) = serde_event.id {
+            id
+        } else {
+            event.get_function_id() & 0x7FFFFFFF
+        };
+        event
+    }
+
     /// Returns all input params of given function.
     pub fn input_params(&self) -> Vec<Param> {
         self.inputs.iter()
@@ -50,7 +66,7 @@ impl Event {
             .collect::<Vec<String>>()
             .join(",");
 
-        format!("{}({})v{}", self.name, input_types, ABI_VERSION)
+        format!("{}({})v{}", self.name, input_types, self.abi_version)
     }
 
     /// Computes function ID for contract function
@@ -62,10 +78,7 @@ impl Event {
 
     /// Returns ID for event emitting message
     pub fn get_id(&self) -> u32 {
-        match self.id {
-            Some(id) => id  & 0x7FFFFFFF,
-            None => self.get_function_id() & 0x7FFFFFFF
-        }
+        self.id
     }
 
     /// Decodes provided params from SliceData

@@ -20,6 +20,8 @@ use std::collections::HashMap;
 use std::fmt;
 use ton_block::{Grams, MsgAddress};
 use ton_types::Cell;
+use crate::error::*;
+use chrono::prelude::Utc;
 
 mod tokenizer;
 mod detokenizer;
@@ -33,6 +35,8 @@ pub use self::deserialize::*;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod test_encoding;
 
 /// TON ABI params.
 #[derive(Debug, PartialEq, Clone)]
@@ -99,7 +103,13 @@ pub enum TokenValue {
     FixedBytes(Vec<u8>),
     /// Nanograms
     /// 
-    Gram(Grams)
+    Gram(Grams),
+    /// Timestamp
+    Time(u64),
+    /// Message expiration time
+    Expire(u32),
+    /// Public key
+    PublicKey(Option<ed25519_dalek::PublicKey>)
 }
 
 impl fmt::Display for TokenValue {
@@ -139,6 +149,13 @@ impl fmt::Display for TokenValue {
             TokenValue::Address(a) => write!(f, "{}", a),
             TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) => write!(f, "{:?}", arr),
             TokenValue::Gram(g) => write!(f, "{}", g),
+            TokenValue::Time(time) => write!(f, "{}", time),
+            TokenValue::Expire(expire) => write!(f, "{}", expire),
+            TokenValue::PublicKey(key) => if let Some(key) = key {
+                write!(f, "{}", hex::encode(&key.to_bytes()))
+            } else {
+                write!(f, "None")
+            }
         }
     }
 }
@@ -187,6 +204,9 @@ impl TokenValue {
             TokenValue::Bytes(_) => *param_type == ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => *param_type == ParamType::FixedBytes(arr.len()),
             TokenValue::Gram(_) => *param_type == ParamType::Gram,
+            TokenValue::Time(_) => *param_type == ParamType::Time,
+            TokenValue::Expire(_) => *param_type == ParamType::Expire,
+            TokenValue::PublicKey(_) => *param_type == ParamType::PublicKey,
         }
     }
 
@@ -213,6 +233,22 @@ impl TokenValue {
             TokenValue::Bytes(_) => ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => ParamType::FixedBytes(arr.len()),
             TokenValue::Gram(_) => ParamType::Gram,
+            TokenValue::Time(_) => ParamType::Time,
+            TokenValue::Expire(_) => ParamType::Expire,
+            TokenValue::PublicKey(_) => ParamType::PublicKey,
+        }
+    }
+
+    pub fn get_default_value_for_header(param_type: &ParamType) -> AbiResult<Self> {
+        match param_type {
+            ParamType::Time => Ok(TokenValue::Time(Utc::now().timestamp_millis() as u64)),
+            ParamType::Expire => Ok(TokenValue::Expire(u32::max_value())),
+            ParamType::PublicKey => Ok(TokenValue::PublicKey(None)),
+            any_type => Err(
+                AbiErrorKind::InvalidInputData {
+                    msg: format!(
+                        "Type {} doesn't have default value and must be explicitly defined",
+                        any_type)}.into())
         }
     }
 }

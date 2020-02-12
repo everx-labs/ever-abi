@@ -15,15 +15,18 @@
 use ed25519_dalek::*;
 use sha2::Sha512;
 
-use ton_types::{BuilderData, SliceData};
+use ton_types::{BuilderData, SliceData, IBitstring};
 use ton_types::dictionary::HashmapE;
 use ton_block::{MsgAddressInt, Serializable};
 
 use json_abi::*;
 
 const WALLET_ABI: &str = r#"{
-    "ABI version": 1,
-    "setTime": false,
+    "ABI version": 2,
+    "header": [
+        "expire",
+        "pubkey"
+    ],
     "functions": [
         {
             "name": "sendTransaction",
@@ -143,12 +146,16 @@ fn test_constructor_call() {
         WALLET_ABI.to_owned(),
         "constructor".to_owned(),
         params.to_owned(),
+        params.to_owned(),
         false,
         None,
     ).unwrap();
 
-    let mut expected_tree = BuilderData::with_bitstring(vec![0x54, 0xc1, 0xf4, 0x0f, 0x80]).unwrap();
-    expected_tree.prepend_reference(BuilderData::new());
+    let mut expected_tree = BuilderData::new();
+    expected_tree.append_bit_zero().unwrap();       // None for signature
+    expected_tree.append_u32(0xffffffff).unwrap();  // max u32 for expire
+    expected_tree.append_bit_zero().unwrap();       // None for public key
+    expected_tree.append_u32(0x68B55F3F).unwrap();  // function id
 
     let test_tree = SliceData::from(test_tree);
     let expected_tree = SliceData::from(expected_tree);
@@ -164,7 +171,7 @@ fn test_constructor_call() {
     assert_eq!(response.function_name, "constructor");
 
 
-    let test_tree = SliceData::from_raw(vec![0xd4, 0xc1, 0xf4, 0x0f, 0x80], 32);
+    let test_tree = SliceData::from_raw(vec![0xE8, 0xB5, 0x5F, 0x3F], 32);
 
     let response = decode_unknown_function_response(
         WALLET_ABI.to_owned(),
@@ -195,6 +202,9 @@ fn test_signed_call() {
         "value": 12,
         "period": 30
     }"#;
+    let header = r#"{
+        "expire": 123
+    }"#;
 
     let expected_params = r#"{"value":"0xc","period":"0x1e"}"#;
 
@@ -203,6 +213,7 @@ fn test_signed_call() {
     let test_tree = encode_function_call(
         WALLET_ABI.to_owned(),
         "createArbitraryLimit".to_owned(),
+        header.to_owned(),
         params.to_owned(),
         false,
         Some(&pair),
@@ -223,21 +234,28 @@ fn test_signed_call() {
         serde_json::from_str::<serde_json::Value>(&expected_params).unwrap());
     assert_eq!(response.function_name, "createArbitraryLimit");
 
-    let mut vec = vec![0x3C, 0x0B, 0xB9, 0xBC];
-    vec.resize(vec.len() + 31, 0);
-    vec.extend_from_slice(&[0x0C, 0x00, 0x00, 0x00, 0x1E, 0x80]);
+    let mut expected_tree = BuilderData::new();
+    expected_tree.append_u32(123).unwrap();                 // expire
+    expected_tree.append_bit_zero().unwrap();               // None for public key
+    expected_tree.append_u32(0x6BBEFB08).unwrap();          // function id
+    expected_tree.append_raw(&[0; 31], 31 * 8).unwrap();    // value
+    expected_tree.append_u8(12).unwrap();                   // value
+    expected_tree.append_u32(30).unwrap();                  // period
 
-    let expected_tree = BuilderData::with_bitstring(vec).unwrap();
+    assert!(test_tree.get_next_bit().unwrap());
+    let sign = &test_tree.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH).unwrap();
+    let sign = Signature::from_bytes(sign).unwrap();
 
-    test_tree.checked_drain_reference().unwrap();
     assert_eq!(test_tree, SliceData::from(expected_tree));
 
+    let hash = test_tree.into_cell().repr_hash();
+    pair.verify::<Sha512>(hash.as_slice(), &sign).unwrap();
 
     let expected_response = r#"{"value0":"0x0"}"#;
 
     let response_tree = SliceData::from(
         BuilderData::with_bitstring(
-            vec![0xBC, 0x0B, 0xB9, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80])
+            vec![0xEB, 0xBE, 0xFB, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80])
         .unwrap());
 
     let response = decode_function_response(
@@ -267,20 +285,29 @@ fn test_not_signed_call() {
     let params = r#"{
         "limitId": "0x2"
     }"#;
+    let header = r#"{
+        "pubkey": "0123456789abcdeffedcba98765432100123456789abcdeffedcba9876543210"
+    }"#;
 
     let test_tree = encode_function_call(
         WALLET_ABI.to_owned(),
         "getLimit".to_owned(),
+        header.to_owned(),
         params.to_owned(),
         false,
         None,
     )
     .unwrap();
 
-    let mut expected_tree = BuilderData::with_bitstring(vec![
-            0x23, 0xF3, 0x3E, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x80
-        ]).unwrap();
-    expected_tree.prepend_reference(BuilderData::new());
+    let mut expected_tree = BuilderData::new();
+    expected_tree.append_bit_zero().unwrap();               // None for signature
+    expected_tree.append_u32(0xffffffff).unwrap();          // expire
+    expected_tree.append_bit_one().unwrap();                // Some for public key
+    expected_tree.append_raw(
+        &hex::decode("0123456789abcdeffedcba98765432100123456789abcdeffedcba9876543210").unwrap(),
+        32 * 8).unwrap();                                   // pubkey
+    expected_tree.append_u32(0x4B774C98).unwrap();          // function id
+    expected_tree.append_u64(2).unwrap();                  // limitId
 
     assert_eq!(test_tree, expected_tree);
 }
@@ -288,10 +315,12 @@ fn test_not_signed_call() {
 #[test]
 fn test_add_signature_full() {
     let params = r#"{"limitId":"0x2"}"#;
+    let header = "{}";
 
     let (msg, data_to_sign) = prepare_function_call_for_sign(
         WALLET_ABI.to_owned(),
         "getLimit".to_owned(),
+        header.to_owned(),
         params.to_owned()
     )
     .unwrap();
@@ -299,7 +328,11 @@ fn test_add_signature_full() {
     let pair = Keypair::generate::<Sha512, _>(&mut rand::rngs::OsRng::new().unwrap());
     let signature = pair.sign::<Sha512>(&data_to_sign).to_bytes().to_vec();
 
-    let msg = add_sign_to_function_call(&signature, &pair.public.to_bytes(), msg.into()).unwrap();
+    let msg = add_sign_to_function_call(
+        WALLET_ABI.to_owned(),
+        &signature,
+        Some(&pair.public.to_bytes()),
+        msg.into()).unwrap();
 
     let decoded = decode_unknown_function_call(WALLET_ABI.to_owned(), msg.into(), false).unwrap();
 
@@ -310,20 +343,7 @@ fn test_add_signature_full() {
 fn test_find_event() {
     let event_tree = SliceData::from(
         BuilderData::with_bitstring(
-            vec![0x13, 0x47, 0xD7, 0x9D, 0xFF, 0x80])
-        .unwrap());
-
-    let decoded = decode_unknown_function_response(WALLET_ABI.to_owned(), event_tree, false).unwrap();
-
-    assert_eq!(decoded.function_name, "event");
-    assert_eq!(decoded.params, r#"{"param":"0xff"}"#);
-}
-
-#[test]
-fn test_insert_pubkey() {
-    let event_tree = SliceData::from(
-        BuilderData::with_bitstring(
-            vec![0x13, 0x47, 0xD7, 0x9D, 0xFF, 0x80])
+            vec![0x0C, 0xAF, 0x24, 0xBE, 0xFF, 0x80])
         .unwrap());
 
     let decoded = decode_unknown_function_response(WALLET_ABI.to_owned(), event_tree, false).unwrap();

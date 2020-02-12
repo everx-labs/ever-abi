@@ -13,7 +13,6 @@
 */
 
 use super::*;
-use crate::error::*;
 
 use ton_types::{BuilderData, IBitstring};
 use ton_block::Serializable;
@@ -59,7 +58,7 @@ impl TokenValue {
     }
 
 
-    fn write_to_cells(&self) -> AbiResult<Vec<BuilderData>> {
+    pub fn write_to_cells(&self) -> AbiResult<Vec<BuilderData>> {
         match self {
             TokenValue::Uint(uint) => Self::write_uint(uint),
             TokenValue::Int(int) => Self::write_int(int),
@@ -78,6 +77,9 @@ impl TokenValue {
             TokenValue::Address(address) => Ok(vec![address.write_to_new_cell()?]),
             TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) => Self::write_bytes(arr.to_vec()),
             TokenValue::Gram(gram) => Ok(vec![gram.write_to_new_cell()?]),
+            TokenValue::Time(time) => Ok(vec![time.write_to_new_cell()?]),
+            TokenValue::Expire(expire) => Ok(vec![expire.write_to_new_cell()?]),
+            TokenValue::PublicKey(key) => Self::write_public_key(key),
         }
     }
 
@@ -206,6 +208,19 @@ impl TokenValue {
         let mut builder = BuilderData::new();
         hashmap.write_to(&mut builder)?;
 
+        Ok(vec![builder])
+    }
+
+    fn write_public_key(data: &Option<ed25519_dalek::PublicKey>) -> AbiResult<Vec<BuilderData>> {
+        let mut builder = BuilderData::new();
+        if let Some(key) = data {
+            builder.append_bit_one()?;
+            let bytes = &key.to_bytes()[..];
+            let length = bytes.len() * 8;
+            builder.append_raw(bytes, length)?;
+        } else {
+            builder.append_bit_zero()?;
+        }
         Ok(vec![builder])
     }
 }
