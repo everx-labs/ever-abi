@@ -20,19 +20,19 @@ pipeline {
     }
     parameters {
         string(
-            name:'dockerImage_ton_types',
-            defaultValue: 'tonlabs/ton-types:latest',
-            description: 'Existing ton-types image name'
+            name:'dockerImage_ton_labs_types',
+            defaultValue: 'tonlabs/ton-labs-types:latest',
+            description: 'Existing ton-labs-types image name'
         )
         string(
-            name:'dockerImage_ton_block',
-            defaultValue: 'tonlabs/ton-block:latest',
-            description: 'Existing ton-block image name'
+            name:'dockerImage_ton_labs_block',
+            defaultValue: 'tonlabs/ton-labs-block:latest',
+            description: 'Existing ton-labs-block image name'
         )
         string(
-            name:'dockerImage_ton_vm',
-            defaultValue: 'tonlabs/ton-vm:latest',
-            description: 'Existing ton-vm image name'
+            name:'dockerImage_ton_labs_vm',
+            defaultValue: 'tonlabs/ton-labs-vm:latest',
+            description: 'Existing ton-labs-vm image name'
         )
         string(
             name:'dockerImage_ton_labs_abi',
@@ -85,9 +85,9 @@ pipeline {
                 script {
                     sh """
 (cat Cargo.toml | \
-sed 's/ton_types = .*/ton_types = { path = \"\\/tonlabs\\/ton-types\" }/g' | \
-sed 's/ton_block = .*/ton_block = { path = \"\\/tonlabs\\/ton-block\" }/g' | \
-sed 's/ton_vm = .*/ton_vm = { path = \"\\/tonlabs\\/ton-vm\", default-features = false }/g') > tmp.toml
+sed 's/ton_types = .*/ton_types = { path = \"\\/tonlabs\\/ton-labs-types\" }/g' | \
+sed 's/ton_block = .*/ton_block = { path = \"\\/tonlabs\\/ton-labs-block\" }/g' | \
+sed 's/ton_vm = .*/ton_vm = { path = \"\\/tonlabs\\/ton-labs-vm\", default-features = false }/g') > tmp.toml
 rm Cargo.toml
 mv ./tmp.toml ./Cargo.toml
                     """
@@ -114,9 +114,9 @@ mv ./tmp.toml ./Cargo.toml
                 script {
                     docker.withRegistry('', G_docker_creds) {
                         G_docker_image.withRun() {c -> 
-                            docker.image(params.dockerImage_ton_types).withRun() { ton_types_dep ->
-                                docker.image(params.dockerImage_ton_block).withRun() { ton_block_dep ->
-                                    docker.image(params.dockerImage_ton_vm).withRun() { ton_vm_dep ->
+                            docker.image(params.dockerImage_ton_labs_types).withRun() { ton_types_dep ->
+                                docker.image(params.dockerImage_ton_labs_block).withRun() { ton_block_dep ->
+                                    docker.image(params.dockerImage_ton_labs_vm).withRun() { ton_vm_dep ->
                                         docker.image(G_image_base).inside("--volumes-from ${c.id} --volumes-from ${ton_types_dep.id} --volumes-from ${ton_block_dep.id} --volumes-from ${ton_vm_dep.id}") {
                                             sh """
                                                 cd /tonlabs/ton-labs-abi
@@ -141,9 +141,9 @@ mv ./tmp.toml ./Cargo.toml
                 script {
                     docker.withRegistry('', G_docker_creds) {
                         G_docker_image.withRun() {c -> 
-                            docker.image(params.dockerImage_ton_types).withRun() { ton_types_dep ->
-                                docker.image(params.dockerImage_ton_block).withRun() { ton_block_dep ->
-                                    docker.image(params.dockerImage_ton_vm).withRun() { ton_vm_dep ->
+                            docker.image(params.dockerImage_ton_labs_types).withRun() { ton_types_dep ->
+                                docker.image(params.dockerImage_ton_labs_block).withRun() { ton_block_dep ->
+                                    docker.image(params.dockerImage_ton_labs_vm).withRun() { ton_vm_dep ->
                                         docker.image(G_image_base).inside("--volumes-from ${c.id} --volumes-from ${ton_types_dep.id} --volumes-from ${ton_block_dep.id} --volumes-from ${ton_vm_dep.id}") {
                                             sh """
                                                 cd /tonlabs/ton-labs-abi
@@ -173,18 +173,18 @@ mv ./tmp.toml ./Cargo.toml
                         ],
                         [
                             $class: 'StringParameterValue',
-                            name: 'dockerImage_ton_types',
-                            value: params.dockerImage_ton_types
+                            name: 'dockerImage_ton_labs_types',
+                            value: params.dockerImage_ton_labs_types
                         ],
                         [
                             $class: 'StringParameterValue',
-                            name: 'dockerImage_ton_block',
-                            value: params.dockerImage_ton_block
+                            name: 'dockerImage_ton_labs_block',
+                            value: params.dockerImage_ton_labs_block
                         ],
                         [
                             $class: 'StringParameterValue',
-                            name: 'dockerImage_ton_vm',
-                            value: params.dockerImage_ton_vm
+                            name: 'dockerImage_ton_labs_vm',
+                            value: params.dockerImage_ton_labs_vm
                         ],
                         [
                             $class: 'StringParameterValue',
