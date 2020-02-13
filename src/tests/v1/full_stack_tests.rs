@@ -142,7 +142,7 @@ fn test_constructor_call() {
     let test_tree = encode_function_call(
         WALLET_ABI.to_owned(),
         "constructor".to_owned(),
-        params.to_owned(),
+        None,
         params.to_owned(),
         false,
         None,
@@ -205,7 +205,7 @@ fn test_signed_call() {
     let test_tree = encode_function_call(
         WALLET_ABI.to_owned(),
         "createArbitraryLimit".to_owned(),
-        header.to_owned(),
+        Some(header.to_owned()),
         params.to_owned(),
         false,
         Some(&pair),
@@ -279,7 +279,7 @@ fn test_not_signed_call() {
     let test_tree = encode_function_call(
         WALLET_ABI.to_owned(),
         "getLimit".to_owned(),
-        header.to_owned(),
+        Some(header.to_owned()),
         params.to_owned(),
         false,
         None,
@@ -302,7 +302,7 @@ fn test_add_signature_full() {
     let (msg, data_to_sign) = prepare_function_call_for_sign(
         WALLET_ABI.to_owned(),
         "getLimit".to_owned(),
-        header.to_owned(),
+        Some(header.to_owned()),
         params.to_owned()
     )
     .unwrap();

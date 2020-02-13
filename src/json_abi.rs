@@ -12,6 +12,7 @@
 * limitations under the License.
 */
 
+use std::collections::HashMap;
 use ed25519_dalek::*;
 use serde_json::Value;
 use token::{Detokenizer, Tokenizer};
@@ -24,7 +25,7 @@ use crate::error::*;
 pub fn encode_function_call(
     abi: String,
     function: String,
-    header: String,
+    header: Option<String>,
     parameters: String,
     internal: bool,
     pair: Option<&Keypair>,
@@ -33,8 +34,12 @@ pub fn encode_function_call(
 
     let function = contract.function(&function)?;
 
-    let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
-    let header_tokens = Tokenizer::tokenize_optional_params(function.header_params(), &v)?;
+    let header_tokens = if let Some(header) = header {
+        let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+        Tokenizer::tokenize_optional_params(function.header_params(), &v)?
+    } else {
+        HashMap::new()
+    };
 
     let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError { err } )?;
     let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
@@ -48,15 +53,19 @@ pub fn encode_function_call(
 pub fn prepare_function_call_for_sign(
     abi: String,
     function: String,
-    header: String,
+    header: Option<String>,
     parameters: String,
 ) -> AbiResult<(BuilderData, Vec<u8>)> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let function = contract.function(&function)?;
 
-    let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
-    let header_tokens = Tokenizer::tokenize_optional_params(function.header_params(), &v)?;
+    let header_tokens = if let Some(header) = header {
+        let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+        Tokenizer::tokenize_optional_params(function.header_params(), &v)?
+    } else {
+        HashMap::new()
+    };
 
     let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError { err } )?;
     let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
