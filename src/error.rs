@@ -108,16 +108,6 @@ pub enum AbiErrorKind {
         err: serde_json::Error
     },
 
-    #[fail(display = "VM exception: {}", ex)]
-    TvmException {
-        ex: ton_vm::types::Exception,
-    },
-
-    #[fail(display = "VM exception, code: {}", code)]
-    TvmExceptionCode {
-        code: ton_types::types::ExceptionCode,
-    },
-
     #[fail(display = "Try from int error: {}", err)]
     TryFromIntError {
         err: std::num::TryFromIntError
@@ -149,18 +139,6 @@ impl Display for AbiError {
 impl From<AbiErrorKind> for AbiError {
     fn from(kind: AbiErrorKind) -> AbiError {
         AbiError { inner: Context::new(kind) }
-    }
-}
-
-impl From<ton_types::types::ExceptionCode> for AbiError {
-    fn from(code: ton_types::types::ExceptionCode) -> AbiError {
-        AbiError::from(AbiErrorKind::TvmExceptionCode { code })
-    }
-}
-
-impl From<ton_vm::types::Exception> for AbiError {
-    fn from(ex: ton_vm::types::Exception) -> AbiError {
-        AbiError::from(AbiErrorKind::TvmException { ex })
     }
 }
 

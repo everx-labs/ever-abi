@@ -17,10 +17,9 @@ use num_bigint::{BigInt, BigUint};
 use sha2::{Digest, Sha256, Sha512};
 use chrono::prelude::*;
 
-use ton_vm::stack::{BuilderData, IBitstring, SliceData};
+use ton_types::{BuilderData, IBitstring, SliceData};
 use ton_types::dictionary::{HashmapE, HashmapType};
-use ton_block::{AnycastInfo, BlockResult, Grams, MsgAddress, Serializable};
-use ton_vm::types::AccountId;
+use ton_block::{AccountId, AnycastInfo, BlockResult, Grams, MsgAddress, Serializable};
 
 use {Function, Event, Int, Param, ParamType, Token, TokenValue, Uint};
 
