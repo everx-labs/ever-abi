@@ -82,12 +82,19 @@ impl Tokenizer {
     /// Tries to parse parameters from JSON values to tokens.
     pub fn tokenize_optional_params(params: &[Param], values: &Value) -> AbiResult<HashMap<String, TokenValue>> {
         if let Value::Object(map) = values {
+            let mut map = map.clone();
             let mut tokens = HashMap::new();
             for param in params {
-                if let Some(value) = map.get(&param.name) {
+                if let Some(value) = map.remove(&param.name) {
                     let token_value = Self::tokenize_parameter(&param.kind, &value)?;
                     tokens.insert(param.name.clone(), token_value);
                 }
+            }
+            if !map.is_empty() {
+                let unknown = map.iter().map(|(key, _)| key.as_ref()).collect::<Vec<&str>>().join(", ");
+                return Err(AbiErrorKind::InvalidInputData { 
+                    msg: format!("Contract doesn't have following parameters: {}", unknown)
+                }.into());
             }
             Ok(tokens)
         } else {

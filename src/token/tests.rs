@@ -809,6 +809,21 @@ mod tokenize_tests {
         );
     }
 
+    #[test]
+    fn test_unknown_param() {
+        let input = r#"{
+            "a": 123,
+            "b": 456
+        }"#;
+
+        let params = vec![
+            Param::new("a", ParamType::Time)
+        ];
+
+        assert!(
+            Tokenizer::tokenize_optional_params(&params, &serde_json::from_str(input).unwrap()).is_err(),
+        );
+    }
 }
 
 mod types_check_tests {
