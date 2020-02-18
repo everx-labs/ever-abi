@@ -164,8 +164,8 @@ mv ./tmp.toml ./Cargo.toml
             }
         }
         stage('TON-SDK / TVM_Linker') {
+            failFast true
             parallel {
-                failFast true
                 stage('Build tvm_linker') {
                     steps {
                         script {
