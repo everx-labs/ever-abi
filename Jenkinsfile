@@ -163,53 +163,103 @@ mv ./tmp.toml ./Cargo.toml
                 failure { script { G_test = "failure" } }
             }
         }
-        stage('Build tvm_linker') {
-            steps {
-                script {
-                    def params_linker = [
-                        [
-                            $class: 'BooleanParameterValue',
-                            name: 'FORCE_PROMOTE_LATEST',
-                            value: false
-                        ],
-                        [
-                            $class: 'StringParameterValue',
-                            name: 'dockerImage_ton_labs_types',
-                            value: params.dockerImage_ton_labs_types
-                        ],
-                        [
-                            $class: 'StringParameterValue',
-                            name: 'dockerImage_ton_labs_block',
-                            value: params.dockerImage_ton_labs_block
-                        ],
-                        [
-                            $class: 'StringParameterValue',
-                            name: 'dockerImage_ton_labs_vm',
-                            value: params.dockerImage_ton_labs_vm
-                        ],
-                        [
-                            $class: 'StringParameterValue',
-                            name: 'dockerImage_ton_labs_abi',
-                            value: G_image_target
-                        ],
-                        [
-                            $class: 'StringParameterValue',
-                            name: 'dockerImage_tvm_linker',
-                            value: ''
-                        ],
-                        [
-                            $class: 'StringParameterValue',
-                            name: 'ton_sdk_branch',
-                            value: params.ton_sdk_branch
-                        ]
-                    ]
-                    build job: "TVM-linker/${params.tvm_linker_branch}", parameters: params_linker
+        stage('TON-SDK / TVM_Linker') {
+            parallel {
+                failFast true
+                stage('Build tvm_linker') {
+                    steps {
+                        script {
+                            def params_linker = [
+                                [
+                                    $class: 'BooleanParameterValue',
+                                    name: 'FORCE_PROMOTE_LATEST',
+                                    value: false
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_ton_labs_types',
+                                    value: params.dockerImage_ton_labs_types
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_ton_labs_block',
+                                    value: params.dockerImage_ton_labs_block
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_ton_labs_vm',
+                                    value: params.dockerImage_ton_labs_vm
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_ton_labs_abi',
+                                    value: G_image_target
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_tvm_linker',
+                                    value: ''
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'ton_sdk_branch',
+                                    value: params.ton_sdk_branch
+                                ]
+                            ]
+                            build job: "TVM-linker/${params.tvm_linker_branch}", parameters: params_linker
+                        }
+                    }
+                    post {
+                        success { script { G_test = "success" } }
+                        failure { script { G_test = "failure" } }
+                    }
+                }
+                stage('TON-SDK') {
+                    steps {
+                        script {
+                            def params_ton_sdk = [
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'common_version',
+                                    value: ''
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_ton_labs_types',
+                                    value: params.dockerImage_ton_labs_types
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_ton_labs_block',
+                                    value: params.dockerImage_ton_labs_block
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_ton_labs_vm',
+                                    value: params.dockerImage_ton_labs_vm
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_ton_labs_abi',
+                                    value: params.dockerImage_ton_labs_abi
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'dockerImage_ton_executor',
+                                    value: 'tonlabs/ton-executor:latest'
+                                ],
+                                [
+                                    $class: 'StringParameterValue',
+                                    name: 'ton_sdk_branch',
+                                    value: params.ton_sdk_branch
+                                ]
+                            ]
+                            build job: "TON-SDK/${params.ton_sdk_branch}", parameters: params_ton_sdk
+                        }
+                    }
                 }
             }
-            post {
-                success { script { G_test = "success" } }
-                failure { script { G_test = "failure" } }
-            }
+
         }
         stage('Tag as latest') {
             steps {
