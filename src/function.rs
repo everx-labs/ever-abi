@@ -149,7 +149,7 @@ impl Function {
     pub fn decode_output(&self, mut data: SliceData, _internal: bool) -> AbiResult<Vec<Token>> {
         let id = data.get_next_u32()?;
         if id != self.get_output_id() { Err(AbiErrorKind::WrongId { id } )? }
-        TokenValue::decode_params(self.output_params(), data)
+        TokenValue::decode_params(self.output_params(), data, self.abi_version)
     }
 
     /// Parses the ABI function call to list of tokens.
@@ -158,7 +158,7 @@ impl Function {
 
         if id != self.get_input_id() { Err(AbiErrorKind::WrongId { id } )? }
 
-        TokenValue::decode_params(self.input_params(), cursor)
+        TokenValue::decode_params(self.input_params(), cursor, self.abi_version)
     }
 
     /// Decodes function id from contract answer
@@ -214,9 +214,9 @@ impl Function {
         if !internal {
             for param in &self.header {
                 if let Some(token) = header_tokens.get(&param.name) {
-                    vec.push(token.pack_into_chain()?);
+                    vec.push(token.pack_into_chain(self.abi_version)?);
                 } else {
-                    vec.push(TokenValue::get_default_value_for_header(&param.kind)?.pack_into_chain()?);
+                    vec.push(TokenValue::get_default_value_for_header(&param.kind)?.pack_into_chain(self.abi_version)?);
                 }
             }
         }
@@ -251,7 +251,7 @@ impl Function {
             }
 
             for param in header {
-                let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor)?;
+                let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor, false, abi_version)?;
     
                 cursor = new_cursor;
                 tokens.push(Token { name: param.name.clone(), value: token_value });
@@ -304,7 +304,7 @@ impl Function {
         }
 
         // encoding itself
-        let mut builder = TokenValue::pack_values_into_chain(input, cells)?;
+        let mut builder = TokenValue::pack_values_into_chain(input, cells, self.abi_version)?;
 
         if !internal {
             // delete reserved sign before hash

@@ -52,32 +52,35 @@ fn test_parameters_set(
     inputs: &[Token],
     params: Option<&[Param]>,
     params_tree: BuilderData,
+    versions: &[u8],
 ) {
-    let mut prefix = BuilderData::new();
-    prefix.append_reference(BuilderData::new());
-    prefix.append_u32(0).unwrap();
+    for version in versions {
+        let mut prefix = BuilderData::new();
+        prefix.append_reference(BuilderData::new());
+        prefix.append_u32(0).unwrap();
 
-    // tree check
-    let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix]).unwrap();
+        // tree check
+        let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix], *version).unwrap();
 
-    println!("{:#.2}", Cell::from(&test_tree));
-    println!("{:#.2}", Cell::from(&params_tree));
-    assert_eq!(test_tree, params_tree);
+        println!("{:#.2}", Cell::from(&test_tree));
+        println!("{:#.2}", Cell::from(&params_tree));
+        assert_eq!(test_tree, params_tree);
 
-    // check decoding
+        // check decoding
 
-    let params: Vec<Param> = if let Some(params) = params {
-        params.to_vec()
-    } else {
-        params_from_tokens(inputs)
-    };
+        let params: Vec<Param> = if let Some(params) = params {
+            params.to_vec()
+        } else {
+            params_from_tokens(inputs)
+        };
 
-    let mut slice = SliceData::from(test_tree);
-    slice.checked_drain_reference().unwrap();
-    slice.get_next_u32().unwrap();
+        let mut slice = SliceData::from(test_tree);
+        slice.checked_drain_reference().unwrap();
+        slice.get_next_u32().unwrap();
 
-    let decoded_tokens = TokenValue::decode_params(&params, slice).unwrap();
-    assert_eq!(decoded_tokens, inputs);
+        let decoded_tokens = TokenValue::decode_params(&params, slice, *version).unwrap();
+        assert_eq!(decoded_tokens, inputs);
+    }
 }
 
 fn params_from_tokens(tokens: &[Token]) -> Vec<Param> {
@@ -118,6 +121,7 @@ fn test_one_input_and_output() {
         &tokens_from_values(values),
         None,
         builder,
+        &[1, 2],
     );
 }
 
@@ -137,6 +141,7 @@ fn test_with_grams() {
         &tokens_from_values(values),
         None,
         builder,
+        &[1, 2],
     );
 }
 
@@ -169,6 +174,7 @@ fn test_with_address() {
         &tokens_from_values(values),
         None,
         builder,
+        &[1, 2],
     );
 }
 
@@ -189,6 +195,7 @@ fn test_one_input_and_output_by_data() {
         &tokens_from_values(values),
         None,
         expected_tree,
+        &[1, 2],
     );
 }
 
@@ -202,7 +209,9 @@ fn test_empty_params() {
     test_parameters_set(
         &[],
         None,
-        builder);
+        builder,
+        &[1, 2],
+    );
 }
 
 #[test]
@@ -227,22 +236,24 @@ fn test_two_params() {
         &tokens_from_values(values),
         None,
         builder,
+        &[1, 2],
     );
 }
 
 #[test]
 fn test_four_refs() {
-    // test prefix with one ref and u32
     let bytes = vec![0x55; 300]; // 300 = 127 + 127 + 46
     let mut builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
     builder.append_reference(BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap());
     let mut bytes_builder = BuilderData::with_raw(vec![0x55; 46], 46 * 8).unwrap();
     bytes_builder.append_reference(builder);
 
+    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_bit_one().unwrap();
     builder.append_reference(BuilderData::new());
+    
+    builder.append_bit_one().unwrap();
     builder.append_reference(bytes_builder.clone());
     builder.append_reference(bytes_builder.clone());
 
@@ -265,6 +276,7 @@ fn test_four_refs() {
         &tokens_from_values(values),
         None,
         builder,
+        &[1, 2],
     );
 }
 
@@ -314,6 +326,7 @@ fn test_nested_tuples_with_all_simples() {
         &tokens_from_values(values),
         None,
         builder,
+        &[1, 2],
     );
 }
 
@@ -339,6 +352,7 @@ fn test_static_array_of_ints() {
         &tokens_from_values(values),
         None,
         builder,
+        &[1, 2],
     );
 }
 
@@ -362,6 +376,7 @@ fn test_empty_dynamic_array() {
         &tokens_from_values(values),
         Some(&params),
         builder,
+        &[1, 2],
     );
 }
 
@@ -387,6 +402,7 @@ fn test_dynamic_array_of_ints() {
         &tokens_from_values(values),
         None,
         builder,
+        &[1, 2],
     );
 }
 
@@ -441,6 +457,7 @@ fn test_dynamic_array_of_tuples() {
         &tokens_from_values(values),
         None,
         expected_tree,
+        &[1, 2],
     );
 }
 
@@ -489,6 +506,10 @@ fn test_tuples_with_combined_types() {
         map.set(index.into(), &builder.into()).unwrap();
     }
 
+    let mut chain_builder_v2 = chain_builder.clone();
+    chain_builder_v2.append_bit_one().unwrap();
+    chain_builder_v2.append_reference(BuilderData::from(map.data().unwrap()));
+
     let mut second_builder = BuilderData::new();
     second_builder.append_bit_one().unwrap();
     second_builder.append_reference(BuilderData::from(map.data().unwrap()));
@@ -535,12 +556,107 @@ fn test_tuples_with_combined_types() {
     ];
 
     test_parameters_set(
-        &tokens_from_values(values),
+        &tokens_from_values(values.clone()),
         None,
         chain_builder,
+        &[1],
+    );
+
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        chain_builder_v2,
+        &[2],
     );
 }
 
+#[test]
+fn test_four_refs_and_four_int256() {
+    let bytes = vec![0x55; 32];
+    let bytes_builder = BuilderData::with_raw(bytes.clone(), bytes.len() * 8).unwrap();
+
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+    
+    builder.append_reference(bytes_builder.clone());
+    builder.append_reference(bytes_builder.clone());
+
+    let mut second_builder = BuilderData::new();
+    second_builder.append_reference(bytes_builder.clone());
+    second_builder.append_builder(&bytes_builder).unwrap();
+    second_builder.append_builder(&bytes_builder).unwrap();
+    second_builder.append_builder(&bytes_builder).unwrap();
+
+    let mut third_builder = BuilderData::new();
+    third_builder.append_builder(&bytes_builder).unwrap();
+
+    second_builder.append_reference(third_builder);
+    builder.append_reference(second_builder);
+
+    let values = vec![
+        TokenValue::Cell(bytes_builder.clone().into()),
+        TokenValue::Bytes(bytes.clone()),
+        TokenValue::Cell(bytes_builder.into()),
+        TokenValue::Uint(Uint{ number: BigUint::from_bytes_be(&bytes), size: 256 }),
+        TokenValue::Uint(Uint{ number: BigUint::from_bytes_be(&bytes), size: 256 }),
+        TokenValue::Uint(Uint{ number: BigUint::from_bytes_be(&bytes), size: 256 }),
+        TokenValue::Uint(Uint{ number: BigUint::from_bytes_be(&bytes), size: 256 }),
+    ];
+
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder,
+        &[1, 2],
+    );
+}
+
+#[test]
+fn test_four_refs_and_one_int256() {
+    let bytes = vec![0x55; 32];
+    let bytes_builder = BuilderData::with_raw(bytes.clone(), bytes.len() * 8).unwrap();
+
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+    
+    builder.append_reference(bytes_builder.clone());
+    builder.append_reference(bytes_builder.clone());
+
+    let mut builder_v2 = builder.clone();
+    builder_v2.append_reference(bytes_builder.clone());
+    builder_v2.append_builder(&bytes_builder).unwrap();
+
+    let mut second_builder = BuilderData::new();
+    second_builder.append_reference(bytes_builder.clone());
+    second_builder.append_builder(&bytes_builder).unwrap();
+
+    builder.append_reference(second_builder);
+
+    let values = vec![
+        TokenValue::Cell(bytes_builder.clone().into()),
+        TokenValue::Bytes(bytes.clone()),
+        TokenValue::Cell(bytes_builder.into()),
+        TokenValue::Uint(Uint{ number: BigUint::from_bytes_be(&bytes), size: 256 }),
+    ];
+
+    test_parameters_set(
+        &tokens_from_values(values.clone()),
+        None,
+        builder,
+        &[1],
+    );
+
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder_v2,
+        &[2],
+    );
+}
 
 #[test]
 fn test_header_params() {
@@ -568,5 +684,6 @@ fn test_header_params() {
         &tokens_from_values(values),
         None,
         builder,
+        &[1, 2],
     );
 }

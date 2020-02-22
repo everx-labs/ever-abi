@@ -81,32 +81,13 @@ impl Event {
         self.id
     }
 
-    /// Decodes provided params from SliceData
-    fn decode_params(&self, params: Vec<Param>, mut cursor: SliceData) -> AbiResult<Vec<Token>> {
-        let mut tokens = vec![];
-        let original = cursor.clone();
-
-        let id = cursor.get_next_u32()?;
+    /// Parses the ABI function call to list of tokens.
+    pub fn decode_input(&self, mut data: SliceData) -> AbiResult<Vec<Token>> {
+        let id = data.get_next_u32()?;
 
         if id != self.get_id() { Err(AbiErrorKind::WrongId { id } )? }
 
-        for param in params {
-            let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor)?;
-
-            cursor = new_cursor;
-            tokens.push(Token { name: param.name, value: token_value });
-        }
-
-        if cursor.remaining_references() != 0 || cursor.remaining_bits() != 0 {
-            bail!(AbiErrorKind::IncompleteDeserializationError { cursor: original } )
-        } else {
-            Ok(tokens)
-        }
-    }
-
-    /// Parses the ABI function call to list of tokens.
-    pub fn decode_input(&self, data: SliceData) -> AbiResult<Vec<Token>> {
-        self.decode_params(self.input_params(), data)
+        TokenValue::decode_params(&self.input_params(), data, self.abi_version)
     }
 
     /// Decodes function id from contract answer
