@@ -136,7 +136,7 @@ mv ./tmp.toml ./Cargo.toml
                 echo "Prepare image..."
                 script {
                     docker.withRegistry('', G_docker_creds) {
-                        args = "--no-cache --label 'git-commit=${GIT_COMMIT}' --force-rm ."
+                        args = "--no-cache --label 'git-commit=${GIT_COMMIT}' --target ton-labs-abi-src --force-rm ."
                         G_docker_image = docker.build(
                             G_image_target, 
                             args
