@@ -241,7 +241,7 @@ fn test_two_params() {
 }
 
 #[test]
-fn test_four_refs() {
+fn test_five_refs_v1() {
     let bytes = vec![0x55; 300]; // 300 = 127 + 127 + 46
     let mut builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
     builder.append_reference(BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap());
@@ -276,7 +276,48 @@ fn test_four_refs() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1, 2],
+        &[1],
+    );
+}
+
+
+#[test]
+fn test_five_refs_v2() {
+    let bytes = vec![0x55; 300]; // 300 = 127 + 127 + 46
+    let mut builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
+    builder.append_reference(BuilderData::with_raw(vec![0x55; 46], 46 * 8).unwrap());
+    let mut bytes_builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
+    bytes_builder.append_reference(builder);
+
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+    
+    builder.append_bit_one().unwrap();
+    builder.append_reference(bytes_builder.clone());
+    builder.append_reference(bytes_builder.clone());
+
+    let mut new_builder = BuilderData::new();
+    new_builder.append_i32(9434567).unwrap();
+    new_builder.append_reference(bytes_builder.clone());
+    new_builder.append_reference(bytes_builder.clone());
+    builder.append_reference(new_builder);
+
+    let values = vec![
+        TokenValue::Bool(true),
+        TokenValue::Bytes(bytes.clone()),
+        TokenValue::Bytes(bytes.clone()),
+        TokenValue::Bytes(bytes.clone()),
+        TokenValue::Bytes(bytes.clone()),
+        TokenValue::Int(Int::new(9434567, 32)),
+    ];
+
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder,
+        &[2],
     );
 }
 

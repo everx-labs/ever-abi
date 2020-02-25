@@ -100,7 +100,7 @@ impl TokenValue {
             TokenValue::Cell(cell) => Self::write_cell(cell),
             TokenValue::Map(key_type, value) => Self::write_map(key_type, value, abi_version),
             TokenValue::Address(address) => Ok(vec![address.write_to_new_cell()?]),
-            TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) => Self::write_bytes(arr.to_vec()),
+            TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) => Self::write_bytes(arr, abi_version),
             TokenValue::Gram(gram) => Ok(vec![gram.write_to_new_cell()?]),
             TokenValue::Time(time) => Ok(vec![time.write_to_new_cell()?]),
             TokenValue::Expire(expire) => Ok(vec![expire.write_to_new_cell()?]),
@@ -192,21 +192,26 @@ impl TokenValue {
         Ok(vec![map.write_to_new_cell()?])
     }
 
-    fn write_bytes(mut data: Vec<u8>) -> AbiResult<Vec<BuilderData>> {
+    fn write_bytes(data: &[u8], abi_version: u8) -> AbiResult<Vec<BuilderData>> {
         let cell_len = BuilderData::bits_capacity() / 8;
         let mut len = data.len();
+        let mut cell_capacity = if abi_version == 1 {
+            std::cmp::min(cell_len, len)
+        } else {
+            match len % cell_len {
+                0 => cell_len,
+                x => x
+            }
+        };
         let mut builder = BuilderData::new();
-        while len > cell_len {
-            len -= cell_len;
-            builder.append_raw(&data.split_off(len), cell_len * 8)?;
-            let cell = builder.into();
-            builder = BuilderData::new();
-            builder.append_reference_cell(cell);
+        while len > 0 {
+            len -= cell_capacity;
+            builder.append_raw(&data[len..len + cell_capacity], cell_capacity * 8)?;
+            let mut new_builder = BuilderData::new();
+            new_builder.append_reference(builder);
+            builder = new_builder;
+            cell_capacity = std::cmp::min(cell_len, len);
         }
-        builder.append_raw(&data, len * 8)?;
-        let cell = builder.into();
-        builder = BuilderData::new();
-        builder.append_reference_cell(cell);
         Ok(vec![builder])
     }
 
