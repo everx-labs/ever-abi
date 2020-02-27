@@ -66,7 +66,7 @@ const WALLET_ABI: &str = r#"{
         {
             "name": "createArbitraryLimit",
             "inputs": [
-                {"name":"value","type":"uint256"},
+                {"name":"value","type":"uint128"},
                 {"name":"period","type":"uint32"}
             ],
             "outputs": [
@@ -236,9 +236,10 @@ fn test_signed_call() {
 
     let mut expected_tree = BuilderData::new();
     expected_tree.append_u32(123).unwrap();                 // expire
-    expected_tree.append_bit_zero().unwrap();               // None for public key
-    expected_tree.append_u32(0x6BBEFB08).unwrap();          // function id
-    expected_tree.append_raw(&[0; 31], 31 * 8).unwrap();    // value
+    expected_tree.append_bit_one().unwrap();                // Some for public key
+    expected_tree.append_raw(&pair.public.to_bytes(), ed25519_dalek::PUBLIC_KEY_LENGTH * 8).unwrap();
+    expected_tree.append_u32(0x2238B58A).unwrap();          // function id
+    expected_tree.append_raw(&[0; 15], 15 * 8).unwrap();    // value
     expected_tree.append_u8(12).unwrap();                   // value
     expected_tree.append_u32(30).unwrap();                  // period
 
@@ -255,7 +256,7 @@ fn test_signed_call() {
 
     let response_tree = SliceData::from(
         BuilderData::with_bitstring(
-            vec![0xEB, 0xBE, 0xFB, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80])
+            vec![0xA2, 0x38, 0xB5, 0x8A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80])
         .unwrap());
 
     let response = decode_function_response(

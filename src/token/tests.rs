@@ -797,14 +797,24 @@ mod tokenize_tests {
 
         let params = vec![
             Param::new("a", ParamType::Time),
-            Param::new("b", ParamType::Expire)
+            Param::new("b", ParamType::Expire),
+            Param::new("c", ParamType::PublicKey),
         ];
+
+        let public_key =  TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&[0xcc; 32]).unwrap()));
 
         let mut expected_tokens = HashMap::new();
         expected_tokens.insert("a".to_owned(), TokenValue::Time(123));
+        expected_tokens.insert("c".to_owned(), public_key.clone());
+
+        let mut default_values = HashMap::new();
+        default_values.insert("c".to_owned(), public_key);
 
         assert_eq!(
-            Tokenizer::tokenize_optional_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            Tokenizer::tokenize_optional_params(
+                &params,
+                &serde_json::from_str(input).unwrap(),
+                &default_values).unwrap(),
             expected_tokens
         );
     }
@@ -821,7 +831,11 @@ mod tokenize_tests {
         ];
 
         assert!(
-            Tokenizer::tokenize_optional_params(&params, &serde_json::from_str(input).unwrap()).is_err(),
+            Tokenizer::tokenize_optional_params(
+                &params,
+                &serde_json::from_str(input).unwrap(),
+                &HashMap::new()
+            ).is_err(),
         );
     }
 }

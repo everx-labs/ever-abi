@@ -80,7 +80,11 @@ impl Tokenizer {
     }
 
     /// Tries to parse parameters from JSON values to tokens.
-    pub fn tokenize_optional_params(params: &[Param], values: &Value) -> AbiResult<HashMap<String, TokenValue>> {
+    pub fn tokenize_optional_params(
+        params: &[Param],
+        values: &Value,
+        default_values: &HashMap<String, TokenValue>
+    ) -> AbiResult<HashMap<String, TokenValue>> {
         if let Value::Object(map) = values {
             let mut map = map.clone();
             let mut tokens = HashMap::new();
@@ -88,6 +92,8 @@ impl Tokenizer {
                 if let Some(value) = map.remove(&param.name) {
                     let token_value = Self::tokenize_parameter(&param.kind, &value)?;
                     tokens.insert(param.name.clone(), token_value);
+                } else if let Some(value) = default_values.get(&param.name){
+                    tokens.insert(param.name.clone(), value.clone());
                 }
             }
             if !map.is_empty() {

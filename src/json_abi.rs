@@ -17,7 +17,7 @@ use ed25519_dalek::*;
 use serde_json::Value;
 use token::{Detokenizer, Tokenizer};
 use ton_types::{BuilderData, SliceData};
-use {Contract};
+use {Contract, TokenValue};
 use crate::error::*;
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
@@ -36,7 +36,12 @@ pub fn encode_function_call(
 
     let header_tokens = if let Some(header) = header {
         let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
-        Tokenizer::tokenize_optional_params(function.header_params(), &v)?
+        // add public key into header
+        let mut default_values = HashMap::new();
+        if pair.is_some() {
+            default_values.insert("pubkey".to_owned(), TokenValue::PublicKey(pair.map(|pair| pair.public)));
+        }
+        Tokenizer::tokenize_optional_params(function.header_params(), &v, &default_values)?
     } else {
         HashMap::new()
     };
@@ -62,7 +67,7 @@ pub fn prepare_function_call_for_sign(
 
     let header_tokens = if let Some(header) = header {
         let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
-        Tokenizer::tokenize_optional_params(function.header_params(), &v)?
+        Tokenizer::tokenize_optional_params(function.header_params(), &v, &HashMap::new())?
     } else {
         HashMap::new()
     };
