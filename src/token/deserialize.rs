@@ -16,7 +16,6 @@ use int::{Int, Uint};
 use {Param, ParamType};
 use serde_json;
 use super::*;
-use crate::error::*;
 
 use num_bigint::{BigInt, BigUint};
 use ton_types::{Cell, BuilderData, SliceData, IBitstring};
@@ -25,7 +24,7 @@ use ton_block::types::Grams;
 
 impl TokenValue {
     /// Deserializes value from `SliceData` to `TokenValue`
-    pub fn read_from(param_type: &ParamType, mut cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+    pub fn read_from(param_type: &ParamType, mut cursor: SliceData, last: bool, abi_version: u8) -> AbiResult<(Self, SliceData)> {
         match param_type {
             ParamType::Unknown => 
                 bail!(AbiErrorKind::DeserializationError { msg: "Unknown ParamType", cursor } ),
@@ -35,26 +34,29 @@ impl TokenValue {
                 cursor = find_next_bits(cursor, 1)?;
                 Ok((TokenValue::Bool(cursor.get_next_bit()?), cursor))
             }
-            ParamType::Tuple(tuple_params) => Self::read_tuple(tuple_params, cursor),
-            ParamType::Array(param_type) => Self::read_array(&param_type, cursor),
+            ParamType::Tuple(tuple_params) => Self::read_tuple(tuple_params, cursor, last, abi_version),
+            ParamType::Array(param_type) => Self::read_array(&param_type, cursor, abi_version),
             ParamType::FixedArray(param_type, size) => {
-                Self::read_fixed_array(&param_type, *size, cursor)
+                Self::read_fixed_array(&param_type, *size, cursor, abi_version)
             }
-            ParamType::Cell => Self::read_cell(cursor)
+            ParamType::Cell => Self::read_cell(cursor, last, abi_version)
                 .map(|(cell, cursor)| (TokenValue::Cell(cell), cursor)),
-            ParamType::Map(key_type, value_type) => Self::read_hashmap(key_type, value_type, cursor),
+            ParamType::Map(key_type, value_type) => Self::read_hashmap(key_type, value_type, cursor, abi_version),
             ParamType::Address => {
                 cursor = find_next_bits(cursor, 1)?;
                 let address = <MsgAddress as ton_block::Deserializable>::construct_from(&mut cursor)?;
                 Ok((TokenValue::Address(address), cursor))
             }
-            ParamType::Bytes => Self::read_bytes(None, cursor),
-            ParamType::FixedBytes(size) => Self::read_bytes(Some(*size), cursor),
+            ParamType::Bytes => Self::read_bytes(None, cursor, last, abi_version),
+            ParamType::FixedBytes(size) => Self::read_bytes(Some(*size), cursor, last, abi_version),
             ParamType::Gram => {
                 cursor = find_next_bits(cursor, 1)?;
                 let gram = <Grams as ton_block::Deserializable>::construct_from(&mut cursor)?;
                 Ok((TokenValue::Gram(gram), cursor))
-            }
+            },
+            ParamType::Time => Self::read_time(cursor),
+            ParamType::Expire => Self::read_expire(cursor),
+            ParamType::PublicKey => Self::read_public_key(cursor)
         }
     }
 
@@ -70,11 +72,12 @@ impl TokenValue {
         Ok((TokenValue::Int(Int { number, size }), cursor))
     }
 
-    fn read_tuple(tuple_params: &[Param], cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+    fn read_tuple(tuple_params: &[Param], cursor: SliceData, last: bool, abi_version: u8) -> AbiResult<(Self, SliceData)> {
         let mut tokens = Vec::new();
         let mut cursor = cursor;
         for param in tuple_params {
-            let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor)?;
+            let last = last && Some(param) == tuple_params.last();
+            let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor, last, abi_version)?;
             tokens.push(Token {
                 name: param.name.clone(),
                 value: token_value,
@@ -84,7 +87,7 @@ impl TokenValue {
         Ok((TokenValue::Tuple(tokens), cursor))
     }
 
-    fn read_array_from_map(param_type: &ParamType, mut cursor: SliceData, size: usize)
+    fn read_array_from_map(param_type: &ParamType, mut cursor: SliceData, size: usize, abi_version: u8)
     -> AbiResult<(Vec<Self>, SliceData)> {
         let original = cursor.clone();
         cursor = find_next_bits(cursor, 1)?;
@@ -95,7 +98,7 @@ impl TokenValue {
             index.append_u32(i as u32)?;
             match map.get(index.into()) {
                 Ok(Some(item_slice)) => {
-                    let (token, item_slice) = Self::read_from(param_type, item_slice)?;
+                    let (token, item_slice) = Self::read_from(param_type, item_slice, true, abi_version)?;
                     if item_slice.remaining_references() != 0 || item_slice.remaining_bits() != 0 {
                         bail!(AbiErrorKind::IncompleteDeserializationError { cursor: original } )
                     }
@@ -108,23 +111,24 @@ impl TokenValue {
         Ok((result, cursor))
     }
 
-    fn read_array(param_type: &ParamType, mut cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+    fn read_array(param_type: &ParamType, mut cursor: SliceData, abi_version: u8) -> AbiResult<(Self, SliceData)> {
         cursor = find_next_bits(cursor, 32)?;
         let size = cursor.get_next_u32()?;
-        let (result, cursor) = Self::read_array_from_map(param_type, cursor, size as usize)?;
+        let (result, cursor) = Self::read_array_from_map(param_type, cursor, size as usize, abi_version)?;
 
         Ok((TokenValue::Array(result), cursor))
     }
 
-    fn read_fixed_array(param_type: &ParamType, size: usize, cursor: SliceData) -> AbiResult<(Self, SliceData)> {
-        let (result, cursor) = Self::read_array_from_map(param_type, cursor, size)?;
+    fn read_fixed_array(param_type: &ParamType, size: usize, cursor: SliceData, abi_version: u8) -> AbiResult<(Self, SliceData)> {
+        let (result, cursor) = Self::read_array_from_map(param_type, cursor, size, abi_version)?;
 
         Ok((TokenValue::FixedArray(result), cursor))
     }
 
-    fn read_cell(mut cursor: SliceData) -> AbiResult<(Cell, SliceData)> {
+    fn read_cell(mut cursor: SliceData, last: bool, abi_version: u8) -> AbiResult<(Cell, SliceData)> {
         let cell = match cursor.remaining_references() {
-            1 if cursor.cell().references_count() == BuilderData::references_capacity() => {
+            1 if (abi_version == 1 && cursor.cell().references_count() == BuilderData::references_capacity())
+                || (abi_version != 1 && !last && cursor.remaining_bits() == 0) => {
                 cursor = SliceData::from(cursor.reference(0)?);
                 cursor.checked_drain_reference()?
             }
@@ -133,24 +137,24 @@ impl TokenValue {
         Ok((cell.clone(), cursor))
     }
 
-    fn read_hashmap(key_type: &ParamType, value_type: &ParamType, mut cursor: SliceData)
+    fn read_hashmap(key_type: &ParamType, value_type: &ParamType, mut cursor: SliceData, abi_version: u8)
     -> AbiResult<(Self, SliceData)> {
         cursor = find_next_bits(cursor, 1)?;
         let mut new_map = HashMap::new();
         let hashmap = HashmapE::with_data(32, cursor.get_dictionary()?);
         hashmap.iterate(&mut |key, value| -> AbiResult<bool> {
-            let key = Self::read_from(key_type, key)?.0;
+            let key = Self::read_from(key_type, key, true, abi_version)?.0;
             let key = serde_json::to_string(&key)?;
-            let value = Self::read_from(value_type, value)?.0;
+            let value = Self::read_from(value_type, value, true, abi_version)?.0;
             new_map.insert(key, value);
             Ok(true)
         })?;
         Ok((TokenValue::Map(value_type.clone(), new_map), cursor))
     }
 
-    fn read_bytes(size: Option<usize>, cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+    fn read_bytes(size: Option<usize>, cursor: SliceData, last: bool, abi_version: u8) -> AbiResult<(Self, SliceData)> {
         let original = cursor.clone();
-        let (mut cell, cursor) = Self::read_cell(cursor)?;
+        let (mut cell, cursor) = Self::read_cell(cursor, last, abi_version)?;
 
         let mut data = vec![];
         loop {
@@ -168,6 +172,46 @@ impl TokenValue {
                 cursor: original
             }),
             None => Ok((TokenValue::Bytes(data), cursor))
+        }
+    }
+
+    fn read_time(mut cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+        cursor = find_next_bits(cursor, 64)?;
+        Ok((TokenValue::Time(cursor.get_next_u64()?), cursor))
+    }
+
+    fn read_expire(mut cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+        cursor = find_next_bits(cursor, 32)?;
+        Ok((TokenValue::Expire(cursor.get_next_u32()?), cursor))
+    }
+
+    fn read_public_key(mut cursor: SliceData) -> AbiResult<(Self, SliceData)> {
+        cursor = find_next_bits(cursor, 1)?;
+        if cursor.get_next_bit()? {
+            let (vec, cursor) = get_next_bits_from_chain(cursor, 256)?;
+            Ok((TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&vec)?)), cursor))
+        } else {
+            Ok((TokenValue::PublicKey(None), cursor))
+        }
+    }
+
+    /// Decodes provided params from SliceData
+    pub fn decode_params(params: &Vec<Param>, mut cursor: SliceData, abi_version: u8) -> AbiResult<Vec<Token>> {
+        let mut tokens = vec![];
+
+        for param in params {
+            // println!("{:?}", param);
+            let last = Some(param) == params.last();
+            let (token_value, new_cursor) = Self::read_from(&param.kind, cursor, last, abi_version)?;
+
+            cursor = new_cursor;
+            tokens.push(Token { name: param.name.clone(), value: token_value });
+        }
+
+        if cursor.remaining_references() != 0 || cursor.remaining_bits() != 0 {
+            bail!(AbiErrorKind::IncompleteDeserializationError { cursor })
+        } else {
+            Ok(tokens)
         }
     }
 }

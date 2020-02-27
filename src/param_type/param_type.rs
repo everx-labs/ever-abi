@@ -44,7 +44,13 @@ pub enum ParamType {
     /// fixed size byte array
     FixedBytes(usize),
     /// Nanograms
-    Gram
+    Gram,
+    /// Timestamp
+    Time,
+    /// Message expiration time
+    Expire,
+    /// Public key
+    PublicKey
 }
 
 impl fmt::Display for ParamType {
@@ -80,6 +86,9 @@ impl ParamType {
             ParamType::Bytes => format!("bytes"),
             ParamType::FixedBytes(size) => format!("fixedbytes{}", size),
             ParamType::Gram => format!("gram"),
+            ParamType::Time => format!("time"),
+            ParamType::Expire => format!("expire"),
+            ParamType::PublicKey => format!("pubkey"),
         }
     }
 
@@ -89,6 +98,14 @@ impl ParamType {
             ParamType::Uint(size) => *size,
             ParamType::Int(size) => *size,
             _ => 0
+        }
+    }
+
+    /// Check if parameter type is supoorted in particular ABI version
+    pub fn is_supported(&self, abi_version: u8) -> bool {
+        match self {
+            ParamType::Time | ParamType::Expire | ParamType::PublicKey => abi_version >= 2,
+            _ => abi_version >= 1
         }
     }
 }

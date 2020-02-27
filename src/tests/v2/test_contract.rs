@@ -17,7 +17,13 @@ use std::collections::HashMap;
 
 const TEST_ABI: &str = r#"
 {
-    "ABI version": 1,
+    "ABI version": 2,
+    "header": [
+        "time",
+        "expire",
+        "pubkey",
+        {"name": "a","type": "uint64"}
+    ],
     "functions": [{
             "name": "input_and_output",
             "inputs": [
@@ -69,11 +75,20 @@ fn test_abi_parse() {
     let parsed_contract = Contract::load(TEST_ABI.as_bytes()).unwrap();
 
     let mut functions = HashMap::new();
+    let header = vec![
+        Param { name: "time".into(), kind: ParamType::Time},
+        Param { name: "expire".into(), kind: ParamType::Expire},
+        Param { name: "pubkey".into(), kind: ParamType::PublicKey},
+        Param { name: "a".into(), kind: ParamType::Uint(64)},
+    ];
+    let abi_version = 2;
 
     functions.insert(
         "input_and_output".to_owned(),
         Function {
+            abi_version,
             name: "input_and_output".to_owned(),
+            header: header.clone(),
             inputs: vec![
                 Param { name: "a".to_owned(), kind: ParamType::Uint(64) },
                 Param { name: "b".to_owned(), kind: ParamType::Array(
@@ -84,52 +99,60 @@ fn test_abi_parse() {
                 Param { name: "a".to_owned(), kind: ParamType::Int(16) },
                 Param { name: "b".to_owned(), kind: ParamType::Uint(8) },
             ],
-            set_time: true,
-            id: Some(Function::calc_function_id("input_and_output(time,uint64,uint8[],bytes)(int16,uint8)v1"))
+            input_id: Function::calc_function_id("input_and_output(uint64,uint8[],bytes)(int16,uint8)v2") & 0x7FFFFFFF,
+            output_id: Function::calc_function_id("input_and_output(uint64,uint8[],bytes)(int16,uint8)v2") | 0x80000000
         });
 
     functions.insert(
         "no_output".to_owned(),
         Function {
+            abi_version,
             name: "no_output".to_owned(),
+            header: header.clone(),
             inputs: vec![
                 Param { name: "a".to_owned(), kind: ParamType::Uint(15) },
             ],
             outputs: vec![],
-            set_time: true,
-            id: Some(Function::calc_function_id("no_output(time,uint15)()v1"))
+            input_id: Function::calc_function_id("no_output(uint15)()v2") & 0x7FFFFFFF,
+            output_id: Function::calc_function_id("no_output(uint15)()v2") | 0x80000000
         });
 
     functions.insert(
         "no_input".to_owned(),
         Function {
+            abi_version,
             name: "no_input".to_owned(),
+            header: header.clone(),
             inputs: vec![],
             outputs: vec![
                 Param { name: "a".to_owned(), kind: ParamType::Uint(8) },
             ],
-            set_time: true,
-            id: Some(Function::calc_function_id("no_input(time)(uint8)v1"))
+            input_id: Function::calc_function_id("no_input()(uint8)v2") & 0x7FFFFFFF,
+            output_id: Function::calc_function_id("no_input()(uint8)v2") | 0x80000000
         });
 
     functions.insert(
         "constructor".to_owned(),
         Function {
+            abi_version,
             name: "constructor".to_owned(),
+            header: header.clone(),
             inputs: vec![],
             outputs: vec![],
-            set_time: true,
-            id: Some(Function::calc_function_id("constructor(time)()v1"))
+            input_id: Function::calc_function_id("constructor()()v2") & 0x7FFFFFFF,
+            output_id: Function::calc_function_id("constructor()()v2") | 0x80000000
         });
 
     functions.insert(
         "has_id".to_owned(),
         Function {
+            abi_version,
             name: "has_id".to_owned(),
+            header: header.clone(),
             inputs: vec![],
             outputs: vec![],
-            set_time: true,
-            id: Some(0x01234567)
+            input_id: 0x01234567,
+            output_id: 0x01234567
         });
 
     let mut events = HashMap::new();
@@ -137,27 +160,30 @@ fn test_abi_parse() {
     events.insert(
         "input".to_owned(),
         Event {
+            abi_version: 2,
             name: "input".to_owned(),
             inputs: vec![
                 Param { name: "a".to_owned(), kind: ParamType::Uint(64) },
             ],
-            id: Some(Function::calc_function_id("input(uint64)v1"))
+            id: Function::calc_function_id("input(uint64)v2") & 0x7FFFFFFF
         });
 
     events.insert(
         "no_input".to_owned(),
         Event {
+            abi_version: 2,
             name: "no_input".to_owned(),
             inputs: vec![],
-            id: Some(Function::calc_function_id("no_input()v1"))
+            id: Function::calc_function_id("no_input()v2") & 0x7FFFFFFF
         });
 
     events.insert(
         "has_id".to_owned(),
         Event {
+            abi_version: 2,
             name: "has_id".to_owned(),
             inputs: vec![],
-            id: Some(0x89abcdef)
+            id: 0x89abcdef
         });
 
     let mut data = HashMap::new();
@@ -172,7 +198,7 @@ fn test_abi_parse() {
             key: 100
         });
 
-    let expected_contract = Contract { functions, events, data };
+    let expected_contract = Contract { abi_version: 2, header, functions, events, data };
 
     assert_eq!(parsed_contract, expected_contract);
 }
@@ -202,18 +228,3 @@ fn print_function_singnatures() {
     }
 }
 
-const TEST_ABI_WRONG_VERSION: &str = r#"
-{
-    "ABI version": 0,
-    "functions": [{
-            "name": "constructor",
-            "inputs": [],
-            "outputs": [],
-            "signed": false
-        }]
-}"#;
-
-#[test]
-fn test_abi_wrong_version() {
-    assert!(Contract::load(TEST_ABI_WRONG_VERSION.as_bytes()).is_err());
-}

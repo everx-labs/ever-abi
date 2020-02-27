@@ -13,7 +13,7 @@
 */
 
 //! Function param.
-use serde::{Deserialize, Deserializer};
+use serde::de::{Deserialize, Deserializer, Error};
 
 use ParamType;
 
@@ -55,37 +55,58 @@ impl<'a> Deserialize<'a> for Param {
         // recognizing we first deserialize parameter into temp struct `SerdeParam` and then
         // if parameter is a tuple repack tuple components from `SerdeParam::components` 
         // into `ParamType::Tuple`
-        let serde_param = SerdeParam::deserialize(deserializer)?;
+        let value = serde_json::Value::deserialize(deserializer)?;
+        if value.is_string() {
+            let type_str = value.as_str().unwrap();
+            let param_type: ParamType = serde_json::from_value(value.clone())
+                .map_err(|err| D::Error::custom(err))?;
+            match param_type {
+                ParamType::Tuple(_) |
+                ParamType::Array(_) |
+                ParamType::FixedArray(_, _) |
+                ParamType::Map(_, _) =>
+                    return Err(D::Error::custom(
+                        format!("Invalid parameter specification: {}. Only simple types can be represented as strings",
+                            type_str))),
+                _ => {}
+            }
+            Ok(Self {
+                name: type_str.to_owned(),
+                kind: param_type
+            })
+        } else {
+            let serde_param: SerdeParam = serde_json::from_value(value).map_err(|err| D::Error::custom(err))?;
 
-        let mut result = Self {
-            name: serde_param.name,
-            kind: serde_param.kind,
-        };
+            let mut result = Self {
+                name: serde_param.name,
+                kind: serde_param.kind,
+            };
 
-        result.kind = match result.kind {
-            ParamType::Tuple(_) => ParamType::Tuple(serde_param.components),
-            ParamType::Array(array_type) => 
-                if let ParamType::Tuple(_) = *array_type {
-                    ParamType::Array(Box::new(ParamType::Tuple(serde_param.components)))
-                } else {
-                    ParamType::Array(array_type)
-                },
-            ParamType::FixedArray(array_type, size) => 
-                if let ParamType::Tuple(_) = *array_type {
-                    ParamType::FixedArray(Box::new(ParamType::Tuple(serde_param.components)), size)
-                } else {
-                    ParamType::FixedArray(array_type, size)
-                },
-            ParamType::Map(key_type, value_type) => 
-                if let ParamType::Tuple(_) = *value_type {
-                    ParamType::Map(key_type, Box::new(ParamType::Tuple(serde_param.components)))
-                } else {
-                   ParamType::Map(key_type, value_type)
-                },
-            _ => result.kind,
-        };
+            result.kind = match result.kind {
+                ParamType::Tuple(_) => ParamType::Tuple(serde_param.components),
+                ParamType::Array(array_type) => 
+                    if let ParamType::Tuple(_) = *array_type {
+                        ParamType::Array(Box::new(ParamType::Tuple(serde_param.components)))
+                    } else {
+                        ParamType::Array(array_type)
+                    },
+                ParamType::FixedArray(array_type, size) => 
+                    if let ParamType::Tuple(_) = *array_type {
+                        ParamType::FixedArray(Box::new(ParamType::Tuple(serde_param.components)), size)
+                    } else {
+                        ParamType::FixedArray(array_type, size)
+                    },
+                ParamType::Map(key_type, value_type) => 
+                    if let ParamType::Tuple(_) = *value_type {
+                        ParamType::Map(key_type, Box::new(ParamType::Tuple(serde_param.components)))
+                    } else {
+                    ParamType::Map(key_type, value_type)
+                    },
+                _ => result.kind,
+            };
 
-        Ok(result)
+            Ok(result)  
+        }
     }
 }
 
