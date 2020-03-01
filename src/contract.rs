@@ -14,16 +14,15 @@
 
 use std::io;
 use std::collections::HashMap;
-use serde::{Deserialize, Deserializer};
-use serde::de::{Unexpected, Error as SerdeError};
+use serde::de::{Error as SerdeError};
 use serde_json;
-use {Function, Event, Token, Param};
+use {Function, Event, Token, Param, ParamType};
 use ton_types::{SliceData, BuilderData};
 use ton_types::dictionary::HashmapE;
 use crate::error::*;
 use ton_block::Serializable;
 
-pub const   ABI_VERSION: u8 = 1;
+pub const   SUPPORTED_VERSIONS: [u8; 2] = [1, 2];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct DataItem {
@@ -32,58 +31,69 @@ pub struct DataItem {
     pub value: Param,
 }
 
-/// API building calls to contracts ABI.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Contract {
-    /// Contract functions.
-    functions: HashMap<String, Function>,
-    /// Contract events.
-    events: HashMap<String, Event>,
-    /// Contract initila data.
-    data: HashMap<String, DataItem>,
+struct StringVisitor;
+
+impl<'de> serde::de::Visitor<'de> for StringVisitor {
+    type Value = String;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("String")
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E> where E: serde::de::Error {
+        Ok(v)
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E> where E: serde::de::Error {
+        Ok(v.to_string())
+    }
 }
 
-impl<'a> Deserialize<'a> for Contract {
-    fn deserialize<D>(deserializer: D) -> Result<Contract, D::Error> where D: Deserializer<'a> {
-        // A little trick similar to `Param` deserialization: first deserialize JSON into temporary 
-        // struct `SerdeContract` containing necessary fields and then repack functions into HashMap
-        let serde_contract = SerdeContract::deserialize(deserializer)?;
-
-        if serde_contract.abi_version != ABI_VERSION {
-            return Err(
-                <D::Error as SerdeError>::invalid_value(
-                    Unexpected::Unsigned(serde_contract.abi_version as u64),
-                    &format!("ABI version `{}`", ABI_VERSION).as_str())
-            );
-        }
-
-        let mut result = Self {
-            functions: HashMap::new(),
-            events: HashMap::new(),
-            data: HashMap::new(),
-        };
-
-        for mut function in serde_contract.functions {
-            function.set_time = serde_contract.set_time;
-            if function.id.is_none() {
-                function.id = Some(function.get_function_id());
+pub fn deserialize_opt_u32_from_string<'de, D>(d: D) -> Result<Option<u32>, D::Error>
+    where D: serde::Deserializer<'de>
+{
+    match d.deserialize_string(StringVisitor) {
+        Err(_) => Ok(None),
+        Ok(string) => {
+            if !string.starts_with("0x") {
+                return Err(D::Error::custom(format!("Number parsing error: number must be prefixed with 0x ({})", string)));
             }
-            result.functions.insert(function.name.clone(), function);
+        
+            u32::from_str_radix(&string[2..], 16)
+                .map_err(|err| D::Error::custom(format!("Error parsing number: {}", err)))
+                .map(|value| Some(value))
         }
-
-        for mut event in serde_contract.events {
-            if event.id.is_none() {
-                event.id = Some(event.get_function_id());
-            }
-            result.events.insert(event.name.clone(), event);
-        }
-
-        for data in serde_contract.data {
-            result.data.insert(data.value.name.clone(), data);
-        }
-
-        Ok(result)
     }
+}
+
+/// Contract function specification.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) struct SerdeFunction {
+    /// Function name.
+    pub name: String,
+    /// Function input.
+    #[serde(default)]
+    pub inputs: Vec<Param>,
+    /// Function output.
+    #[serde(default)]
+    pub outputs: Vec<Param>,
+    /// Calculated function ID
+    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_opt_u32_from_string")]
+    pub id: Option<u32>
+}
+
+/// Contract event specification.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+pub(crate) struct SerdeEvent {
+    /// Event name.
+    pub name: String,
+    /// Event input.
+    #[serde(default)]
+    pub inputs: Vec<Param>,
+    #[serde(default)]
+    #[serde(deserialize_with = "deserialize_opt_u32_from_string")]
+    pub id: Option<u32>
 }
 
 fn bool_true() -> bool {
@@ -99,15 +109,17 @@ struct SerdeContract {
     #[serde(rename="setTime")]
     #[serde(default="bool_true")]
     pub set_time: bool,
+    /// Header parameters.
+    #[serde(default)]
+    pub header: Vec<Param>,
     /// Contract functions.
-    pub functions: Vec<Function>,
+    pub functions: Vec<SerdeFunction>,
     /// Contract events.
     #[serde(default)]
-    pub events: Vec<Event>,
+    pub events: Vec<SerdeEvent>,
     /// Contract initial data.
     #[serde(default)]
     pub data: Vec<DataItem>,
-
 }
 
 pub struct DecodedMessage {
@@ -116,10 +128,85 @@ pub struct DecodedMessage {
     pub params: Vec<Param>
 }
 
+/// API building calls to contracts ABI.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Contract {
+    /// ABI version
+    abi_version: u8,
+    /// Contract functions header parameters
+    header: Vec<Param>,
+    /// Contract functions.
+    functions: HashMap<String, Function>,
+    /// Contract events.
+    events: HashMap<String, Event>,
+    /// Contract initila data.
+    data: HashMap<String, DataItem>,
+}
+
 impl Contract {
     /// Loads contract from json.
     pub fn load<T: io::Read>(reader: T) -> AbiResult<Self> {
-        Ok(serde_json::from_reader(reader)?)
+        // A little trick similar to `Param` deserialization: first deserialize JSON into temporary 
+        // struct `SerdeContract` containing necessary fields and then repack fields into HashMap
+        let mut serde_contract: SerdeContract = serde_json::from_reader(reader)?;
+        let version = serde_contract.abi_version;
+
+        if !SUPPORTED_VERSIONS.contains(&version) {
+            bail!(AbiErrorKind::WrongVersion{ version: serde_contract.abi_version });
+        }
+
+        if version == 1 {
+            if serde_contract.header.len() != 0 {
+                return Err(AbiErrorKind::InvalidData {
+                    msg: "Header parameters are not supported in ABI v1".into()
+                }.into());
+            }
+            if serde_contract.set_time {
+                serde_contract.header.push(Param { name: "time".into(), kind: ParamType::Time});
+            }
+        }
+
+        let mut result = Self {
+            abi_version: version,
+            header: serde_contract.header,
+            functions: HashMap::new(),
+            events: HashMap::new(),
+            data: HashMap::new(),
+        };
+
+        for function in serde_contract.functions {
+            Self::check_params_support(version, function.inputs.iter())?;
+            Self::check_params_support(version, function.outputs.iter())?;
+            result.functions.insert(
+                function.name.clone(),
+                Function::from_serde(version, function, result.header.clone()));
+        }
+
+        for event in serde_contract.events {
+            Self::check_params_support(version, event.inputs.iter())?;
+            result.events.insert(event.name.clone(), Event::from_serde(version, event));
+        }
+
+        Self::check_params_support(version, serde_contract.data.iter().map(|val| &val.value))?;
+        for data in serde_contract.data {
+            result.data.insert(data.value.name.clone(), data);
+        }
+
+        Ok(result)
+    }
+
+    fn check_params_support<'a, T>(abi_version: u8, params: T) -> AbiResult<()>
+        where 
+        T: std::iter::Iterator<Item = &'a Param>
+    {
+        for param in params {
+            if !param.kind.is_supported(abi_version) {
+                return Err(AbiErrorKind::InvalidData {
+                    msg: "Header parameters are not supported in ABI v1".into()
+                }.into());
+            }
+        }
+        Ok(())
     }
 
     /// Returns `Function` struct with provided function name.
@@ -136,7 +223,7 @@ impl Contract {
             }
         }
 
-        bail!(AbiErrorKind::InvalidFunctionId { id })
+       Err(AbiErrorKind::InvalidFunctionId { id }.into())
     }
 
     /// Returns `Event` struct with provided function id.
@@ -147,7 +234,7 @@ impl Contract {
             }
         }
 
-        bail!(AbiErrorKind::InvalidFunctionId { id })
+        Err(AbiErrorKind::InvalidFunctionId { id }.into())
     }
 
     /// Returns functions collection
@@ -168,7 +255,7 @@ impl Contract {
     pub fn decode_output(&self, data: SliceData, internal: bool) -> AbiResult<DecodedMessage> {
         let original_data = data.clone();
         
-        let func_id = Function::decode_id(data)?;
+        let func_id = Function::decode_output_id(data)?;
 
         if let Ok(func) = self.function_by_id(func_id, false){
             let tokens = func.decode_output(original_data, internal)?;
@@ -176,7 +263,7 @@ impl Contract {
             Ok( DecodedMessage {
                 function_name: func.name.clone(),
                 tokens: tokens,
-                params: func.output_params()
+                params: func.output_params().clone()
             })
         } else {
             let event = self.event_by_id(func_id)?;
@@ -194,7 +281,7 @@ impl Contract {
     pub fn decode_input(&self, data: SliceData, internal: bool) -> AbiResult<DecodedMessage> {
         let original_data = data.clone();
         
-        let func_id = Function::decode_id(data)?;
+        let func_id = Function::decode_input_id(self.abi_version, data, &self.header, internal)?;
 
         let func = self.function_by_id(func_id, true)?;
 
@@ -203,7 +290,7 @@ impl Contract {
         Ok( DecodedMessage {
             function_name: func.name.clone(),
             tokens: tokens,
-            params: func.input_params()
+            params: func.input_params().clone()
         })
     }
 
@@ -217,7 +304,7 @@ impl Contract {
         );
 
         for token in tokens {
-            let builder = token.value.pack_into_chain()?;
+            let builder = token.value.pack_into_chain(self.abi_version)?;
             let key = self.data
                 .get(&token.name)
                 .ok_or(
@@ -250,8 +337,21 @@ impl Contract {
         )?;
         Ok(map.write_to_new_cell()?.into())
     }
+
+    /// Add sign to messsage body returned by `prepare_input_for_sign` function
+    pub fn add_sign_to_encoded_input(
+        &self,
+        signature: &[u8],
+        public_key: Option<&[u8]>,
+        function_call: SliceData
+    ) -> AbiResult<BuilderData> {
+        Function::add_sign_to_encoded_input(self.abi_version, signature, public_key, function_call)
+    }
 }
 
 #[cfg(test)]
-#[path = "tests/test_contract.rs"]
-mod tests;
+#[path = "tests/v1/test_contract.rs"]
+mod tests_v1;
+#[cfg(test)]
+#[path = "tests/v2/test_contract.rs"]
+mod tests_v2;

@@ -40,7 +40,7 @@ pub enum AbiErrorKind {
         name: String
     },
 
-    #[fail(display = "Invalid function id: {}", id)]
+    #[fail(display = "Invalid function id: {:X}", id)]
     InvalidFunctionId {
         id: u32
     },

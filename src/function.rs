@@ -14,49 +14,70 @@
 
 //! Contract function call builder.
 
-use chrono::prelude::*;
+use std::collections::HashMap;
 use sha2::{Digest, Sha256, Sha512};
 use {Param, Token, TokenValue};
-use ed25519_dalek::*;
-use serde::de::Error;
+use contract::SerdeFunction;
+use ed25519_dalek::{Keypair, SIGNATURE_LENGTH};
 use ton_types::{BuilderData, SliceData, Cell, IBitstring};
+use ton_block::Serializable;
 use crate::error::*;
-use super::contract::ABI_VERSION;
 
 /// Contract function specification.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Function {
+    /// ABI version
+    pub abi_version: u8,
     /// Function name.
     pub name: String,
+    /// Function header parameters.
+    pub header: Vec<Param>,
     /// Function input.
-    #[serde(default)]
     pub inputs: Vec<Param>,
     /// Function output.
-    #[serde(default)]
     pub outputs: Vec<Param>,
-    /// Calculated function ID
-    #[serde(default)]
-    #[serde(deserialize_with = "deserialize_opt_u32_from_string")]
-    pub id: Option<u32>,
-
-    /// Set timestamp.
-    #[serde(skip_deserializing)]
-    pub set_time: bool,
+    /// Function ID for inbound messages
+    pub input_id: u32,
+    /// Function ID for outbound messages
+    pub output_id: u32,
 }
 
 impl Function {
+    /// Creates `Function` struct from parsed JSON struct `SerdeFunction`
+    pub(crate) fn from_serde(abi_version: u8, serde_function: SerdeFunction, header: Vec<Param>) -> Self {
+        let mut function = Function {
+            abi_version,
+            name: serde_function.name,
+            header,
+            inputs: serde_function.inputs,
+            outputs: serde_function.outputs,
+            input_id: 0,
+            output_id: 0
+        };
+        if let Some(id) = serde_function.id {
+            function.input_id = id;
+            function.output_id = id
+        } else {
+            let id = function.get_function_id();
+            function.input_id = id & 0x7FFFFFFF;
+            function.output_id = id | 0x80000000;
+        };
+        function
+    }
+
+    /// Returns all header params of given function.
+    pub fn header_params(&self) -> &Vec<Param> {
+        &self.header
+    }
+
     /// Returns all input params of given function.
-    pub fn input_params(&self) -> Vec<Param> {
-        self.inputs.iter()
-            .map(|p| p.clone())
-            .collect()
+    pub fn input_params(&self) -> &Vec<Param> {
+        &self.inputs
     }
 
     /// Returns all output params of given function.
-    pub fn output_params(&self) -> Vec<Param> {
-        self.outputs.iter()
-            .map(|p| p.clone())
-            .collect()
+    pub fn output_params(&self) -> &Vec<Param> {
+        &self.outputs
     }
 
     /// Returns true if function has input parameters, false in not
@@ -71,13 +92,16 @@ impl Function {
 
     /// Retruns ABI function signature
     pub fn get_function_signature(&self) -> String {
-        let mut input_types = self.inputs.iter()
-            .map(|param| param.kind.type_signature())
-            .collect::<Vec<String>>();
-
-        if self.set_time {
-            input_types.insert(0, "time".to_owned())
+        let mut input_types = vec![];
+        if self.abi_version == 1 {
+            input_types.append(&mut self.header.iter()
+                .map(|param| param.kind.type_signature())
+                .collect::<Vec<String>>())
         }
+
+        input_types.append(&mut self.inputs.iter()
+            .map(|param| param.kind.type_signature())
+            .collect::<Vec<String>>());
         
         let input_types = input_types.join(",");
 
@@ -86,7 +110,7 @@ impl Function {
             .collect::<Vec<String>>()
             .join(",");
 
-        format!("{}({})({})v{}", self.name, input_types, output_types, ABI_VERSION)
+        format!("{}({})({})v{}", self.name, input_types, output_types, self.abi_version)
     }
 
     pub fn calc_function_id(signature: &str) -> u32 {
@@ -111,132 +135,186 @@ impl Function {
         Self::calc_function_id(&signature)
     }
 
-    /// Returns function ID
-    pub fn get_id(&self) -> u32 {
-        match self.id {
-            Some(id) => id,
-            None => self.get_function_id()
-        }
-    }
-
-    /// Returns ID for call message
+       /// Returns ID for call message
     pub fn get_input_id(&self) -> u32 {
-        self.get_id() & 0x7FFFFFFF
+        self.input_id
     }
 
     /// Returns ID for response message
     pub fn get_output_id(&self) -> u32 {
-        self.get_id() | 0x80000000
-    }
-
-    /// Decodes provided params from SliceData
-    fn decode_params(&self, params: Vec<Param>, mut cursor: SliceData, expected_id: u32, exctract_time: bool
-        ) -> AbiResult<Vec<Token>> {
-        let mut tokens = vec![];
-        let original = cursor.clone();
-
-        let id = cursor.get_next_u32()?;
-
-        if id != expected_id { Err(AbiErrorKind::WrongId { id } )? }
-
-        if exctract_time {
-            cursor.get_next_u64()?;
-        }
-
-        for param in params {
-            // println!("{:?}", param);
-            let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor)?;
-
-            cursor = new_cursor;
-            tokens.push(Token { name: param.name, value: token_value });
-        }
-
-        if cursor.remaining_references() != 0 || cursor.remaining_bits() != 0 {
-            bail!(AbiErrorKind::IncompleteDeserializationError { cursor: original })
-        } else {
-            Ok(tokens)
-        }
+        self.output_id
     }
 
     /// Parses the ABI function output to list of tokens.
-    pub fn decode_output(&self, data: SliceData, _internal: bool) -> AbiResult<Vec<Token>> {
-        self.decode_params(self.output_params(), data, self.get_output_id(), false)
+    pub fn decode_output(&self, mut data: SliceData, _internal: bool) -> AbiResult<Vec<Token>> {
+        let id = data.get_next_u32()?;
+        if id != self.get_output_id() { Err(AbiErrorKind::WrongId { id } )? }
+        TokenValue::decode_params(self.output_params(), data, self.abi_version)
     }
 
     /// Parses the ABI function call to list of tokens.
-    pub fn decode_input(&self, mut data: SliceData, internal: bool) -> AbiResult<Vec<Token>> {
-        if !internal {
-            data.checked_drain_reference()
-                .map_err(|err| AbiErrorKind::InvalidInputData { msg: err.to_string() } )?;
-        }
+    pub fn decode_input(&self, data: SliceData, internal: bool) -> AbiResult<Vec<Token>> {
+        let (_, id, cursor) = Self::decode_header(self.abi_version, data, &self.header, internal)?;
 
-        self.decode_params(self.input_params(), data, self.get_input_id(), self.set_time && !internal)
+        if id != self.get_input_id() { Err(AbiErrorKind::WrongId { id } )? }
+
+        TokenValue::decode_params(self.input_params(), cursor, self.abi_version)
     }
 
     /// Decodes function id from contract answer
-    pub fn decode_id(mut data: SliceData) -> AbiResult<u32> {
+    pub fn decode_input_id(
+        abi_version: u8,
+        cursor: SliceData,
+        header: &Vec<Param>,
+        internal: bool
+    ) -> AbiResult<u32> {
+        let (_, id, _) = Self::decode_header(abi_version, cursor, header, internal)?;
+        Ok(id)
+    }
+
+    /// Decodes function id from contract answer
+    pub fn decode_output_id(mut data: SliceData) -> AbiResult<u32> {
         Ok(data.get_next_u32()?)
     }
 
     /// Encodes provided function parameters into `BuilderData` containing ABI contract call
     pub fn encode_input(
         &self,
-        tokens: &[Token],
+        header: &HashMap<String, TokenValue>,
+        input: &[Token],
         internal: bool,
         pair: Option<&Keypair>
     ) -> AbiResult<BuilderData> {
-        let (mut builder, hash) = self.create_unsigned_call(tokens, internal)?;
+        let (mut builder, hash) = self.create_unsigned_call(header, input, internal, pair.is_some())?;
 
         if !internal {
-            match pair {
+            builder = match pair {
                 Some(pair) => {
-                    let mut signature = pair.sign::<Sha512>(&hash).to_bytes().to_vec();
-                    signature.extend_from_slice(&pair.public.to_bytes());
-        
-                    let len = signature.len() * 8;
-
-                    builder.prepend_reference(BuilderData::with_raw(signature, len).unwrap());
+                    let signature = pair.sign::<Sha512>(&hash).to_bytes().to_vec();
+                    Self::fill_sign(
+                        self.abi_version,
+                        Some(&signature),
+                        Some(&pair.public.to_bytes()),
+                        builder)?
                 },
-                None => builder.prepend_reference(BuilderData::new())
+                None => Self::fill_sign(self.abi_version, None, None, builder)?
             }
         }
 
         Ok(builder)
     }
 
+    /// Encodes function header with provided header parameters
+    fn encode_header(
+        &self,
+        header_tokens: &HashMap<String, TokenValue>,
+        internal: bool
+    ) -> AbiResult<Vec<BuilderData>> {
+        let mut vec = vec![];
+        if !internal {
+            for param in &self.header {
+                if let Some(token) = header_tokens.get(&param.name) {
+                    vec.push(token.pack_into_chain(self.abi_version)?);
+                } else {
+                    vec.push(TokenValue::get_default_value_for_header(&param.kind)?.pack_into_chain(self.abi_version)?);
+                }
+            }
+        }
+        if self.abi_version == 1 {
+            vec.insert(0, self.get_input_id().write_to_new_cell()?);
+        } else {
+            vec.push(self.get_input_id().write_to_new_cell()?);
+        }
+        Ok(vec)
+    }
+
+    /// Encodes function header with provided header parameters
+    pub fn decode_header(
+        abi_version: u8,
+        mut cursor: SliceData,
+        header: &Vec<Param>,
+        internal: bool
+    ) -> AbiResult<(Vec<Token>, u32, SliceData)> {
+        let mut tokens = vec![];
+        let mut id = 0;
+        if abi_version == 1 {
+            id = cursor.get_next_u32()?;
+        }
+        if !internal {
+            // skip signature
+            if abi_version == 1 {
+                cursor.checked_drain_reference()?;
+            } else {
+                if cursor.get_next_bit()? {
+                    cursor.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH)?;
+                }
+            }
+
+            for param in header {
+                let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor, false, abi_version)?;
+    
+                cursor = new_cursor;
+                tokens.push(Token { name: param.name.clone(), value: token_value });
+            }
+        }
+        if abi_version != 1 {
+            id = cursor.get_next_u32()?;
+        }
+        Ok((tokens, id, cursor))
+    }
+
     /// Encodes provided function parameters into `BuilderData` containing ABI contract call.
     /// `BuilderData` is prepared for signing. Sign should be the added by `add_sign_to_function_call` function
     pub fn create_unsigned_call(
         &self,
-        tokens: &[Token],
-        internal: bool
+        header: &HashMap<String, TokenValue>,
+        input: &[Token],
+        internal: bool,
+        reserve_sign: bool
     ) -> AbiResult<(BuilderData, Vec<u8>)> {
         let params = self.input_params();
 
-        if !Token::types_check(tokens, params.as_slice()) {
+        if !Token::types_check(input, params.as_slice()) {
             bail!(AbiErrorKind::WrongParameterType);
         }
 
         // prepare standard message
-        let mut builder = BuilderData::new();
-        builder.append_u32(self.get_input_id())?;
+        let mut cells = self.encode_header(header, internal)?;
 
+        let mut remove_ref = false;
+        let mut remove_bits = 0;
         if !internal {
-            if self.set_time {
-                let time = Utc::now().timestamp_millis();
-                builder.append_i64(time)?;
+            let mut sign_builder = BuilderData::new();
+            if self.abi_version == 1 {
+                // reserve reference for sign
+                sign_builder.append_reference(BuilderData::new());
+                remove_ref = true;
+            } else {
+                // reserve in-cell data
+                if reserve_sign {
+                    sign_builder.append_bit_one()?;
+                    sign_builder.append_raw(&[0u8; SIGNATURE_LENGTH], SIGNATURE_LENGTH * 8)?;
+                    remove_bits = 1 + SIGNATURE_LENGTH * 8;
+                } else {
+                    sign_builder.append_bit_zero()?;
+                    remove_bits = 1;
+                }
             }
-            
-            // reserve reference for sign
-            builder.append_reference(BuilderData::new().into());
+            cells.insert(0, sign_builder);
         }
 
         // encoding itself
-        builder = TokenValue::pack_values_into_chain(tokens, vec![builder])?;
+        let mut builder = TokenValue::pack_values_into_chain(input, cells, self.abi_version)?;
+
         if !internal {
-            // delete sign reference before hash
+            // delete reserved sign before hash
             let mut slice = SliceData::from(builder);
-            slice.checked_drain_reference()?;
+            if remove_ref {
+                slice.checked_drain_reference()?;
+            }
+            if remove_bits != 0 {
+                slice.get_next_bits(remove_bits)?;
+            }
             builder = BuilderData::from_slice(&slice);
         }
 
@@ -246,69 +324,66 @@ impl Function {
     }
 
     /// Add sign to messsage body returned by `prepare_input_for_sign` function
-    pub fn add_sign_to_encoded_input(
-        signature: &[u8],
-        public_key: &[u8],
-        function_call: SliceData
+    pub fn fill_sign(
+        abi_version: u8,
+        signature: Option<&[u8]>,
+        public_key: Option<&[u8]>,
+        mut builder: BuilderData
     ) -> AbiResult<BuilderData> {
-        let mut builder = BuilderData::from_slice(&function_call);
 
-        if builder.references_free() == 0 {
-            bail!(AbiErrorKind::InvalidInputData { msg: "No free reference for signature".to_owned() } );
+        if abi_version == 1 {
+            // sign in reference
+            if builder.references_free() == 0 {
+                bail!(AbiErrorKind::InvalidInputData { msg: "No free reference for signature".to_owned() } );
+            }
+            if let Some(signature) = signature {
+                let mut signature = signature.to_vec();
+                if let Some(public_key) = public_key {
+                    signature.extend_from_slice(public_key);
+                }
+        
+                let len = signature.len() * 8;
+                builder.prepend_reference(BuilderData::with_raw(signature, len).unwrap());
+            } else {
+                builder.prepend_reference(BuilderData::new());
+            }
+        } else {
+            // sign in cell body
+            let mut sign_builder = BuilderData::new();
+            if let Some(signature) = signature {
+                let len = signature.len() * 8;
+                sign_builder.append_bit_one()?;
+                sign_builder.append_raw(&signature, len)?;
+            } else {
+                sign_builder.append_bit_zero()?;
+            }
+            builder.prepend_builder(&sign_builder)?;
         }
-
-        let mut signature = signature.to_vec();
-        signature.extend_from_slice(public_key);
-
-        let len = signature.len() * 8;
-
-        builder.prepend_reference(BuilderData::with_raw(signature, len).unwrap());
 
         Ok(builder)
     }
 
+    /// Add sign to messsage body returned by `prepare_input_for_sign` function
+    pub fn add_sign_to_encoded_input(
+        abi_version: u8,
+        signature: &[u8],
+        public_key: Option<&[u8]>,
+        function_call: SliceData
+    ) -> AbiResult<BuilderData> {
+        let builder = BuilderData::from_slice(&function_call);
+
+        Self::fill_sign(abi_version, Some(signature), public_key, builder)
+    }
+
     /// Check if message body is related to this function
-    pub fn is_my_message(&self, data: SliceData, _internal: bool) -> AbiResult<bool> {
-        let decoded_id = Self::decode_id(data)?;
-        Ok(self.get_input_id() == decoded_id || self.get_output_id() == decoded_id)
+    pub fn is_my_input_message(&self, data: SliceData, internal: bool) -> AbiResult<bool> {
+        let decoded_id = Self::decode_input_id(self.abi_version, data, &self.header, internal)?;
+        Ok(self.get_input_id() == decoded_id)
+    }
+
+    /// Check if message body is related to this function
+    pub fn is_my_output_message(&self, data: SliceData, _internal: bool) -> AbiResult<bool> {
+        let decoded_id = Self::decode_output_id(data)?;
+        Ok(self.get_output_id() == decoded_id)
     }
 }
-
-struct StringVisitor;
-
-impl<'de> serde::de::Visitor<'de> for StringVisitor {
-    type Value = String;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("String")
-    }
-
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E> where E: serde::de::Error {
-        Ok(v)
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E> where E: serde::de::Error {
-        Ok(v.to_string())
-    }
-}
-
-pub fn deserialize_opt_u32_from_string<'de, D>(d: D) -> Result<Option<u32>, D::Error>
-    where D: serde::Deserializer<'de>
-{
-    match d.deserialize_string(StringVisitor) {
-        Err(_) => Ok(None),
-        Ok(string) => {
-            if !string.starts_with("0x") {
-                return Err(D::Error::custom(format!("Number parsing error: number must be prefixed with 0x ({})", string)));
-            }
-        
-            u32::from_str_radix(&string[2..], 16)
-                .map_err(|err| D::Error::custom(format!("Error parsing number: {}", err)))
-                .map(|value| Some(value))
-        }
-    }
-}
-
-#[cfg(test)]
-#[path = "tests/test_encoding.rs"]
-mod tests;
