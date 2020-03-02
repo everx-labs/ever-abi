@@ -136,7 +136,7 @@ mv ./tmp.toml ./Cargo.toml
                 echo "Prepare image..."
                 script {
                     docker.withRegistry('', G_docker_creds) {
-                        args = "--no-cache --label 'git-commit=${GIT_COMMIT}' --target ton-labs-abi-src --force-rm ."
+                        args = "--pull --no-cache --label 'git-commit=${GIT_COMMIT}' --target ton-labs-abi-src --force-rm ."
                         G_docker_image = docker.build(
                             G_image_target, 
                             args
@@ -151,7 +151,7 @@ mv ./tmp.toml ./Cargo.toml
             agent {
                 dockerfile {
                     registryCredentialsId "${G_docker_creds}"
-                    additionalBuildArgs "--target ton-labs-abi-rust " + 
+                    additionalBuildArgs "--pull --target ton-labs-abi-rust " + 
                                         "--build-arg \"TON_LABS_TYPES_IMAGE=${params.dockerImage_ton_labs_types}\" " +
                                         "--build-arg \"TON_LABS_BLOCK_IMAGE=${params.dockerImage_ton_labs_block}\" " + 
                                         "--build-arg \"TON_LABS_VM_IMAGE=${params.dockerImage_ton_labs_vm}\" " + 
@@ -176,7 +176,7 @@ mv ./tmp.toml ./Cargo.toml
             agent {
                 dockerfile {
                     registryCredentialsId "${G_docker_creds}"
-                    additionalBuildArgs "--target ton-labs-abi-rust " + 
+                    additionalBuildArgs "--pull --target ton-labs-abi-rust " + 
                                         "--build-arg \"TON_LABS_TYPES_IMAGE=${params.dockerImage_ton_labs_types}\" " +
                                         "--build-arg \"TON_LABS_BLOCK_IMAGE=${params.dockerImage_ton_labs_block}\" " + 
                                         "--build-arg \"TON_LABS_VM_IMAGE=${params.dockerImage_ton_labs_vm}\" " + 
