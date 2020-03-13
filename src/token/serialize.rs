@@ -212,6 +212,10 @@ impl TokenValue {
             builder = new_builder;
             cell_capacity = std::cmp::min(cell_len, len);
         }
+        // if bytes are empty then we need builder with ref to empty cell
+        if builder.references_used() == 0 {
+            builder.append_reference(BuilderData::new());
+        }
         Ok(vec![builder])
     }
 
