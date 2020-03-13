@@ -34,17 +34,16 @@ pub fn encode_function_call(
 
     let function = contract.function(&function)?;
 
-    let header_tokens = if let Some(header) = header {
+    let mut header_tokens = if let Some(header) = header {
         let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
-        // add public key into header
-        let mut default_values = HashMap::new();
-        if pair.is_some() {
-            default_values.insert("pubkey".to_owned(), TokenValue::PublicKey(pair.map(|pair| pair.public)));
-        }
-        Tokenizer::tokenize_optional_params(function.header_params(), &v, &default_values)?
+        Tokenizer::tokenize_optional_params(function.header_params(), &v, &HashMap::new())?
     } else {
         HashMap::new()
     };
+    // add public key into header
+    if pair.is_some() && header_tokens.get("pubkey").is_none() {
+        header_tokens.insert("pubkey".to_owned(), TokenValue::PublicKey(pair.map(|pair| pair.public)));
+    }
 
     let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError { err } )?;
     let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;

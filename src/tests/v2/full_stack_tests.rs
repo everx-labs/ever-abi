@@ -202,9 +202,6 @@ fn test_signed_call() {
         "value": 12,
         "period": 30
     }"#;
-    let header = r#"{
-        "expire": 123
-    }"#;
 
     let expected_params = r#"{"value":"0xc","period":"0x1e"}"#;
 
@@ -213,7 +210,7 @@ fn test_signed_call() {
     let test_tree = encode_function_call(
         WALLET_ABI.to_owned(),
         "createArbitraryLimit".to_owned(),
-        Some(header.to_owned()),
+        None,
         params.to_owned(),
         false,
         Some(&pair),
@@ -235,7 +232,7 @@ fn test_signed_call() {
     assert_eq!(response.function_name, "createArbitraryLimit");
 
     let mut expected_tree = BuilderData::new();
-    expected_tree.append_u32(123).unwrap();                 // expire
+    expected_tree.append_u32(0xffffffff).unwrap();          // expire
     expected_tree.append_bit_one().unwrap();                // Some for public key
     expected_tree.append_raw(&pair.public.to_bytes(), ed25519_dalek::PUBLIC_KEY_LENGTH * 8).unwrap();
     expected_tree.append_u32(0x2238B58A).unwrap();          // function id
@@ -287,7 +284,8 @@ fn test_not_signed_call() {
         "limitId": "0x2"
     }"#;
     let header = r#"{
-        "pubkey": "0123456789abcdeffedcba98765432100123456789abcdeffedcba9876543210"
+        "pubkey": "0123456789abcdeffedcba98765432100123456789abcdeffedcba9876543210",
+        "expire": 123
     }"#;
 
     let test_tree = encode_function_call(
@@ -301,14 +299,14 @@ fn test_not_signed_call() {
     .unwrap();
 
     let mut expected_tree = BuilderData::new();
-    expected_tree.append_bit_zero().unwrap();               // None for signature
-    expected_tree.append_u32(0xffffffff).unwrap();          // expire
-    expected_tree.append_bit_one().unwrap();                // Some for public key
+    expected_tree.append_bit_zero().unwrap();        // None for signature
+    expected_tree.append_u32(123).unwrap();          // expire
+    expected_tree.append_bit_one().unwrap();         // Some for public key
     expected_tree.append_raw(
         &hex::decode("0123456789abcdeffedcba98765432100123456789abcdeffedcba9876543210").unwrap(),
-        32 * 8).unwrap();                                   // pubkey
-    expected_tree.append_u32(0x4B774C98).unwrap();          // function id
-    expected_tree.append_u64(2).unwrap();                  // limitId
+        32 * 8).unwrap();                            // pubkey
+    expected_tree.append_u32(0x4B774C98).unwrap();   // function id
+    expected_tree.append_u64(2).unwrap();            // limitId
 
     assert_eq!(test_tree, expected_tree);
 }
