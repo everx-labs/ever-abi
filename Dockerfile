@@ -1,6 +1,5 @@
 ARG TON_LABS_TYPES_IMAGE=tonlabs/ton-labs-types:latest
 ARG TON_LABS_BLOCK_IMAGE=tonlabs/ton-labs-block:latest
-ARG TON_LABS_VM_IMAGE=tonlabs/ton-labs-vm:latest
 ARG TON_LABS_ABI_IMAGE=tonlabs/ton-labs-abi:latest
 
 FROM alpine:latest as ton-labs-abi-src
@@ -13,7 +12,6 @@ USER jenkins
 
 FROM $TON_LABS_TYPES_IMAGE as ton-labs-types-src
 FROM $TON_LABS_BLOCK_IMAGE as ton-labs-block-src
-FROM $TON_LABS_VM_IMAGE as ton-labs-vm-src
 FROM $TON_LABS_ABI_IMAGE as ton-labs-abi-source
 
 FROM alpine:latest as ton-labs-abi-full
@@ -21,7 +19,6 @@ RUN addgroup --gid 1000 jenkins && \
     adduser -D -G jenkins jenkins
 COPY --from=ton-labs-types-src  --chown=jenkins:jenkins /tonlabs/ton-labs-types /tonlabs/ton-labs-types
 COPY --from=ton-labs-block-src  --chown=jenkins:jenkins /tonlabs/ton-labs-block /tonlabs/ton-labs-block
-COPY --from=ton-labs-vm-src     --chown=jenkins:jenkins /tonlabs/ton-labs-vm    /tonlabs/ton-labs-vm
 COPY --from=ton-labs-abi-source --chown=jenkins:jenkins /tonlabs/ton-labs-abi   /tonlabs/ton-labs-abi
 VOLUME ["/tonlabs"]
 
@@ -33,7 +30,6 @@ RUN apt -qqy update && apt -qyy install apt-utils && \
     adduser -q --disabled-password --gid 1000 jenkins && \
     mkdir /tonlabs && chown -R jenkins:jenkins /tonlabs
 COPY --from=ton-labs-abi-full --chown=jenkins:jenkins /tonlabs/ton-labs-types /tonlabs/ton-labs-types
-COPY --from=ton-labs-abi-full --chown=jenkins:jenkins /tonlabs/ton-labs-vm    /tonlabs/ton-labs-vm
 COPY --from=ton-labs-abi-full --chown=jenkins:jenkins /tonlabs/ton-labs-block /tonlabs/ton-labs-block
 COPY --from=ton-labs-abi-full --chown=jenkins:jenkins /tonlabs/ton-labs-abi   /tonlabs/ton-labs-abi
 WORKDIR /tonlabs/ton-labs-abi
