@@ -259,7 +259,7 @@ fn test_five_refs_v1() {
 
     let mut new_builder = BuilderData::new();
     new_builder.append_i32(9434567).unwrap();
-    new_builder.append_reference(bytes_builder.clone());
+    new_builder.append_reference(BuilderData::new());
     new_builder.append_reference(bytes_builder.clone());
     builder.append_reference(new_builder);
 
@@ -267,7 +267,7 @@ fn test_five_refs_v1() {
         TokenValue::Bool(true),
         TokenValue::Bytes(bytes.clone()),
         TokenValue::Bytes(bytes.clone()),
-        TokenValue::Bytes(bytes.clone()),
+        TokenValue::Bytes(vec![]),
         TokenValue::Bytes(bytes.clone()),
         TokenValue::Int(Int::new(9434567, 32)),
     ];
@@ -300,7 +300,7 @@ fn test_five_refs_v2() {
 
     let mut new_builder = BuilderData::new();
     new_builder.append_i32(9434567).unwrap();
-    new_builder.append_reference(bytes_builder.clone());
+    new_builder.append_reference(BuilderData::new());
     new_builder.append_reference(bytes_builder.clone());
     builder.append_reference(new_builder);
 
@@ -308,7 +308,7 @@ fn test_five_refs_v2() {
         TokenValue::Bool(true),
         TokenValue::Bytes(bytes.clone()),
         TokenValue::Bytes(bytes.clone()),
-        TokenValue::Bytes(bytes.clone()),
+        TokenValue::Bytes(vec![]),
         TokenValue::Bytes(bytes.clone()),
         TokenValue::Int(Int::new(9434567, 32)),
     ];
