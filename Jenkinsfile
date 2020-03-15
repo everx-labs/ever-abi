@@ -383,7 +383,7 @@ pipeline {
                                     sh """
                 (cat Cargo.toml | \
                 sed 's/ton_types = .*/ton_types = { path = \"\\/tonlabs\\/ton-labs-types\" }/g' | \
-                sed 's/ton_block = .*/ton_block = { path = \"\\/tonlabs\\/ton-labs-block\" }/g' | \
+                sed 's/ton_block = .*/ton_block = { path = \"\\/tonlabs\\/ton-labs-block\" }/g') > tmp.toml \
                 rm Cargo.toml
                 mv ./tmp.toml ./Cargo.toml
                                     """
