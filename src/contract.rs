@@ -242,10 +242,16 @@ impl Contract {
         &self.functions
     }
 
+    /// Returns header parameters set
+    pub fn header(&self) -> &Vec<Param> {
+        &self.header
+    }
+
     /// Returns events collection
     pub fn events(&self) -> &HashMap<String, Event> {
         &self.events
     }
+
     /// Returns data collection
     pub fn data(&self) -> &HashMap<String, DataItem> {
         &self.data
