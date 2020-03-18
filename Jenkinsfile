@@ -84,7 +84,7 @@ def buildBranchesMap() {
     }
     
     if (params.branch_ton_labs_types == '') {
-        G_branches.put('ton-labs-types', "master")
+        G_branches.put('ton-labs-types', "release-candidate")
     } else {
         G_branches.put('ton-labs-types', params.branch_ton_labs_types)
     }
@@ -444,6 +444,7 @@ pipeline {
                                 script {
                                     sh """
                                         cd /tonlabs/ton-labs-abi
+                                        cargo update
                                         cargo test --release --features ci_run
                                     """
                                 }
