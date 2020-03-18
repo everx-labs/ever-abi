@@ -444,6 +444,7 @@ pipeline {
                                 script {
                                     sh """
                                         cd /tonlabs/ton-labs-abi
+                                        cargo update
                                         cargo test --release --features ci_run
                                     """
                                 }
