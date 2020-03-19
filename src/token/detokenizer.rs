@@ -32,8 +32,6 @@ impl Detokenizer {
     }
 
     pub fn detokenize_to_json_value(params: &[Param], tokens: &[Token]) -> AbiResult<serde_json::Value> {
-        //println!("Params len = {}, tokens len = {}", params.len(), tokens.len());
-
         if params.len() != tokens.len() {
             bail!(AbiErrorKind::WrongParametersCount { 
                 expected: params.len(),
@@ -46,6 +44,18 @@ impl Detokenizer {
         }
 
         Ok(serde_json::to_value(&FunctionParams{params: tokens})?)
+    }
+
+    pub fn detokenize_optional(tokens: &HashMap<String, TokenValue>) -> AbiResult<String> {
+        Ok(
+            serde_json::to_string(
+                &Self::detokenize_optional_to_json_value(tokens)?
+            )?
+        )
+    }
+
+    pub fn detokenize_optional_to_json_value(tokens: &HashMap<String, TokenValue>) -> AbiResult<serde_json::Value> {
+        serde_json::to_value(&tokens).map_err(|err| err.into())
     }
 }
 
