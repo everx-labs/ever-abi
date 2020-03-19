@@ -14,9 +14,9 @@
 
 use num_bigint::{BigInt, BigUint};
 
-use ton_types::{BuilderData, Cell, IBitstring, SliceData};
+use ton_types::{BuilderData, Cell, IBitstring, SliceData, Result as BlockResult};
 use ton_types::dictionary::{HashmapE, HashmapType};
-use ton_block::{AccountId, AnycastInfo, BlockResult, Grams, MsgAddress, Serializable};
+use ton_block::{AccountId, AnycastInfo, Grams, MsgAddress, Serializable};
 
 use {Int, Param, ParamType, Token, TokenValue, Uint};
 
