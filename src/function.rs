@@ -214,6 +214,9 @@ impl Function {
         if !internal {
             for param in &self.header {
                 if let Some(token) = header_tokens.get(&param.name) {
+                    if !token.type_check(&param.kind) {
+                        return Err(AbiErrorKind::WrongParameterType.into());
+                    }
                     vec.push(token.pack_into_chain(self.abi_version)?);
                 } else {
                     vec.push(TokenValue::get_default_value_for_header(&param.kind)?.pack_into_chain(self.abi_version)?);
