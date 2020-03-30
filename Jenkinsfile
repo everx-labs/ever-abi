@@ -146,6 +146,10 @@ def buildBranchesMap() {
 
 def buildParams() {
     buildImagesMap()
+    if(!isUpstream() && !(GIT_BRANCH == 'master' || GIT_BRANCH ==~ '^PR-[0-9]+')) {
+        G_images['ton-labs-types'] = 'tonlabs/ton-labs-types:latest'
+        G_images['ton-labs-block'] = 'tonlabs/ton-labs-block:latest'
+    }
     buildBranchesMap()
     G_params = []
     params.each { key, value ->
@@ -171,7 +175,7 @@ def buildParams() {
 pipeline {
     tools {nodejs "Node12.8.0"}
     options {
-        buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '1')
+        buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '20')
         disableConcurrentBuilds()
         parallelsAlwaysFailFast()
     }
@@ -306,13 +310,14 @@ pipeline {
                         G_binversion = sh (script: "node tonVersion.js .", returnStdout: true).trim()
                     }
 
-
-                    withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
-                        identity = awsIdentity()
-                        s3Upload \
-                            bucket: 'sdkbinaries.tonlabs.io', \
-                            includePathPattern:'version.json', path: '', \
-                            workingDir:'.'
+                    if(!isUpstream() && (GIT_BRANCH == 'master' || GIT_BRANCH ==~ '^PR-[0-9]+')) {
+                        withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
+                            identity = awsIdentity()
+                            s3Upload \
+                                bucket: 'sdkbinaries.tonlabs.io', \
+                                includePathPattern:'version.json', path: '', \
+                                workingDir:'.'
+                        }
                     }
                 }
             }
@@ -346,7 +351,7 @@ pipeline {
         stage('Before stages') {
             when {
                 expression {
-                    return !isUpstream()
+                    return !isUpstream() && (GIT_BRANCH == 'master' || GIT_BRANCH ==~ '^PR-[0-9]+')
                 }
             }
             steps {
@@ -363,7 +368,7 @@ pipeline {
                 stage('Parallel stages') {
                     when {
                         expression {
-                            return !isUpstream()
+                            return !isUpstream() && (GIT_BRANCH == 'master' || GIT_BRANCH ==~ '^PR-[0-9]+')
                         }
                     }
                     steps {
@@ -461,7 +466,7 @@ pipeline {
         stage('After stages') {
             when {
                 expression {
-                    return !isUpstream()
+                    return !isUpstream() && (GIT_BRANCH == 'master' || GIT_BRANCH ==~ '^PR-[0-9]+')
                 }
             }
             steps {
