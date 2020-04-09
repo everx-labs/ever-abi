@@ -19,7 +19,7 @@ use {Param, ParamType};
 use std::collections::HashMap;
 use std::fmt;
 use ton_block::{Grams, MsgAddress};
-use ton_types::Cell;
+use ton_types::{Result, Cell};
 use crate::error::*;
 use chrono::prelude::Utc;
 
@@ -239,7 +239,7 @@ impl TokenValue {
         }
     }
 
-    pub fn get_default_value_for_header(param_type: &ParamType) -> AbiResult<Self> {
+    pub fn get_default_value_for_header(param_type: &ParamType) -> Result<Self> {
         match param_type {
             ParamType::Time => Ok(TokenValue::Time(Utc::now().timestamp_millis() as u64)),
             ParamType::Expire => Ok(TokenValue::Expire(u32::max_value())),

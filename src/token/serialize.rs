@@ -14,27 +14,27 @@
 
 use super::*;
 
-use ton_types::{BuilderData, IBitstring};
+use ton_types::{Result, BuilderData, IBitstring};
 use ton_block::Serializable;
 use ton_types::dictionary::HashmapE;
 
 use num_bigint::{BigInt, Sign};
 
 impl TokenValue {
-    pub fn pack_values_into_chain(tokens: &[Token], mut cells: Vec<BuilderData>, abi_version: u8) -> AbiResult<BuilderData> {
+    pub fn pack_values_into_chain(tokens: &[Token], mut cells: Vec<BuilderData>, abi_version: u8) -> Result<BuilderData> {
         for token in tokens {
             cells.append(&mut token.value.write_to_cells(abi_version)?);
         }
         Self::pack_cells_into_chain(cells, abi_version)
     }
 
-    pub fn pack_into_chain(&self, abi_version: u8) -> AbiResult<BuilderData> {
+    pub fn pack_into_chain(&self, abi_version: u8) -> Result<BuilderData> {
         Self::pack_cells_into_chain(self.write_to_cells(abi_version)?, abi_version)
     }
 
     // first cell is resulting builder
     // every next cell: put data to root
-    fn pack_cells_into_chain(mut cells: Vec<BuilderData>, abi_version: u8) -> AbiResult<BuilderData> {
+    fn pack_cells_into_chain(mut cells: Vec<BuilderData>, abi_version: u8) -> Result<BuilderData> {
         cells.reverse();
         let mut packed_cells = match cells.pop() {
             Some(cell) => vec![cell],
@@ -83,7 +83,7 @@ impl TokenValue {
     }
 
 
-    pub fn write_to_cells(&self, abi_version: u8) -> AbiResult<Vec<BuilderData>> {
+    pub fn write_to_cells(&self, abi_version: u8) -> Result<Vec<BuilderData>> {
         match self {
             TokenValue::Uint(uint) => Self::write_uint(uint),
             TokenValue::Int(int) => Self::write_int(int),
@@ -108,7 +108,7 @@ impl TokenValue {
         }
     }
 
-    fn write_int(value: &Int) -> AbiResult<Vec<BuilderData>> {
+    fn write_int(value: &Int) -> Result<Vec<BuilderData>> {
         let vec = value.number.to_signed_bytes_be();
         let vec_bits_length = vec.len() * 8;
 
@@ -139,7 +139,7 @@ impl TokenValue {
         Ok(vec![builder])
     }
 
-    fn write_uint(value: &Uint) -> AbiResult<Vec<BuilderData>> {
+    fn write_uint(value: &Uint) -> Result<Vec<BuilderData>> {
         let int = Int{
             number: BigInt::from_biguint(Sign::Plus, value.number.clone()),
             size: value.size};
@@ -147,13 +147,13 @@ impl TokenValue {
         Self::write_int(&int)
     }
 
-    fn write_bool(value: &bool) -> AbiResult<Vec<BuilderData>> {
+    fn write_bool(value: &bool) -> Result<Vec<BuilderData>> {
         let mut builder = BuilderData::new();
         builder.append_bit_bool(value.clone())?;
         Ok(vec![builder])
     }
 
-    fn write_cell(cell: &Cell) -> AbiResult<Vec<BuilderData>> {
+    fn write_cell(cell: &Cell) -> Result<Vec<BuilderData>> {
         let mut builder = BuilderData::new();
         builder.append_reference_cell(cell.clone());
         Ok(vec![builder])
@@ -161,7 +161,7 @@ impl TokenValue {
 
     // creates dictionary with indexes of an array items as keys and items as values
     // and prepends dictionary to cell
-    fn put_array_into_dictionary(array: &[TokenValue], abi_version: u8) -> AbiResult<HashmapE> {
+    fn put_array_into_dictionary(array: &[TokenValue], abi_version: u8) -> Result<HashmapE> {
         let mut map = HashmapE::with_bit_len(32);
 
         for i in 0..array.len() {
@@ -175,7 +175,7 @@ impl TokenValue {
         Ok(map)
     }
 
-    fn write_array(value: &Vec<TokenValue>, abi_version: u8) -> AbiResult<Vec<BuilderData>> {
+    fn write_array(value: &Vec<TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
         let map = Self::put_array_into_dictionary(value, abi_version)?;
 
         let mut builder = BuilderData::new();
@@ -186,13 +186,13 @@ impl TokenValue {
         Ok(vec![builder])
     }
 
-    fn write_fixed_array(value: &Vec<TokenValue>, abi_version: u8) -> AbiResult<Vec<BuilderData>> {
+    fn write_fixed_array(value: &Vec<TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
         let map = Self::put_array_into_dictionary(value, abi_version)?;
 
         Ok(vec![map.write_to_new_cell()?])
     }
 
-    fn write_bytes(data: &[u8], abi_version: u8) -> AbiResult<Vec<BuilderData>> {
+    fn write_bytes(data: &[u8], abi_version: u8) -> Result<Vec<BuilderData>> {
         let cell_len = BuilderData::bits_capacity() / 8;
         let mut len = data.len();
         let mut cell_capacity = if abi_version == 1 {
@@ -219,7 +219,7 @@ impl TokenValue {
         Ok(vec![builder])
     }
 
-    fn write_map(key_type: &ParamType, value: &HashMap<String, TokenValue>, abi_version: u8) -> AbiResult<Vec<BuilderData>> {
+    fn write_map(key_type: &ParamType, value: &HashMap<String, TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
         let bit_len = match key_type {
             ParamType::Int(size) | ParamType::Uint(size) => *size,
             _ => bail!(AbiErrorKind::InvalidData { msg: "Only int and uint types can be map keys".to_owned() } )
@@ -245,7 +245,7 @@ impl TokenValue {
         Ok(vec![builder])
     }
 
-    fn write_public_key(data: &Option<ed25519_dalek::PublicKey>) -> AbiResult<Vec<BuilderData>> {
+    fn write_public_key(data: &Option<ed25519_dalek::PublicKey>) -> Result<Vec<BuilderData>> {
         let mut builder = BuilderData::new();
         if let Some(key) = data {
             builder.append_bit_one()?;

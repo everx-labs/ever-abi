@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use ed25519_dalek::*;
 use serde_json::Value;
 use token::{Detokenizer, Tokenizer};
-use ton_types::{BuilderData, SliceData};
+use ton_types::{Result, BuilderData, SliceData};
 use {Contract, TokenValue};
 use crate::error::*;
 
@@ -29,7 +29,7 @@ pub fn encode_function_call(
     parameters: String,
     internal: bool,
     pair: Option<&Keypair>,
-) -> AbiResult<BuilderData> {
+) -> Result<BuilderData> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let function = contract.function(&function)?;
@@ -59,7 +59,7 @@ pub fn prepare_function_call_for_sign(
     function: String,
     header: Option<String>,
     parameters: String,
-) -> AbiResult<(BuilderData, Vec<u8>)> {
+) -> Result<(BuilderData, Vec<u8>)> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let function = contract.function(&function)?;
@@ -83,7 +83,7 @@ pub fn add_sign_to_function_call(
     signature: &[u8],
     public_key: Option<&[u8]>,
     function_call: SliceData
-) -> AbiResult<BuilderData> {
+) -> Result<BuilderData> {
     let contract = Contract::load(abi.as_bytes())?;
     contract.add_sign_to_encoded_input(signature, public_key, function_call)
 }
@@ -94,7 +94,7 @@ pub fn decode_function_response(
     function: String,
     response: SliceData,
     internal: bool,
-) -> AbiResult<String> {
+) -> Result<String> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let function = contract.function(&function)?;
@@ -114,7 +114,7 @@ pub fn decode_unknown_function_response(
     abi: String,
     response: SliceData,
     internal: bool,
-) -> AbiResult<DecodedMessage> {
+) -> Result<DecodedMessage> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let result = contract.decode_output(response, internal)?;
@@ -132,7 +132,7 @@ pub fn decode_unknown_function_call(
     abi: String,
     response: SliceData,
     internal: bool,
-) -> AbiResult<DecodedMessage> {
+) -> Result<DecodedMessage> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let result = contract.decode_input(response, internal)?;
@@ -146,7 +146,7 @@ pub fn decode_unknown_function_call(
 }
 
 /// Changes initial values for public contract variables
-pub fn update_contract_data(abi: &str, parameters: &str, data: SliceData) -> AbiResult<SliceData> {
+pub fn update_contract_data(abi: &str, parameters: &str, data: SliceData) -> Result<SliceData> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let data_json: serde_json::Value = serde_json::from_str(parameters)?;

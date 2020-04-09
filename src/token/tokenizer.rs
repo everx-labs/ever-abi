@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use std::io::Cursor;
 use num_bigint::{Sign, BigInt, BigUint};
 use ton_block::{Grams, MsgAddress};
-use ton_types::BuilderData;
+use ton_types::{error, Result, BuilderData};
 use ton_types::cells_serialization::deserialize_tree_of_cells;
 use crate::error::*;
 use std::str::FromStr;
@@ -30,7 +30,7 @@ pub struct Tokenizer;
 
 impl Tokenizer {
     /// Tries to parse a JSON value as a token of given type.
-    pub fn tokenize_parameter(param: &ParamType, value: &Value) -> AbiResult<TokenValue> {
+    pub fn tokenize_parameter(param: &ParamType, value: &Value) -> Result<TokenValue> {
         match param {
             ParamType::Unknown => bail!(AbiErrorKind::NotImplemented),
             ParamType::Uint(size) => Self::tokenize_uint(*size, value),
@@ -58,7 +58,7 @@ impl Tokenizer {
     }
 
     /// Tries to parse parameters from JSON values to tokens.
-    pub fn tokenize_all_params(params: &[Param], values: &Value) -> AbiResult<Vec<Token>> {
+    pub fn tokenize_all_params(params: &[Param], values: &Value) -> Result<Vec<Token>> {
         if let Value::Object(map) = values {
             if map.len() != params.len() {
                 bail!(AbiErrorKind::WrongParametersCount { 
@@ -84,7 +84,7 @@ impl Tokenizer {
         params: &[Param],
         values: &Value,
         default_values: &HashMap<String, TokenValue>
-    ) -> AbiResult<HashMap<String, TokenValue>> {
+    ) -> Result<HashMap<String, TokenValue>> {
         if let Value::Object(map) = values {
             let mut map = map.clone();
             let mut tokens = HashMap::new();
@@ -109,7 +109,7 @@ impl Tokenizer {
     }
 
     /// Tries to read tokens array from `Value`
-    fn read_array(param: &ParamType, value: &Value) -> AbiResult<Vec<TokenValue>> {
+    fn read_array(param: &ParamType, value: &Value) -> Result<Vec<TokenValue>> {
         if let Value::Array(array) = value {
             let mut tokens = Vec::new();
             for value in array {
@@ -126,7 +126,7 @@ impl Tokenizer {
     fn tokenize_fixed_array(
         param: &ParamType,
         size: usize, value: &Value
-    ) -> AbiResult<TokenValue> {
+    ) -> Result<TokenValue> {
         let vec = Self::read_array(param, value)?;
         match vec.len() == size {
             true => Ok(TokenValue::FixedArray(vec)),
@@ -135,14 +135,14 @@ impl Tokenizer {
     }
 
     /// Tries to parse a value as a vector of tokens.
-    fn tokenize_array(param: &ParamType, value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_array(param: &ParamType, value: &Value) -> Result<TokenValue> {
         let vec = Self::read_array(param, value)?;
 
         Ok(TokenValue::Array(vec))
     }
 
     /// Tries to parse a value as a bool.
-    fn tokenize_bool(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_bool(value: &Value) -> Result<TokenValue> {
         match value {
             Value::Bool(value) => Ok(TokenValue::Bool(value.to_owned())),
             Value::String(string) => {
@@ -157,7 +157,7 @@ impl Tokenizer {
     }
 
     /// Tries to read integer number from `Value`
-    fn read_int(value: &Value) -> AbiResult<BigInt> {
+    fn read_int(value: &Value) -> Result<BigInt> {
         if let Some(number) = value.as_i64() {
             Ok(BigInt::from(number))
         } else if let Some(string) = value.as_str() {
@@ -179,7 +179,7 @@ impl Tokenizer {
     }
 
     /// Tries to read integer number from `Value`
-    fn read_uint(value: &Value) -> AbiResult<BigUint> {
+    fn read_uint(value: &Value) -> Result<BigUint> {
         if let Some(number) = value.as_u64() {
             Ok(BigUint::from(number))
         } else if let Some(string) = value.as_str() {
@@ -217,7 +217,7 @@ impl Tokenizer {
     }
 
     /// Tries to parse a value as grams.
-    fn tokenize_gram(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_gram(value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
         if !Self::check_uint_size(&number, 120) {
@@ -228,7 +228,7 @@ impl Tokenizer {
     }
 
     /// Tries to parse a value as unsigned integer.
-    fn tokenize_uint(size: usize, value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_uint(size: usize, value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
         if !Self::check_uint_size(&number, size + 1) {
@@ -239,7 +239,7 @@ impl Tokenizer {
     }
 
     /// Tries to parse a value as signed integer.
-    fn tokenize_int(size: usize, value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_int(size: usize, value: &Value) -> Result<TokenValue> {
         let number = Self::read_int(value)?;
 
         if !Self::check_int_size(&number, size) {
@@ -249,7 +249,7 @@ impl Tokenizer {
         }
     }
 
-    fn tokenize_cell(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_cell(value: &Value) -> Result<TokenValue> {
         let string = value
             .as_str()
             .ok_or(AbiErrorKind::WrongDataFormat { val: value.clone() } )?;
@@ -265,7 +265,7 @@ impl Tokenizer {
         Ok(TokenValue::Cell(cell))
     }
 
-    fn tokenize_hashmap(key_type: &ParamType, value_type: &ParamType, map_value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_hashmap(key_type: &ParamType, value_type: &ParamType, map_value: &Value) -> Result<TokenValue> {
         if let Value::Object(map) = map_value {
             let mut new_map = HashMap::<String, TokenValue>::new();
             for (key, value) in map.iter() {
@@ -278,7 +278,7 @@ impl Tokenizer {
         }
     }
 
-    fn tokenize_bytes(value: &Value, size: Option<usize>) -> AbiResult<TokenValue> {
+    fn tokenize_bytes(value: &Value, size: Option<usize>) -> Result<TokenValue> {
         let string = value
             .as_str()
             .ok_or(AbiErrorKind::WrongDataFormat { val: value.clone() } )?;
@@ -296,17 +296,17 @@ impl Tokenizer {
     }
 
     /// Tries to parse a value as tuple.
-    fn tokenize_tuple(params: &Vec<Param>, value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_tuple(params: &Vec<Param>, value: &Value) -> Result<TokenValue> {
         let tokens = Self::tokenize_all_params(params, value)?;
 
         Ok(TokenValue::Tuple(tokens))
     }
 
     /// Tries to parse a value as time.
-    fn tokenize_time(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_time(value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
-        let time = number.to_u64().ok_or(AbiError::from(AbiErrorKind::InvalidInputData {
+        let time = number.to_u64().ok_or(error!(AbiErrorKind::InvalidInputData {
             msg: "`time` value should fit into u64".into()
         }))?;
 
@@ -314,17 +314,17 @@ impl Tokenizer {
     }
 
     /// Tries to parse a value as expire.
-    fn tokenize_expire(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_expire(value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
-        let expire = number.to_u32().ok_or(AbiError::from(AbiErrorKind::InvalidInputData {
+        let expire = number.to_u32().ok_or(error!(AbiErrorKind::InvalidInputData {
             msg: "`expire` value should fit into u32".into()
         }))?;
 
         Ok(TokenValue::Expire(expire))
     }
 
-    fn tokenize_public_key(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_public_key(value: &Value) -> Result<TokenValue> {
         let string = value
             .as_str()
             .ok_or(AbiErrorKind::WrongDataFormat { val: value.clone() } )?;

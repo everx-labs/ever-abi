@@ -17,13 +17,13 @@ use std::collections::HashMap;
 use {Param, ParamType, Token, TokenValue};
 use num_bigint::{BigInt, BigUint};
 use ton_types::cells_serialization::serialize_tree_of_cells;
-use ton_types::Cell;
+use ton_types::{Result, Cell};
 use crate::error::*;
 
 pub struct Detokenizer;
 
 impl Detokenizer {
-    pub fn detokenize(params: &[Param], tokens: &[Token]) -> AbiResult<String> {
+    pub fn detokenize(params: &[Param], tokens: &[Token]) -> Result<String> {
         Ok(
             serde_json::to_string(
                 &Self::detokenize_to_json_value(params, tokens)?
@@ -31,7 +31,7 @@ impl Detokenizer {
         )
     }
 
-    pub fn detokenize_to_json_value(params: &[Param], tokens: &[Token]) -> AbiResult<serde_json::Value> {
+    pub fn detokenize_to_json_value(params: &[Param], tokens: &[Token]) -> Result<serde_json::Value> {
         if params.len() != tokens.len() {
             bail!(AbiErrorKind::WrongParametersCount { 
                 expected: params.len(),
@@ -46,7 +46,7 @@ impl Detokenizer {
         Ok(serde_json::to_value(&FunctionParams{params: tokens})?)
     }
 
-    pub fn detokenize_optional(tokens: &HashMap<String, TokenValue>) -> AbiResult<String> {
+    pub fn detokenize_optional(tokens: &HashMap<String, TokenValue>) -> Result<String> {
         Ok(
             serde_json::to_string(
                 &Self::detokenize_optional_to_json_value(tokens)?
@@ -54,7 +54,7 @@ impl Detokenizer {
         )
     }
 
-    pub fn detokenize_optional_to_json_value(tokens: &HashMap<String, TokenValue>) -> AbiResult<serde_json::Value> {
+    pub fn detokenize_optional_to_json_value(tokens: &HashMap<String, TokenValue>) -> Result<serde_json::Value> {
         serde_json::to_value(&tokens).map_err(|err| err.into())
     }
 }
@@ -64,7 +64,7 @@ pub struct FunctionParams<'a> {
 }
 
 impl<'a> Serialize for FunctionParams<'a> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -79,7 +79,7 @@ impl<'a> Serialize for FunctionParams<'a> {
 }
 
 impl Token {
-    pub fn detokenize_big_int<S>(number: &BigInt, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn detokenize_big_int<S>(number: &BigInt, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -94,7 +94,7 @@ impl Token {
         serializer.serialize_str(&int_str)
     }
 
-    pub fn detokenize_big_uint<S>(number: &BigUint, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn detokenize_big_uint<S>(number: &BigUint, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -103,7 +103,7 @@ impl Token {
         serializer.serialize_str(&uint_str)
     }
 
-    pub fn detokenize_hashmap<S>(_key_type: &ParamType, values: &HashMap<String, TokenValue>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn detokenize_hashmap<S>(_key_type: &ParamType, values: &HashMap<String, TokenValue>, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -114,7 +114,7 @@ impl Token {
         map.end()
     }
 
-    pub fn detokenize_cell<S>(cell: &Cell, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn detokenize_cell<S>(cell: &Cell, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -126,7 +126,7 @@ impl Token {
         serializer.serialize_str(&data)
     }
 
-    pub fn detokenize_bytes<S>(arr: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn detokenize_bytes<S>(arr: &Vec<u8>, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -134,7 +134,7 @@ impl Token {
         serializer.serialize_str(&data)
     }
 
-    pub fn detokenize_public_key<S>(value: &Option<ed25519_dalek::PublicKey>, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn detokenize_public_key<S>(value: &Option<ed25519_dalek::PublicKey>, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -147,7 +147,7 @@ impl Token {
 }
 
 impl Serialize for TokenValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
