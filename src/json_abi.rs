@@ -12,13 +12,14 @@
 * limitations under the License.
 */
 
-use std::collections::HashMap;
-use ed25519_dalek::*;
+use crate::{
+    error::AbiError, contract::Contract, token::{Detokenizer, Tokenizer, TokenValue}
+};
+
+use ed25519_dalek::Keypair;
 use serde_json::Value;
-use token::{Detokenizer, Tokenizer};
+use std::collections::HashMap;
 use ton_types::{Result, BuilderData, SliceData};
-use {Contract, TokenValue};
-use crate::error::*;
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
 /// which can be used as message body for calling contract
@@ -35,7 +36,7 @@ pub fn encode_function_call(
     let function = contract.function(&function)?;
 
     let mut header_tokens = if let Some(header) = header {
-        let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+        let v: Value = serde_json::from_str(&header).map_err(|err| AbiError::SerdeError { err } )?;
         Tokenizer::tokenize_optional_params(function.header_params(), &v, &HashMap::new())?
     } else {
         HashMap::new()
@@ -45,7 +46,7 @@ pub fn encode_function_call(
         header_tokens.insert("pubkey".to_owned(), TokenValue::PublicKey(pair.map(|pair| pair.public)));
     }
 
-    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err } )?;
     let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
 
     function.encode_input(&header_tokens, &input_tokens, internal, pair)
@@ -65,13 +66,13 @@ pub fn prepare_function_call_for_sign(
     let function = contract.function(&function)?;
 
     let header_tokens = if let Some(header) = header {
-        let v: Value = serde_json::from_str(&header).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+        let v: Value = serde_json::from_str(&header).map_err(|err| AbiError::SerdeError { err } )?;
         Tokenizer::tokenize_optional_params(function.header_params(), &v, &HashMap::new())?
     } else {
         HashMap::new()
     };
 
-    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiErrorKind::SerdeError { err } )?;
+    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err } )?;
     let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
 
     function.create_unsigned_call(&header_tokens, &input_tokens, false, true)

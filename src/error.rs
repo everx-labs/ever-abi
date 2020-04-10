@@ -13,7 +13,7 @@
 */
 
 #[derive(Debug, failure::Fail)]
-pub enum AbiErrorKind {
+pub enum AbiError {
 
     #[fail(display = "Invalid data: {}", msg)]
     InvalidData {

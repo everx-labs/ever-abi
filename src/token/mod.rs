@@ -13,14 +13,14 @@
 */
 
 //! TON ABI params.
-use int::{Int, Uint};
-use {Param, ParamType};
+use crate::{
+    error::AbiError, int::{Int, Uint}, param::Param, param_type::ParamType
+};
 
 use std::collections::HashMap;
 use std::fmt;
 use ton_block::{Grams, MsgAddress};
 use ton_types::{Result, Cell};
-use crate::error::*;
 use chrono::prelude::Utc;
 
 mod tokenizer;
@@ -245,7 +245,7 @@ impl TokenValue {
             ParamType::Expire => Ok(TokenValue::Expire(u32::max_value())),
             ParamType::PublicKey => Ok(TokenValue::PublicKey(None)),
             any_type => Err(
-                AbiErrorKind::InvalidInputData {
+                AbiError::InvalidInputData {
                     msg: format!(
                         "Type {} doesn't have default value and must be explicitly defined",
                         any_type)}.into())

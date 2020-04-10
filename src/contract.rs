@@ -12,17 +12,18 @@
 * limitations under the License.
 */
 
+use crate::{
+    error::AbiError, event::Event, function::Function, param::Param, 
+    param_type::ParamType, token::Token
+};
 use std::io;
 use std::collections::HashMap;
 use serde::de::{Error as SerdeError};
 use serde_json;
-use {Function, Event, Token, Param, ParamType};
-use ton_types::{Result, SliceData, BuilderData};
-use ton_types::dictionary::HashmapE;
-use crate::error::*;
 use ton_block::Serializable;
+use ton_types::{BuilderData, error, fail, HashmapE, Result, SliceData};
 
-pub const   SUPPORTED_VERSIONS: [u8; 2] = [1, 2];
+pub const SUPPORTED_VERSIONS: [u8; 2] = [1, 2];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct DataItem {
@@ -152,12 +153,12 @@ impl Contract {
         let version = serde_contract.abi_version;
 
         if !SUPPORTED_VERSIONS.contains(&version) {
-            bail!(AbiErrorKind::WrongVersion{ version: serde_contract.abi_version });
+            fail!(AbiError::WrongVersion{ version: serde_contract.abi_version });
         }
 
         if version == 1 {
             if serde_contract.header.len() != 0 {
-                return Err(AbiErrorKind::InvalidData {
+                return Err(AbiError::InvalidData {
                     msg: "Header parameters are not supported in ABI v1".into()
                 }.into());
             }
@@ -201,7 +202,7 @@ impl Contract {
     {
         for param in params {
             if !param.kind.is_supported(abi_version) {
-                return Err(AbiErrorKind::InvalidData {
+                return Err(AbiError::InvalidData {
                     msg: "Header parameters are not supported in ABI v1".into()
                 }.into());
             }
@@ -211,7 +212,7 @@ impl Contract {
 
     /// Returns `Function` struct with provided function name.
     pub fn function(&self, name: &str) -> Result<&Function> {
-        self.functions.get(name).ok_or(AbiErrorKind::InvalidName { name: name.to_owned() }.into())
+        self.functions.get(name).ok_or(AbiError::InvalidName { name: name.to_owned() }.into())
     }
 
     /// Returns `Function` struct with provided function id.
@@ -223,7 +224,7 @@ impl Contract {
             }
         }
 
-       Err(AbiErrorKind::InvalidFunctionId { id }.into())
+       Err(AbiError::InvalidFunctionId { id }.into())
     }
 
     /// Returns `Event` struct with provided function id.
@@ -234,7 +235,7 @@ impl Contract {
             }
         }
 
-        Err(AbiErrorKind::InvalidFunctionId { id }.into())
+        Err(AbiError::InvalidFunctionId { id }.into())
     }
 
     /// Returns functions collection
@@ -314,7 +315,7 @@ impl Contract {
             let key = self.data
                 .get(&token.name)
                 .ok_or(
-                    AbiErrorKind::InvalidData { msg: format!("data item {} not found in contract ABI", token.name) }
+                    AbiError::InvalidData { msg: format!("data item {} not found in contract ABI", token.name) }
                 )?.key;
 
                 map.set(

@@ -12,13 +12,15 @@
 * limitations under the License.
 */
 
-use super::*;
-
-use ton_types::{Result, BuilderData, IBitstring};
-use ton_block::Serializable;
-use ton_types::dictionary::HashmapE;
+use crate::{
+    error::AbiError, int::{Int, Uint}, param_type::ParamType, 
+    token::{Token, Tokenizer, TokenValue}
+};
 
 use num_bigint::{BigInt, Sign};
+use std::collections::HashMap;
+use ton_block::Serializable;
+use ton_types::{BuilderData, Cell, error, fail, HashmapE, IBitstring, Result};
 
 impl TokenValue {
     pub fn pack_values_into_chain(tokens: &[Token], mut cells: Vec<BuilderData>, abi_version: u8) -> Result<BuilderData> {
@@ -38,7 +40,7 @@ impl TokenValue {
         cells.reverse();
         let mut packed_cells = match cells.pop() {
             Some(cell) => vec![cell],
-            None => bail!(AbiErrorKind::InvalidData { msg: "No cells".to_owned() } )
+            None => fail!(AbiError::InvalidData { msg: "No cells".to_owned() } )
         };
         while let Some(cell) = cells.pop() {
             let builder = packed_cells.last_mut().unwrap();
@@ -73,7 +75,7 @@ impl TokenValue {
                 None => return Ok(cell)
             }
         }
-        bail!(AbiErrorKind::NotImplemented)
+        fail!(AbiError::NotImplemented)
     }
 
     fn get_remaining(cells: &[BuilderData]) -> (usize, usize) {
@@ -222,7 +224,7 @@ impl TokenValue {
     fn write_map(key_type: &ParamType, value: &HashMap<String, TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
         let bit_len = match key_type {
             ParamType::Int(size) | ParamType::Uint(size) => *size,
-            _ => bail!(AbiErrorKind::InvalidData { msg: "Only int and uint types can be map keys".to_owned() } )
+            _ => fail!(AbiError::InvalidData { msg: "Only int and uint types can be map keys".to_owned() } )
         };
         let mut hashmap = HashmapE::with_bit_len(bit_len);
 
@@ -231,7 +233,7 @@ impl TokenValue {
 
             let mut key_vec = key.write_to_cells(abi_version)?;
             if key_vec.len() != 1 {
-                bail!(AbiErrorKind::InvalidData { msg: "Map key must 1-cell length".to_owned() } )
+                fail!(AbiError::InvalidData { msg: "Map key must 1-cell length".to_owned() } )
             };
 
             let data = Self::pack_cells_into_chain(value.write_to_cells(abi_version)?, abi_version)?;

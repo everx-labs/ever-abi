@@ -14,14 +14,14 @@
 
 //! Contract function call builder.
 
+use crate::{error::AbiError, param::Param, token::{Token, TokenValue}};
+ 
 use std::collections::HashMap;
 use sha2::{Digest, Sha256, Sha512};
-use {Param, Token, TokenValue};
 use contract::SerdeFunction;
 use ed25519_dalek::{Keypair, SIGNATURE_LENGTH};
-use ton_types::{Result, BuilderData, SliceData, Cell, IBitstring};
 use ton_block::Serializable;
-use crate::error::*;
+use ton_types::{BuilderData, Cell, error, fail, IBitstring, Result, SliceData};
 
 /// Contract function specification.
 #[derive(Debug, Clone, PartialEq)]
@@ -148,7 +148,7 @@ impl Function {
     /// Parses the ABI function output to list of tokens.
     pub fn decode_output(&self, mut data: SliceData, _internal: bool) -> Result<Vec<Token>> {
         let id = data.get_next_u32()?;
-        if id != self.get_output_id() { Err(AbiErrorKind::WrongId { id } )? }
+        if id != self.get_output_id() { Err(AbiError::WrongId { id } )? }
         TokenValue::decode_params(self.output_params(), data, self.abi_version)
     }
 
@@ -156,7 +156,7 @@ impl Function {
     pub fn decode_input(&self, data: SliceData, internal: bool) -> Result<Vec<Token>> {
         let (_, id, cursor) = Self::decode_header(self.abi_version, data, &self.header, internal)?;
 
-        if id != self.get_input_id() { Err(AbiErrorKind::WrongId { id } )? }
+        if id != self.get_input_id() { Err(AbiError::WrongId { id } )? }
 
         TokenValue::decode_params(self.input_params(), cursor, self.abi_version)
     }
@@ -215,7 +215,7 @@ impl Function {
             for param in &self.header {
                 if let Some(token) = header_tokens.get(&param.name) {
                     if !token.type_check(&param.kind) {
-                        return Err(AbiErrorKind::WrongParameterType.into());
+                        return Err(AbiError::WrongParameterType.into());
                     }
                     vec.push(token.pack_into_chain(self.abi_version)?);
                 } else {
@@ -278,7 +278,7 @@ impl Function {
         let params = self.input_params();
 
         if !Token::types_check(input, params.as_slice()) {
-            bail!(AbiErrorKind::WrongParameterType);
+            fail!(AbiError::WrongParameterType);
         }
 
         // prepare standard message
@@ -337,7 +337,7 @@ impl Function {
         if abi_version == 1 {
             // sign in reference
             if builder.references_free() == 0 {
-                bail!(AbiErrorKind::InvalidInputData { msg: "No free reference for signature".to_owned() } );
+                fail!(AbiError::InvalidInputData { msg: "No free reference for signature".to_owned() } );
             }
             if let Some(signature) = signature {
                 let mut signature = signature.to_vec();

@@ -12,22 +12,25 @@
 * limitations under the License.
 */
 
-use int::{Int, Uint};
-use {Param, ParamType};
-use serde_json;
-use super::*;
+use crate::{
+    error::AbiError, int::{Int, Uint}, param::Param, param_type::ParamType,
+    token::{Token, TokenValue}
+};
 
 use num_bigint::{BigInt, BigUint};
-use ton_types::{Result, Cell, BuilderData, SliceData, IBitstring};
-use ton_types::dictionary::{HashmapE, HashmapType};
-use ton_block::types::Grams;
+use serde_json;
+use std::collections::HashMap;
+use ton_block::{MsgAddress, types::Grams};
+use ton_types::{
+    BuilderData, Cell, error, fail, HashmapE, HashmapType, IBitstring, Result, SliceData
+};
 
 impl TokenValue {
     /// Deserializes value from `SliceData` to `TokenValue`
     pub fn read_from(param_type: &ParamType, mut cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
         match param_type {
             ParamType::Unknown => 
-                bail!(AbiErrorKind::DeserializationError { msg: "Unknown ParamType", cursor } ),
+                fail!(AbiError::DeserializationError { msg: "Unknown ParamType", cursor } ),
             ParamType::Uint(size) => Self::read_uint(*size, cursor),
             ParamType::Int(size) => Self::read_int(*size, cursor),
             ParamType::Bool => {
@@ -100,11 +103,11 @@ impl TokenValue {
                 Ok(Some(item_slice)) => {
                     let (token, item_slice) = Self::read_from(param_type, item_slice, true, abi_version)?;
                     if item_slice.remaining_references() != 0 || item_slice.remaining_bits() != 0 {
-                        bail!(AbiErrorKind::IncompleteDeserializationError { cursor: original } )
+                        fail!(AbiError::IncompleteDeserializationError { cursor: original } )
                     }
                     result.push(token);
                 }
-                _ => bail!(AbiErrorKind::DeserializationError { msg: "", cursor: original } )
+                _ => fail!(AbiError::DeserializationError { msg: "", cursor: original } )
             }
         }
 
@@ -167,7 +170,7 @@ impl TokenValue {
         }
         match size {
             Some(size) if size == data.len() => Ok((TokenValue::FixedBytes(data), cursor)),
-            Some(_) => bail!(AbiErrorKind::DeserializationError {
+            Some(_) => fail!(AbiError::DeserializationError {
                 msg: "Size of fixed bytes is not correspond to expected size",
                 cursor: original
             }),
@@ -209,7 +212,7 @@ impl TokenValue {
         }
 
         if cursor.remaining_references() != 0 || cursor.remaining_bits() != 0 {
-            bail!(AbiErrorKind::IncompleteDeserializationError { cursor })
+            fail!(AbiError::IncompleteDeserializationError { cursor })
         } else {
             Ok(tokens)
         }
@@ -226,13 +229,13 @@ fn find_next_bits(mut cursor: SliceData, bits: usize) -> Result<SliceData> {
     let original = cursor.clone();
     if cursor.remaining_bits() == 0 {
         if cursor.reference(1).is_ok() {
-            bail!(AbiErrorKind::IncompleteDeserializationError { cursor: original } )
+            fail!(AbiError::IncompleteDeserializationError { cursor: original } )
         }
         cursor = cursor.reference(0)?.into();
     }
     match cursor.remaining_bits() >= bits  {
         true => Ok(cursor),
-        false => bail!(AbiErrorKind::DeserializationError { 
+        false => fail!(AbiError::DeserializationError { 
             msg: "Not enought remaining bits in the cell", 
             cursor: original
         })
