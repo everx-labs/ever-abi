@@ -14,8 +14,8 @@
 
 use {Function, Param, Token, TokenValue};
 use contract::SerdeEvent;
-use ton_types::SliceData;
-use crate::error::*;
+use ton_types::{Result, SliceData};
+use crate::error::AbiError;
 
 /// Contract event specification.
 #[derive(Debug, Clone, PartialEq)]
@@ -82,21 +82,21 @@ impl Event {
     }
 
     /// Parses the ABI function call to list of tokens.
-    pub fn decode_input(&self, mut data: SliceData) -> AbiResult<Vec<Token>> {
+    pub fn decode_input(&self, mut data: SliceData) -> Result<Vec<Token>> {
         let id = data.get_next_u32()?;
 
-        if id != self.get_id() { Err(AbiErrorKind::WrongId { id } )? }
+        if id != self.get_id() { Err(AbiError::WrongId { id } )? }
 
         TokenValue::decode_params(&self.input_params(), data, self.abi_version)
     }
 
     /// Decodes function id from contract answer
-    pub fn decode_id(mut data: SliceData) -> AbiResult<u32> {
+    pub fn decode_id(mut data: SliceData) -> Result<u32> {
         Ok(data.get_next_u32()?)
     }
 
     /// Check if message body is related to this event
-    pub fn is_my_message(&self, data: SliceData, _internal: bool) -> AbiResult<bool> {
+    pub fn is_my_message(&self, data: SliceData, _internal: bool) -> Result<bool> {
         let decoded_id = Self::decode_id(data)?;
         Ok(self.get_id() == decoded_id)
     }

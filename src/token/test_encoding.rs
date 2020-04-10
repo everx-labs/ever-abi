@@ -14,9 +14,9 @@
 
 use num_bigint::{BigInt, BigUint};
 
-use ton_types::{BuilderData, Cell, IBitstring, SliceData, Result as BlockResult};
+use ton_types::{AccountId, Result, BuilderData, Cell, IBitstring, SliceData};
 use ton_types::dictionary::{HashmapE, HashmapType};
-use ton_block::{AccountId, AnycastInfo, Grams, MsgAddress, Serializable};
+use ton_block::{AnycastInfo, Grams, MsgAddress, Serializable};
 
 use {Int, Param, ParamType, Token, TokenValue, Uint};
 
@@ -450,7 +450,7 @@ fn test_dynamic_array_of_ints() {
 struct TupleDwordBool(u32, bool);
 
 impl Serializable for TupleDwordBool {
-    fn write_to(&self, cell: &mut BuilderData) -> BlockResult<()> {
+    fn write_to(&self, cell: &mut BuilderData) -> Result<()> {
         self.0.write_to(cell)?;
         self.1.write_to(cell)?;
         Ok(())

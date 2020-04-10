@@ -17,8 +17,8 @@ mod tokenize_tests {
     // use serde::Serialize;
     use std::collections::HashMap;
     use token::{Detokenizer, Tokenizer};
-    use ton_block::{MsgAddress, AccountId};
-    use ton_types::{BuilderData, SliceData};
+    use ton_block::{MsgAddress};
+    use ton_types::{AccountId, BuilderData, SliceData};
 
     #[test]
     fn test_tokenize_ints() {

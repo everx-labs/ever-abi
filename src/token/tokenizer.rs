@@ -13,26 +13,27 @@
 */
 
 //! ABI param and parsing for it.
-use {ParamType, Param, Uint, Int, Token, TokenValue};
+use crate::{
+    error::AbiError, int::{Int, Uint}, param::Param, param_type::ParamType,
+    token::{Token, TokenValue}
+};
+
 use serde_json::Value;
-use std::collections::HashMap;
-use std::io::Cursor;
+use std::{collections::HashMap, io::Cursor, str::FromStr};
 use num_bigint::{Sign, BigInt, BigUint};
-use ton_block::{Grams, MsgAddress};
-use ton_types::BuilderData;
-use ton_types::cells_serialization::deserialize_tree_of_cells;
-use crate::error::*;
-use std::str::FromStr;
 use num_traits::cast::ToPrimitive;
+use ton_block::{Grams, MsgAddress};
+use ton_types::{deserialize_tree_of_cells, error, fail, Result, BuilderData};
+//use ton_types::cells_serialization::deserialize_tree_of_cells;
 
 /// This struct should be used to parse string values as tokens.
 pub struct Tokenizer;
 
 impl Tokenizer {
     /// Tries to parse a JSON value as a token of given type.
-    pub fn tokenize_parameter(param: &ParamType, value: &Value) -> AbiResult<TokenValue> {
+    pub fn tokenize_parameter(param: &ParamType, value: &Value) -> Result<TokenValue> {
         match param {
-            ParamType::Unknown => bail!(AbiErrorKind::NotImplemented),
+            ParamType::Unknown => fail!(AbiError::NotImplemented),
             ParamType::Uint(size) => Self::tokenize_uint(*size, value),
             ParamType::Int(size) => Self::tokenize_int(*size, value),
             ParamType::Bool => Self::tokenize_bool(value),
@@ -44,8 +45,8 @@ impl Tokenizer {
             ParamType::Address => {
                 let address = MsgAddress::from_str(
                     &value.as_str()
-                        .ok_or(AbiErrorKind::WrongDataFormat { val: value.clone() } )?)
-                    .map_err(|_| AbiErrorKind::WrongDataFormat { val: value.clone() } )?;
+                        .ok_or(AbiError::WrongDataFormat { val: value.clone() } )?)
+                    .map_err(|_| AbiError::WrongDataFormat { val: value.clone() } )?;
                 Ok(TokenValue::Address(address))
             }
             ParamType::Bytes => Self::tokenize_bytes(value, None),
@@ -58,10 +59,10 @@ impl Tokenizer {
     }
 
     /// Tries to parse parameters from JSON values to tokens.
-    pub fn tokenize_all_params(params: &[Param], values: &Value) -> AbiResult<Vec<Token>> {
+    pub fn tokenize_all_params(params: &[Param], values: &Value) -> Result<Vec<Token>> {
         if let Value::Object(map) = values {
             if map.len() != params.len() {
-                bail!(AbiErrorKind::WrongParametersCount { 
+                fail!(AbiError::WrongParametersCount { 
                     expected: params.len(),
                     provided: map.len()
                 })
@@ -75,7 +76,7 @@ impl Tokenizer {
 
             Ok(tokens)
         } else {
-            bail!(AbiErrorKind::WrongDataFormat { val: values.clone() } )
+            fail!(AbiError::WrongDataFormat { val: values.clone() } )
         }
     }
 
@@ -84,7 +85,7 @@ impl Tokenizer {
         params: &[Param],
         values: &Value,
         default_values: &HashMap<String, TokenValue>
-    ) -> AbiResult<HashMap<String, TokenValue>> {
+    ) -> Result<HashMap<String, TokenValue>> {
         if let Value::Object(map) = values {
             let mut map = map.clone();
             let mut tokens = HashMap::new();
@@ -98,18 +99,18 @@ impl Tokenizer {
             }
             if !map.is_empty() {
                 let unknown = map.iter().map(|(key, _)| key.as_ref()).collect::<Vec<&str>>().join(", ");
-                return Err(AbiErrorKind::InvalidInputData { 
+                return Err(AbiError::InvalidInputData { 
                     msg: format!("Contract doesn't have following parameters: {}", unknown)
                 }.into());
             }
             Ok(tokens)
         } else {
-            bail!(AbiErrorKind::WrongDataFormat { val: values.clone() } )
+            fail!(AbiError::WrongDataFormat { val: values.clone() } )
         }
     }
 
     /// Tries to read tokens array from `Value`
-    fn read_array(param: &ParamType, value: &Value) -> AbiResult<Vec<TokenValue>> {
+    fn read_array(param: &ParamType, value: &Value) -> Result<Vec<TokenValue>> {
         if let Value::Array(array) = value {
             let mut tokens = Vec::new();
             for value in array {
@@ -118,7 +119,7 @@ impl Tokenizer {
             
             Ok(tokens)
         } else {
-            bail!(AbiErrorKind::WrongDataFormat { val: value.clone() } )
+            fail!(AbiError::WrongDataFormat { val: value.clone() } )
         }
     }
 
@@ -126,38 +127,38 @@ impl Tokenizer {
     fn tokenize_fixed_array(
         param: &ParamType,
         size: usize, value: &Value
-    ) -> AbiResult<TokenValue> {
+    ) -> Result<TokenValue> {
         let vec = Self::read_array(param, value)?;
         match vec.len() == size {
             true => Ok(TokenValue::FixedArray(vec)),
-            false => bail!(AbiErrorKind::InvalidParameterLength { val: value.clone() } ),
+            false => fail!(AbiError::InvalidParameterLength { val: value.clone() } ),
         }
     }
 
     /// Tries to parse a value as a vector of tokens.
-    fn tokenize_array(param: &ParamType, value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_array(param: &ParamType, value: &Value) -> Result<TokenValue> {
         let vec = Self::read_array(param, value)?;
 
         Ok(TokenValue::Array(vec))
     }
 
     /// Tries to parse a value as a bool.
-    fn tokenize_bool(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_bool(value: &Value) -> Result<TokenValue> {
         match value {
             Value::Bool(value) => Ok(TokenValue::Bool(value.to_owned())),
             Value::String(string) => {
                 match string.as_str() {
                     "true" => Ok(TokenValue::Bool(true)),
                     "false" => Ok(TokenValue::Bool(false)),
-                    _ => bail!(AbiErrorKind::InvalidParameterValue { val: value.clone() } ),
+                    _ => fail!(AbiError::InvalidParameterValue { val: value.clone() } ),
                 }
             }
-            _ => bail!(AbiErrorKind::InvalidParameterValue { val: value.clone() } ),
+            _ => fail!(AbiError::InvalidParameterValue { val: value.clone() } ),
         }
     }
 
     /// Tries to read integer number from `Value`
-    fn read_int(value: &Value) -> AbiResult<BigInt> {
+    fn read_int(value: &Value) -> Result<BigInt> {
         if let Some(number) = value.as_i64() {
             Ok(BigInt::from(number))
         } else if let Some(string) = value.as_str() {
@@ -171,15 +172,15 @@ impl Tokenizer {
             };
             match result {
                 Some(number) => Ok(number),
-                None => bail!(AbiErrorKind::InvalidParameterValue { val: value.clone() } )
+                None => fail!(AbiError::InvalidParameterValue { val: value.clone() } )
             }
         } else {
-            bail!(AbiErrorKind::WrongDataFormat { val: value.clone() } )
+            fail!(AbiError::WrongDataFormat { val: value.clone() } )
         }
     }
 
     /// Tries to read integer number from `Value`
-    fn read_uint(value: &Value) -> AbiResult<BigUint> {
+    fn read_uint(value: &Value) -> Result<BigUint> {
         if let Some(number) = value.as_u64() {
             Ok(BigUint::from(number))
         } else if let Some(string) = value.as_str() {
@@ -190,10 +191,10 @@ impl Tokenizer {
             };
             match result {
                 Some(number) => Ok(number),
-                None => bail!(AbiErrorKind::InvalidParameterValue { val: value.clone() } )
+                None => fail!(AbiError::InvalidParameterValue { val: value.clone() } )
             }
         } else {
-            bail!(AbiErrorKind::WrongDataFormat { val: value.clone() } )
+            fail!(AbiError::WrongDataFormat { val: value.clone() } )
         }
     }
 
@@ -217,55 +218,55 @@ impl Tokenizer {
     }
 
     /// Tries to parse a value as grams.
-    fn tokenize_gram(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_gram(value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
         if !Self::check_uint_size(&number, 120) {
-            bail!(AbiErrorKind::InvalidParameterValue { val: value.clone() } )
+            fail!(AbiError::InvalidParameterValue { val: value.clone() } )
         } else {
             Ok(TokenValue::Gram(Grams::from(number)))
         }
     }
 
     /// Tries to parse a value as unsigned integer.
-    fn tokenize_uint(size: usize, value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_uint(size: usize, value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
         if !Self::check_uint_size(&number, size + 1) {
-            bail!(AbiErrorKind::InvalidParameterValue { val: value.clone() } )
+            fail!(AbiError::InvalidParameterValue { val: value.clone() } )
         } else {
             Ok(TokenValue::Uint(Uint{number, size}))
         }
     }
 
     /// Tries to parse a value as signed integer.
-    fn tokenize_int(size: usize, value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_int(size: usize, value: &Value) -> Result<TokenValue> {
         let number = Self::read_int(value)?;
 
         if !Self::check_int_size(&number, size) {
-            bail!(AbiErrorKind::InvalidParameterValue { val: value.clone() } )
+            fail!(AbiError::InvalidParameterValue { val: value.clone() } )
         } else {
             Ok(TokenValue::Int(Int{number, size}))
         }
     }
 
-    fn tokenize_cell(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_cell(value: &Value) -> Result<TokenValue> {
         let string = value
             .as_str()
-            .ok_or(AbiErrorKind::WrongDataFormat { val: value.clone() } )?;
+            .ok_or(AbiError::WrongDataFormat { val: value.clone() } )?;
 
         if string.len() == 0 {
             return Ok(TokenValue::Cell(BuilderData::new().into()));
         }
 
         let data = base64::decode(string)
-            .map_err(|_| AbiErrorKind::InvalidParameterValue { val: value.clone() } )?;
+            .map_err(|_| AbiError::InvalidParameterValue { val: value.clone() } )?;
         let cell = deserialize_tree_of_cells(&mut Cursor::new(data))
-            .map_err(|_| AbiErrorKind::InvalidParameterValue { val: value.clone() } )?;
+            .map_err(|_| AbiError::InvalidParameterValue { val: value.clone() } )?;
         Ok(TokenValue::Cell(cell))
     }
 
-    fn tokenize_hashmap(key_type: &ParamType, value_type: &ParamType, map_value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_hashmap(key_type: &ParamType, value_type: &ParamType, map_value: &Value) -> Result<TokenValue> {
         if let Value::Object(map) = map_value {
             let mut new_map = HashMap::<String, TokenValue>::new();
             for (key, value) in map.iter() {
@@ -274,39 +275,39 @@ impl Tokenizer {
             }
             Ok(TokenValue::Map(key_type.clone(), new_map))
         } else {
-            bail!(AbiErrorKind::WrongDataFormat { val: map_value.clone() } )
+            fail!(AbiError::WrongDataFormat { val: map_value.clone() } )
         }
     }
 
-    fn tokenize_bytes(value: &Value, size: Option<usize>) -> AbiResult<TokenValue> {
+    fn tokenize_bytes(value: &Value, size: Option<usize>) -> Result<TokenValue> {
         let string = value
             .as_str()
-            .ok_or(AbiErrorKind::WrongDataFormat { val: value.clone() } )?;
+            .ok_or(AbiError::WrongDataFormat { val: value.clone() } )?;
         let mut data = hex::decode(string)
-            .map_err(|_| AbiErrorKind::InvalidParameterValue { val: value.clone() } )?;
+            .map_err(|_| AbiError::InvalidParameterValue { val: value.clone() } )?;
         match size {
             Some(size) => if data.len() >= size {
                 data.split_off(size);
                 Ok(TokenValue::FixedBytes(data))
             } else {
-                bail!(AbiErrorKind::InvalidParameterValue { val: value.clone() } )
+                fail!(AbiError::InvalidParameterValue { val: value.clone() } )
             }
             None => Ok(TokenValue::Bytes(data))
         }
     }
 
     /// Tries to parse a value as tuple.
-    fn tokenize_tuple(params: &Vec<Param>, value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_tuple(params: &Vec<Param>, value: &Value) -> Result<TokenValue> {
         let tokens = Self::tokenize_all_params(params, value)?;
 
         Ok(TokenValue::Tuple(tokens))
     }
 
     /// Tries to parse a value as time.
-    fn tokenize_time(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_time(value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
-        let time = number.to_u64().ok_or(AbiError::from(AbiErrorKind::InvalidInputData {
+        let time = number.to_u64().ok_or(error!(AbiError::InvalidInputData {
             msg: "`time` value should fit into u64".into()
         }))?;
 
@@ -314,28 +315,28 @@ impl Tokenizer {
     }
 
     /// Tries to parse a value as expire.
-    fn tokenize_expire(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_expire(value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
-        let expire = number.to_u32().ok_or(AbiError::from(AbiErrorKind::InvalidInputData {
+        let expire = number.to_u32().ok_or(error!(AbiError::InvalidInputData {
             msg: "`expire` value should fit into u32".into()
         }))?;
 
         Ok(TokenValue::Expire(expire))
     }
 
-    fn tokenize_public_key(value: &Value) -> AbiResult<TokenValue> {
+    fn tokenize_public_key(value: &Value) -> Result<TokenValue> {
         let string = value
             .as_str()
-            .ok_or(AbiErrorKind::WrongDataFormat { val: value.clone() } )?;
+            .ok_or(AbiError::WrongDataFormat { val: value.clone() } )?;
 
         if string.len() == 0 {
             Ok(TokenValue::PublicKey(None))
         } else {
             let data = hex::decode(string)
-                .map_err(|_| AbiErrorKind::InvalidParameterValue { val: value.clone() } )?;
+                .map_err(|_| AbiError::InvalidParameterValue { val: value.clone() } )?;
             if data.len() != ed25519_dalek::PUBLIC_KEY_LENGTH {
-                bail!(AbiErrorKind::InvalidParameterLength { val: value.clone() } )
+                fail!(AbiError::InvalidParameterLength { val: value.clone() } )
             };
             Ok(TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&data)?)))
         }

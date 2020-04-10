@@ -12,23 +12,8 @@
 * limitations under the License.
 */
 
-use failure::{Context, Fail, Backtrace};
-use std::fmt::{Formatter, Result, Display};
-
-#[derive(Debug)]
-pub struct AbiError {
-    inner: Context<AbiErrorKind>,
-}
-
-pub type AbiResult<T> = std::result::Result<T, failure::Error>;
-
-#[derive(Debug, Fail)]
-pub enum AbiErrorKind {
-
-    #[fail(display = "Block error: {}", error)]
-    BlockError {
-        error: ton_block::BlockError
-    },
+#[derive(Debug, failure::Fail)]
+pub enum AbiError {
 
     #[fail(display = "Invalid data: {}", msg)]
     InvalidData {
@@ -114,48 +99,3 @@ pub enum AbiErrorKind {
     },
 }
 
-impl AbiError {
-    pub fn kind(&self) -> &AbiErrorKind {
-        self.inner.get_context()
-    }
-}
-
-impl Fail for AbiError {
-    fn cause(&self) -> Option<&dyn Fail> {
-        self.inner.cause()
-    }
-
-    fn backtrace(&self) -> Option<&Backtrace> {
-        self.inner.backtrace()
-    }
-}
-
-impl Display for AbiError {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        Display::fmt(&self.inner, f)
-    }
-}
-
-impl From<AbiErrorKind> for AbiError {
-    fn from(kind: AbiErrorKind) -> AbiError {
-        AbiError { inner: Context::new(kind) }
-    }
-}
-
-impl From<std::num::TryFromIntError> for AbiError {
-    fn from(err: std::num::TryFromIntError) -> AbiError {
-        AbiError::from(AbiErrorKind::TryFromIntError { err })
-    }
-}
-
-impl From<std::io::Error> for AbiError {
-    fn from(err: std::io::Error) -> AbiError {
-        AbiError::from(AbiErrorKind::Io { err })
-    }
-}
-
-impl From<serde_json::Error> for AbiError {
-    fn from(err: serde_json::Error) -> AbiError {
-        AbiError::from(AbiErrorKind::SerdeError { err })
-    }
-}
