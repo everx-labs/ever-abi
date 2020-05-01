@@ -106,6 +106,7 @@ def buildBranchesMap() {
     } else {
         G_branches.put('ton-vm', params.branch_ton_vm)
     }
+
     if (params.branch_ton_labs_vm == '') {
         G_branches.put('ton-labs-vm', "release-candidate")
     } else {
