@@ -302,7 +302,7 @@ pipeline {
                 script {
                     withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
                         identity = awsIdentity()
-                        s3Download bucket: 'sdkbinaries.tonlabs.io', file: 'version.json', force: true, path: 'version.json'
+                        s3Download bucket: 'sdkbinaries-ws.tonlabs.io', file: 'version.json', force: true, path: 'version.json'
                     }
                     if(params.common_version) {
                         G_binversion = sh (script: "node tonVersion.js --set ${params.common_version} .", returnStdout: true).trim()
@@ -314,7 +314,7 @@ pipeline {
                         withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
                             identity = awsIdentity()
                             s3Upload \
-                                bucket: 'sdkbinaries.tonlabs.io', \
+                                bucket: 'sdkbinaries-ws.tonlabs.io', \
                                 includePathPattern:'version.json', path: '', \
                                 workingDir:'.'
                         }
@@ -507,7 +507,7 @@ Tests: **${G_test}**"""
                 if(!cause.matches('upstream')) {
                     withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
                         identity = awsIdentity()
-                        s3Download bucket: 'sdkbinaries.tonlabs.io', file: 'version.json', force: true, path: 'version.json'
+                        s3Download bucket: 'sdkbinaries-ws.tonlabs.io', file: 'version.json', force: true, path: 'version.json'
                     }
                     sh """
                         echo const fs = require\\(\\'fs\\'\\)\\; > decline.js
@@ -522,7 +522,7 @@ Tests: **${G_test}**"""
                     withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
                         identity = awsIdentity()
                         s3Upload \
-                            bucket: 'sdkbinaries.tonlabs.io', \
+                            bucket: 'sdkbinaries-ws.tonlabs.io', \
                             includePathPattern:'version.json', workingDir:'.'
                     }
                 }
