@@ -17,7 +17,7 @@
 use crate::{error::AbiError, param::Param, token::{Token, TokenValue}};
  
 use std::collections::HashMap;
-use sha2::{Digest, Sha256, Sha512};
+use sha2::{Digest, Sha256};
 use contract::SerdeFunction;
 use ed25519_dalek::{Keypair, SIGNATURE_LENGTH};
 use ton_block::Serializable;
@@ -190,7 +190,7 @@ impl Function {
         if !internal {
             builder = match pair {
                 Some(pair) => {
-                    let signature = pair.sign::<Sha512>(&hash).to_bytes().to_vec();
+                    let signature = pair.sign(&hash).to_bytes().to_vec();
                     Self::fill_sign(
                         self.abi_version,
                         Some(&signature),
