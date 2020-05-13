@@ -13,7 +13,6 @@
 */
 
 use ed25519_dalek::*;
-use sha2::Sha512;
 
 use ton_types::{BuilderData, SliceData};
 use ton_types::dictionary::HashmapE;
@@ -200,7 +199,7 @@ fn test_signed_call() {
 
     let expected_params = r#"{"value":"0xc","period":"0x1e"}"#;
 
-    let pair = Keypair::generate::<Sha512, _>(&mut rand::rngs::OsRng::new().unwrap());
+    let pair = Keypair::generate(&mut rand::thread_rng());
 
     let test_tree = encode_function_call(
         WALLET_ABI.to_owned(),
@@ -238,7 +237,7 @@ fn test_signed_call() {
     assert_eq!(test_tree, SliceData::from(expected_tree));
 
     let hash = test_tree.into_cell().repr_hash();
-    pair.verify::<Sha512>(hash.as_slice(), &sign).unwrap();
+    pair.verify(hash.as_slice(), &sign).unwrap();
 
     let expected_response = r#"{"value0":"0x0"}"#;
 
@@ -307,8 +306,8 @@ fn test_add_signature_full() {
     )
     .unwrap();
 
-    let pair = Keypair::generate::<Sha512, _>(&mut rand::rngs::OsRng::new().unwrap());
-    let signature = pair.sign::<Sha512>(&data_to_sign).to_bytes().to_vec();
+    let pair = Keypair::generate(&mut rand::thread_rng());
+    let signature = pair.sign(&data_to_sign).to_bytes().to_vec();
 
     let msg = add_sign_to_function_call(
         WALLET_ABI.to_owned(),
