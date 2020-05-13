@@ -13,7 +13,6 @@
 */
 
 use ed25519_dalek::*;
-use sha2::Sha512;
 
 use ton_types::{BuilderData, SliceData, IBitstring};
 use ton_types::dictionary::HashmapE;
@@ -205,7 +204,7 @@ fn test_signed_call() {
 
     let expected_params = r#"{"value":"0xc","period":"0x1e"}"#;
 
-    let pair = Keypair::generate::<Sha512, _>(&mut rand::rngs::OsRng::new().unwrap());
+    let pair = Keypair::generate(&mut rand::thread_rng());
 
     let test_tree = encode_function_call(
         WALLET_ABI.to_owned(),
@@ -247,7 +246,7 @@ fn test_signed_call() {
     assert_eq!(test_tree, SliceData::from(expected_tree));
 
     let hash = test_tree.into_cell().repr_hash();
-    pair.verify::<Sha512>(hash.as_slice(), &sign).unwrap();
+    pair.verify(hash.as_slice(), &sign).unwrap();
 
     let expected_response = r#"{"value0":"0x0"}"#;
 
@@ -284,7 +283,7 @@ fn test_not_signed_call() {
         "limitId": "0x2"
     }"#;
     let header = r#"{
-        "pubkey": "0123456789abcdeffedcba98765432100123456789abcdeffedcba9876543210",
+        "pubkey": "11c0a428b6768562df09db05326595337dbb5f8dde0e128224d4df48df760f17",
         "expire": 123
     }"#;
 
@@ -303,7 +302,7 @@ fn test_not_signed_call() {
     expected_tree.append_u32(123).unwrap();          // expire
     expected_tree.append_bit_one().unwrap();         // Some for public key
     expected_tree.append_raw(
-        &hex::decode("0123456789abcdeffedcba98765432100123456789abcdeffedcba9876543210").unwrap(),
+        &hex::decode("11c0a428b6768562df09db05326595337dbb5f8dde0e128224d4df48df760f17").unwrap(),
         32 * 8).unwrap();                            // pubkey
     expected_tree.append_u32(0x4B774C98).unwrap();   // function id
     expected_tree.append_u64(2).unwrap();            // limitId
@@ -324,8 +323,8 @@ fn test_add_signature_full() {
     )
     .unwrap();
 
-    let pair = Keypair::generate::<Sha512, _>(&mut rand::rngs::OsRng::new().unwrap());
-    let signature = pair.sign::<Sha512>(&data_to_sign).to_bytes().to_vec();
+    let pair = Keypair::generate(&mut rand::thread_rng());
+    let signature = pair.sign(&data_to_sign).to_bytes().to_vec();
 
     let msg = add_sign_to_function_call(
         WALLET_ABI.to_owned(),
