@@ -286,7 +286,7 @@ impl Tokenizer {
             .map_err(|_| AbiError::InvalidParameterValue { val: value.clone() } )?;
         match size {
             Some(size) => if data.len() >= size {
-                data.split_off(size);
+                data.truncate(size);
                 Ok(TokenValue::FixedBytes(data))
             } else {
                 fail!(AbiError::InvalidParameterValue { val: value.clone() } )

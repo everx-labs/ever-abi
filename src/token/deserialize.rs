@@ -143,15 +143,21 @@ impl TokenValue {
     -> Result<(Self, SliceData)> {
         cursor = find_next_bits(cursor, 1)?;
         let mut new_map = HashMap::new();
-        let hashmap = HashmapE::with_data(32, cursor.get_dictionary()?);
+        let bit_len = match key_type {
+            ParamType::Int(size) | ParamType::Uint(size) => *size,
+            _ => fail!(AbiError::InvalidData { msg: "Only int and uint types can be map keys".to_owned() } )
+        };
+        let hashmap = HashmapE::with_data(bit_len, cursor.get_dictionary()?);
         hashmap.iterate(&mut |key, value| -> Result<bool> {
             let key = Self::read_from(key_type, key, true, abi_version)?.0;
-            let key = serde_json::to_string(&key)?;
+            let key = serde_json::to_value(&key)?.as_str().ok_or(AbiError::InvalidData {
+                msg: "Non-ordinary key".to_owned()
+            })?.to_owned();
             let value = Self::read_from(value_type, value, true, abi_version)?.0;
             new_map.insert(key, value);
             Ok(true)
         })?;
-        Ok((TokenValue::Map(value_type.clone(), new_map), cursor))
+        Ok((TokenValue::Map(key_type.clone(), new_map), cursor))
     }
 
     fn read_bytes(size: Option<usize>, cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
