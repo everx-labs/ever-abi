@@ -11,6 +11,8 @@
 * limitations under the License.
 */
 
+use std::collections::HashMap;
+use std::iter::FromIterator;
 use num_bigint::{BigInt, BigUint};
 
 use ton_types::{AccountId, Result, BuilderData, Cell, IBitstring, SliceData};
@@ -725,5 +727,128 @@ fn test_header_params() {
         None,
         builder,
         &[1, 2],
+    );
+}
+
+fn vec_to_map<K: Serializable>(vec: &[(K, BuilderData)], size: usize) -> HashmapE {
+    let mut map = HashmapE::with_bit_len(size);
+
+    for (key, value) in vec {
+        let key = key.write_to_new_cell().unwrap();
+        map.set(key.into(), &value.into()).unwrap(); 
+    }
+
+    map
+}
+
+#[test]
+fn test_map() {
+    let bytes = vec![0x55; 32];
+    let bytes_builder = BuilderData::with_raw(bytes.clone(), bytes.len() * 8).unwrap();
+    let mut builder = BuilderData::new();
+    builder.append_reference(bytes_builder);
+
+    let bytes_map = vec_to_map(
+        &vec![
+            (1u8, builder.clone()),
+            (2u8, builder.clone()),
+            (3u8, builder.clone()),
+        ],
+        8
+    );
+    let bytes_value = TokenValue::Map(
+        ParamType::Uint(8),
+        HashMap::from_iter(
+            vec![
+                ("0x1".to_owned(), TokenValue::Bytes(bytes.clone())),
+                ("0x2".to_owned(), TokenValue::Bytes(bytes.clone())),
+                ("0x3".to_owned(), TokenValue::Bytes(bytes.clone())),
+            ]
+        )
+    );
+
+    let int_map = vec_to_map(
+        &vec![
+            (-1i16, BuilderData::with_raw((-1i128).to_be_bytes().to_vec(), 128).unwrap()),
+            (0i16, BuilderData::with_raw(0i128.to_be_bytes().to_vec(), 128).unwrap()),
+            (1i16, BuilderData::with_raw(1i128.to_be_bytes().to_vec(), 128).unwrap()),
+        ],
+        16
+    );
+    let int_value = TokenValue::Map(
+        ParamType::Int(16),
+        HashMap::from_iter(
+            vec![
+                ("-0x1".to_owned(), TokenValue::Int(Int::new(-1, 128))),
+                ("0x0".to_owned(), TokenValue::Int(Int::new(0, 128))),
+                ("0x1".to_owned(), TokenValue::Int(Int::new(1, 128))),
+            ]
+        )
+    );
+
+    let tuples_array: Vec<(u32, bool)> =
+        vec![(1, true), (2, false), (3, true), (4, false), (5, true)];
+
+        
+    let bitstring_array: Vec<(u128, BuilderData)> = tuples_array
+        .iter()
+        .map(|a| (a.0 as u128, TupleDwordBool::from(a).write_to_new_cell().unwrap()))
+        .collect();
+
+    let tuples_map = vec_to_map(&bitstring_array, 128);
+
+    let tuples_value = TokenValue::Map(
+        ParamType::Uint(128),
+        HashMap::from_iter(
+            tuples_array
+                .iter()
+                .map(|i| {
+                    (
+                        format!("0x{:x}", i.0),
+                        TokenValue::Tuple(tokens_from_values(vec![
+                            TokenValue::Uint(Uint::new(i.0 as u128, 32)),
+                            TokenValue::Bool(i.1),
+                        ]))
+                    )
+                }),
+        )
+    );
+
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+    
+    builder.append_builder(&bytes_map.write_to_new_cell().unwrap()).unwrap();
+    builder.append_builder(&int_map.write_to_new_cell().unwrap()).unwrap();
+
+    let mut builder_v2 = builder.clone();
+    builder_v2.append_builder(&tuples_map.write_to_new_cell().unwrap()).unwrap();
+    builder_v2.append_bit_zero().unwrap();
+
+    let mut second_builder = BuilderData::new();
+    second_builder.append_builder(&tuples_map.write_to_new_cell().unwrap()).unwrap();
+    second_builder.append_bit_zero().unwrap();
+    builder.append_reference(second_builder);
+
+    let values = vec![
+        bytes_value,
+        int_value,
+        tuples_value,
+        TokenValue::Map(ParamType::Int(256), HashMap::new())
+    ];
+
+    test_parameters_set(
+        &tokens_from_values(values.clone()),
+        None,
+        builder,
+        &[1],
+    );
+
+    test_parameters_set(
+        &tokens_from_values(values.clone()),
+        None,
+        builder_v2,
+        &[2],
     );
 }

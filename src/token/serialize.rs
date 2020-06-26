@@ -228,7 +228,7 @@ impl TokenValue {
         let mut hashmap = HashmapE::with_bit_len(bit_len);
 
         for (key, value) in value.iter() {
-            let key = Tokenizer::tokenize_parameter(key_type, &serde_json::from_str(key)?)?;
+            let key = Tokenizer::tokenize_parameter(key_type, &key.as_str().into())?;
 
             let mut key_vec = key.write_to_cells(abi_version)?;
             if key_vec.len() != 1 {
