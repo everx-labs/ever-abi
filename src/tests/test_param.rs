@@ -106,3 +106,18 @@ fn test_tuples_array_deserialization() {
         ]))),
     });
 }
+
+#[test]
+fn test_empty_tuple_error() {
+    let s = r#"{
+        "name": "a",
+        "type": "map(uint256,tuple)"
+    }"#;
+
+    let result = serde_json::from_str::<Param>(s).unwrap_err();
+
+    assert_eq!(
+        "Tuple description should contain non empty `components` field",
+        format!("{}", result)
+    )
+}
