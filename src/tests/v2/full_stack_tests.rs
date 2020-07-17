@@ -11,7 +11,7 @@
 * limitations under the License.
 */
 
-use ed25519_dalek::*;
+use ed25519::signature::{Signature, Signer};
 
 use ton_types::{BuilderData, SliceData, IBitstring};
 use ton_types::dictionary::HashmapE;
