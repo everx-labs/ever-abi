@@ -11,7 +11,7 @@
 * limitations under the License.
 */
 
-use ed25519_dalek::*;
+use ed25519::signature::{Signature, Signer};
 
 use ton_types::{BuilderData, SliceData};
 use ton_types::dictionary::HashmapE;
@@ -391,7 +391,7 @@ fn test_update_contract_data() {
 
     assert_eq!(
         subscription_slice,
-        MsgAddressInt::with_standart(None, 0, vec![0x11; 32].into()).unwrap().write_to_new_cell().unwrap().into());
+        MsgAddressInt::with_standart(None, 0, [0x11; 32].into()).unwrap().write_to_new_cell().unwrap().into());
 
 
     let owner_slice = new_map.get(

@@ -18,6 +18,7 @@ use crate::{error::AbiError, param::Param, token::{Token, TokenValue}};
 use std::collections::HashMap;
 use sha2::{Digest, Sha256};
 use contract::SerdeFunction;
+use ed25519::signature::Signer;
 use ed25519_dalek::{Keypair, SIGNATURE_LENGTH};
 use ton_block::Serializable;
 use ton_types::{BuilderData, Cell, error, fail, IBitstring, Result, SliceData};

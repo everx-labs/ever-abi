@@ -23,6 +23,7 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+extern crate ed25519;
 extern crate ed25519_dalek;
 extern crate base64;
 extern crate chrono;
