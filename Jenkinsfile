@@ -113,7 +113,7 @@ def buildBranchesMap() {
         G_branches.put('ton-labs-vm', params.branch_ton_labs_vm)
     }
 
-    if (params.branch_ton_labs_abi == '') {
+    if (params.branch_ton_labs_abi != "${env.BRANCH_NAME}") {
         G_branches.put('ton-labs-abi', "${env.BRANCH_NAME}")
     } else {
         G_branches.put('ton-labs-abi', params.branch_ton_labs_abi)
