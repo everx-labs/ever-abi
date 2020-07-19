@@ -174,6 +174,9 @@ def buildParams() {
 
 pipeline {
     tools {nodejs "Node12.8.0"}
+    triggers {
+        pollSCM('H/15 * * * *') 
+    }
     options {
         buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '20')
         
