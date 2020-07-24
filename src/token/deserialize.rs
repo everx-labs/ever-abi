@@ -149,7 +149,7 @@ impl TokenValue {
             _ => fail!(AbiError::InvalidData { msg: "Only integer and std address values can be map keys".to_owned() } )
         };
         let hashmap = HashmapE::with_data(bit_len, cursor.get_dictionary()?);
-        hashmap.iterate(&mut |key, value| -> Result<bool> {
+        hashmap.iterate_slices(|key, value| {
             let key = Self::read_from(key_type, key, true, abi_version)?.0;
             let key = serde_json::to_value(&key)?.as_str().ok_or(AbiError::InvalidData {
                 msg: "Non-ordinary key".to_owned()

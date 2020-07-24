@@ -113,7 +113,7 @@ def buildBranchesMap() {
         G_branches.put('ton-labs-vm', params.branch_ton_labs_vm)
     }
 
-    if (params.branch_ton_labs_abi == '') {
+    if (params.branch_ton_labs_abi != "${env.BRANCH_NAME}") {
         G_branches.put('ton-labs-abi', "${env.BRANCH_NAME}")
     } else {
         G_branches.put('ton-labs-abi', params.branch_ton_labs_abi)
@@ -174,6 +174,9 @@ def buildParams() {
 
 pipeline {
     tools {nodejs "Node12.8.0"}
+    triggers {
+        pollSCM('H/15 * * * *') 
+    }
     options {
         buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '20')
         
