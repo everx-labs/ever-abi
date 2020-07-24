@@ -145,7 +145,8 @@ impl TokenValue {
         let mut new_map = HashMap::new();
         let bit_len = match key_type {
             ParamType::Int(size) | ParamType::Uint(size) => *size,
-            _ => fail!(AbiError::InvalidData { msg: "Only int and uint types can be map keys".to_owned() } )
+            ParamType::Address => super::STD_ADDRESS_BIT_LENGTH,
+            _ => fail!(AbiError::InvalidData { msg: "Only integer and std address values can be map keys".to_owned() } )
         };
         let hashmap = HashmapE::with_data(bit_len, cursor.get_dictionary()?);
         hashmap.iterate(&mut |key, value| -> Result<bool> {

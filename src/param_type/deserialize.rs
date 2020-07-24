@@ -96,10 +96,10 @@ pub fn read_type(name: &str) -> Result<ParamType> {
 
             match key_type
             {
-                ParamType::Int(_) | ParamType::Uint(_) =>
+                ParamType::Int(_) | ParamType::Uint(_) | ParamType::Address =>
                     ParamType::Map(Box::new(key_type), Box::new(value_type)),
                 _ => fail!(AbiError::InvalidName { 
-                        name: "Only int and uint types can be map keys".to_owned()
+                        name: "Only integer and std address values can be map keys".to_owned()
                     }),
             }
         },

@@ -13,6 +13,7 @@
 
 use std::collections::HashMap;
 use std::iter::FromIterator;
+use std::str::FromStr;
 use num_bigint::{BigInt, BigUint};
 
 use ton_types::{AccountId, Result, BuilderData, Cell, IBitstring, SliceData};
@@ -852,3 +853,42 @@ fn test_map() {
         &[2],
     );
 }
+ #[test]
+ fn test_address_map_key() {
+     let addr1_str = "0:1111111111111111111111111111111111111111111111111111111111111111";
+     let addr2_str = "0:2222222222222222222222222222222222222222222222222222222222222222";
+
+    let addr1 = MsgAddress::from_str(addr1_str).unwrap();
+    let addr2 = MsgAddress::from_str(addr2_str).unwrap();
+
+    let map = vec_to_map(
+        &vec![
+            (addr1, BuilderData::with_raw((123u32).to_be_bytes().to_vec(), 32).unwrap()),
+            (addr2, BuilderData::with_raw((456u32).to_be_bytes().to_vec(), 32).unwrap()),
+        ],
+        crate::token::STD_ADDRESS_BIT_LENGTH);
+
+    let value = TokenValue::Map(
+        ParamType::Address,
+        HashMap::from_iter(
+            vec![
+                (addr1_str.to_owned(), TokenValue::Uint(Uint::new(123, 32))),
+                (addr2_str.to_owned(), TokenValue::Uint(Uint::new(456, 32))),
+            ]
+        )
+    );
+
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+    
+    builder.append_builder(&map.write_to_new_cell().unwrap()).unwrap();
+
+    test_parameters_set(
+        &tokens_from_values(vec![value]),
+        None,
+        builder,
+        &[1, 2],
+    );
+ }
