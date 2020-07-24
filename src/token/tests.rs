@@ -465,6 +465,9 @@ mod tokenize_tests {
                     "q1" : 92,
                     "q2" : 6
                 }
+            },
+            "d": {
+                "0:1111111111111111111111111111111111111111111111111111111111111111": 123
             }
         }"#;
 
@@ -474,6 +477,7 @@ mod tokenize_tests {
             Param::new("c", ParamType::Map(Box::new(ParamType::Int(8)), Box::new(ParamType::Tuple(vec![
                 Param::new("q1", ParamType::Uint(32)), Param::new("q2", ParamType::Int(8))
             ])))),
+            Param::new("d", ParamType::Map(Box::new(ParamType::Address), Box::new(ParamType::Uint(32)))),
         ];
 
         let mut expected_tokens = vec![];
@@ -499,6 +503,12 @@ mod tokenize_tests {
             Token::new("q2", TokenValue::Int(Int::new(6, 8))),
         ]));
         expected_tokens.push(Token::new("c", TokenValue::Map(ParamType::Int(8), map)));
+
+        let mut map = HashMap::<String, TokenValue>::new();
+        map.insert(
+            format!("{}", MsgAddress::with_standart(None, 0, AccountId::from([0x11; 32])).unwrap()),
+            TokenValue::Uint(Uint::new(123, 32)));
+        expected_tokens.push(Token::new("d", TokenValue::Map(ParamType::Address, map)));
 
         assert_eq!(
             Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),

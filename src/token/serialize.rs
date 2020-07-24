@@ -223,7 +223,8 @@ impl TokenValue {
     fn write_map(key_type: &ParamType, value: &HashMap<String, TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
         let bit_len = match key_type {
             ParamType::Int(size) | ParamType::Uint(size) => *size,
-            _ => fail!(AbiError::InvalidData { msg: "Only int and uint types can be map keys".to_owned() } )
+            ParamType::Address => super::STD_ADDRESS_BIT_LENGTH,
+            _ => fail!(AbiError::InvalidData { msg: "Only integer and std address values can be map keys".to_owned() } )
         };
         let mut hashmap = HashmapE::with_bit_len(bit_len);
 
@@ -232,8 +233,13 @@ impl TokenValue {
 
             let mut key_vec = key.write_to_cells(abi_version)?;
             if key_vec.len() != 1 {
-                fail!(AbiError::InvalidData { msg: "Map key must 1-cell length".to_owned() } )
+                fail!(AbiError::InvalidData { msg: "Map key must be 1-cell length".to_owned() } )
             };
+            if  &ParamType::Address == key_type && 
+                key_vec[0].length_in_bits() != super::STD_ADDRESS_BIT_LENGTH
+            {
+                fail!(AbiError::InvalidData { msg: "Only std non-anycast address can be used as map key".to_owned() } )
+            }
 
             let data = Self::pack_cells_into_chain(value.write_to_cells(abi_version)?, abi_version)?;
 

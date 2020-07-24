@@ -37,6 +37,8 @@ mod tests;
 #[cfg(test)]
 mod test_encoding;
 
+pub const STD_ADDRESS_BIT_LENGTH: usize = 267;
+
 /// TON ABI params.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
