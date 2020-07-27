@@ -933,7 +933,7 @@ mod types_check_tests {
             },
             Token {
                 name: "p".to_owned(),
-                value: TokenValue::Gram(17u16.into())
+                value: TokenValue::Gram(17u32.into())
             },
             Token {
                 name: "q".to_owned(),
