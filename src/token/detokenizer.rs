@@ -165,7 +165,7 @@ impl Serialize for TokenValue {
             TokenValue::Address(ref address) => serializer.serialize_str(&address.to_string()),
             TokenValue::Bytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::FixedBytes(ref arr) => Token::detokenize_bytes(arr, serializer),
-            TokenValue::Gram(gram) => Token::detokenize_big_int(gram.value(), serializer),
+            TokenValue::Gram(gram) => Token::detokenize_big_int(&gram.value(), serializer),
             TokenValue::Time(time) => Token::detokenize_big_uint(&BigUint::from(*time), serializer),
             TokenValue::Expire(expire) => Token::detokenize_big_uint(&BigUint::from(*expire), serializer),
             TokenValue::PublicKey(key) => Token::detokenize_public_key(&key, serializer),
