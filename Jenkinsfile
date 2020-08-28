@@ -1,3 +1,5 @@
+@Library('infrastructure-jenkins-shared-library') _
+
 G_giturl = ""
 G_gitcred = 'TonJenSSH'
 G_docker_creds = "TonJenDockerHub"
@@ -303,10 +305,7 @@ pipeline {
         stage('Versioning') {
             steps {
                 script {
-                    withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
-                        identity = awsIdentity()
-                        s3Download bucket: 'sdkbinaries-ws.tonlabs.io', file: 'version.json', force: true, path: 'version.json'
-                    }
+                    bucketFunctions._downloadFromBucket ".", "version.json", "."
                     if(params.common_version) {
                         G_binversion = sh (script: "node tonVersion.js --set ${params.common_version} .", returnStdout: true).trim()
                     } else {
@@ -314,13 +313,7 @@ pipeline {
                     }
 
                     if(!isUpstream() && (GIT_BRANCH == 'master' || GIT_BRANCH ==~ '^PR-[0-9]+')) {
-                        withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
-                            identity = awsIdentity()
-                            s3Upload \
-                                bucket: 'sdkbinaries-ws.tonlabs.io', \
-                                includePathPattern:'version.json', path: '', \
-                                workingDir:'.'
-                        }
+                        bucketFunctions._uploadToBucket ".", "version.json", "."
                     }
                 }
             }
@@ -508,10 +501,7 @@ Tests: **${G_test}**"""
                 def cause = "${currentBuild.getBuildCauses()}"
                 echo "${cause}"
                 if(!cause.matches('upstream')) {
-                    withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
-                        identity = awsIdentity()
-                        s3Download bucket: 'sdkbinaries-ws.tonlabs.io', file: 'version.json', force: true, path: 'version.json'
-                    }
+                    bucketFunctions._downloadFromBucket ".", "version.json", "."
                     sh """
                         echo const fs = require\\(\\'fs\\'\\)\\; > decline.js
                         echo const ver = JSON.parse\\(fs.readFileSync\\(\\'version.json\\'\\, \\'utf8\\'\\)\\)\\; >> decline.js
@@ -522,12 +512,7 @@ Tests: **${G_test}**"""
                         cat version.json
                         node decline.js
                     """
-                    withAWS(credentials: 'CI_bucket_writer', region: 'eu-central-1') {
-                        identity = awsIdentity()
-                        s3Upload \
-                            bucket: 'sdkbinaries-ws.tonlabs.io', \
-                            includePathPattern:'version.json', workingDir:'.'
-                    }
+                    bucketFunctions._uploadToBucket ".", "version.json", "."
                 }
             }
         }
