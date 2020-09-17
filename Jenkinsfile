@@ -15,65 +15,16 @@ def isUpstream() {
 }
 
 def buildImagesMap() {
-    if (params.image_ton_types == '') {
-        G_images.put('ton-types', "tonlabs/ton-types:ton-labs-abi-${GIT_COMMIT}")
-    } else {
-        G_images.put('ton-types', params.image_ton_types)
-    }
-
-    if (params.image_ton_labs_types == '') {
-        G_images.put('ton-labs-types', "tonlabs/ton-labs-types:ton-labs-abi-${GIT_COMMIT}")
-    } else {
-        G_images.put('ton-labs-types', params.image_ton_labs_types)
-    }
-
-    if (params.image_ton_block == '') {
-        G_images.put('ton-block', "tonlabs/ton-block:ton-labs-abi-${GIT_COMMIT}")
-    } else {
-        G_images.put('ton-block', params.image_ton_block)
-    }
-
-    if (params.image_ton_labs_block == '') {
-        G_images.put('ton-labs-block', "tonlabs/ton-labs-block:ton-labs-abi-${GIT_COMMIT}")
-    } else {
-        G_images.put('ton-labs-block', params.image_ton_labs_block)
-    }
-
-    if (params.image_ton_vm == '') {
-        G_images.put('ton-vm', "tonlabs/ton-vm:ton-labs-abi-${GIT_COMMIT}")
-    } else {
-        G_images.put('ton-vm', params.image_ton_vm)
-    }
-
-    if (params.image_ton_labs_vm == '') {
-        G_images.put('ton-labs-vm', "tonlabs/ton-labs-vm:ton-labs-abi-${GIT_COMMIT}")
-    } else {
-        G_images.put('ton-labs-vm', params.image_ton_labs_vm)
-    }
-
-    if (params.image_ton_labs_abi == '') {
-        G_images.put('ton-labs-abi', "tonlabs/ton-labs-abi:${GIT_COMMIT}")
-    } else {
-        G_images.put('ton-labs-abi', params.image_ton_labs_abi)
-    }
-
-    if (params.image_ton_executor == '') {
-        G_images.put('ton-executor', "tonlabs/ton-executor:ton-labs-abi-${GIT_COMMIT}")
-    } else {
-        G_images.put('ton-executor', params.image_ton_executor)
-    }
-
-    if (params.image_ton_sdk == '') {
-        G_images.put('ton-sdk', "tonlabs/ton-sdk:ton-labs-abi-${GIT_COMMIT}")
-    } else {
-        G_images.put('ton-sdk', params.image_ton_sdk)
-    }
-
-    if (params.image_tvm_linker == '') {
-        G_images.put('tvm-linker', "tonlabs/tvm_linker:ton-labs-abi-${GIT_COMMIT}")
-    } else {
-        G_images.put('tvm-linker', params.image_tvm_linker)
-    }
+    G_images.put('ton-types', params.image_ton_types)
+    G_images.put('ton-labs-types', params.image_ton_labs_types)
+    G_images.put('ton-block', params.image_ton_block)
+    G_images.put('ton-labs-block', params.image_ton_labs_block)
+    G_images.put('ton-vm', params.image_ton_vm)
+    G_images.put('ton-labs-vm', params.image_ton_labs_vm)
+    G_images.put('ton-labs-abi', params.image_ton_labs_abi)
+    G_images.put('ton-executor', params.image_ton_executor)
+    G_images.put('ton-sdk', params.image_ton_sdk)
+    G_images.put('tvm-linker', params.image_tvm_linker)
 }
 
 def buildBranchesMap() {
@@ -169,6 +120,106 @@ def buildParams() {
             }
         }
         G_params.push(item)
+    }
+}
+
+def findParam(paramName) {
+    def idx = null
+    G_params.eachWithIndex { item, index -> 
+        if("${item}" ==~ ".*name=${paramName},.*") {
+            idx = index
+            println "Parameter ${paramName} found at position ${idx}"
+            return idx
+        }
+    }
+    return idx
+}
+
+def changeParam(paramName, value) {
+    def idx = findParam(paramName)
+    if(idx) {
+        G_params.remove(idx)
+    }
+    G_params.push(string("name": paramName, "value": value))
+}
+
+def fetchJobData(job) {
+    def envArray = job.getBuildVariables()
+    envArray.each {key, value ->
+        switch(key) {
+            case 'TON_TYPES':
+                if(value && value != '') {
+                    changeParam('image_ton_types', value)
+                }
+                break
+            case 'TON_LABS_TYPES':
+                if(value && value != '') {
+                    changeParam('image_ton_labs_types', value)
+                }
+                break
+            case 'TON_VM':
+                if(value && value != '') {
+                    changeParam('image_ton_vm', value)
+                }
+                break
+            case 'TON_LABS_VM':
+                if(value && value != '') {
+                    changeParam('image_ton_labs_vm', value)
+                }
+                break
+            case 'TON_BLOCK':
+                if(value && value != '') {
+                    changeParam('image_ton_block', value)
+                }
+                break
+            case 'TON_LABS_BLOCK':
+                if(value && value != '') {
+                    changeParam('image_ton_labs_block', value)
+                }
+                break
+            case 'TON_BLOCK_JSON':
+                if(value && value != '') {
+                    changeParam('image_ton_block_json', value)
+                }
+                break
+            case 'TON_LABS_BLOCK_JSON':
+                if(value && value != '') {
+                    changeParam('image_ton_labs_block_json', value)
+                }
+                break
+            case 'TON_EXECUTOR':
+                if(value && value != '') {
+                    changeParam('image_ton_executor', value)
+                }
+                break
+            case 'TON_LABS_EXECUTOR':
+                if(value && value != '') {
+                    changeParam('image_ton_labs_executor', value)
+                }
+                break
+            case 'TON_LABS_ABI':
+                if(value && value != '') {
+                    changeParam('image_ton_labs_abi', value)
+                }
+                break
+            case 'TON_SDK':
+                if(value && value != '') {
+                    changeParam('image_ton_sdk', value)
+                }
+                break
+            case 'TVM_LINKER':
+                if(value && value != '') {
+                    changeParam('image_tvm_linker', value)
+                }
+                break
+            case 'SOL2TVM':
+                if(value && value != '') {
+                    changeParam('image_sol2tvm', value)
+                }
+                break
+            default:
+                break
+        }
     }
 }
 
@@ -365,7 +416,8 @@ pipeline {
                     def beforeParams = G_params
                     beforeParams.push(string("name": "project_name", "value": "ton-labs-abi"))
                     beforeParams.push(string("name": "stage", "value": "before"))
-                    build job: 'Builder/build-flow', parameters: beforeParams
+                    def job_data = build job: 'Builder/build-flow', parameters: beforeParams
+                    fetchJobData(job_data)
                 }
             }
         }
@@ -382,87 +434,25 @@ pipeline {
                             def intimeParams = G_params
                             intimeParams.push(string("name": "project_name", "value": "ton-labs-abi"))
                             intimeParams.push(string("name": "stage", "value": "in_time"))
-                            build job: 'Builder/build-flow', parameters: intimeParams
+                            def job_data = build job: 'Builder/build-flow', parameters: intimeParams
+                            fetchJobData(job_data)
                         }
                     }
                 }
                 stage('ton-labs-abi') {
-                    stages {
-                        stage('Switch to file source') {
-                            steps {
-                                script {
-                                    sh """
-                (cat Cargo.toml | \
-                sed 's/ton_types = .*/ton_types = { path = \"\\/tonlabs\\/ton-labs-types\" }/g' | \
-                sed 's/ton_block = .*/ton_block = { path = \"\\/tonlabs\\/ton-labs-block\" }/g') > tmp.toml
-                rm Cargo.toml
-                mv ./tmp.toml ./Cargo.toml
-                                    """
-                                }
+                    steps {
+                        script {
+                            def job_data = build job: 'Builder/node/ton-labs-abi', parameters: G_params
+                            def image_ton_labs_abi = null
+                            try {
+                                image_ton_labs_abi = job_data.getBuildVariables()['IMAGE']
+                            } catch (ex) {
+                                println "No IMAGE variable: ${ex}"
                             }
-                        }
-                        stage('Prepare image') {
-                            steps {
-                                echo "Prepare image..."
-                                script {
-                                    docker.withRegistry('', G_docker_creds) {
-                                        args = "--pull --no-cache --label 'git-commit=${GIT_COMMIT}' --target ton-labs-abi-src --force-rm ."
-                                        G_docker_image = docker.build(
-                                            G_images['ton-labs-abi'], 
-                                            args
-                                        )
-                                        echo "Image ${G_docker_image} as ${G_images['ton-labs-abi']}"
-                                        G_docker_image.push()
-                                    }
-                                }
-                            }
-                        }
-                        stage('Build') {
-                            agent {
-                                dockerfile {
-                                    registryCredentialsId "${G_docker_creds}"
-                                    additionalBuildArgs "--pull --target ton-labs-abi-rust " + 
-                                                        "--build-arg \"TON_LABS_TYPES_IMAGE=${G_images['ton-labs-types']}\" " +
-                                                        "--build-arg \"TON_LABS_BLOCK_IMAGE=${G_images['ton-labs-block']}\" " + 
-                                                        "--build-arg \"TON_LABS_ABI_IMAGE=${G_images['ton-labs-abi']}\""
-                                }
-                            }
-                            steps {
-                                script {
-                                    sh """
-                                        cd /tonlabs/ton-labs-abi
-                                        cargo update
-                                        cargo build --release
-                                    """
-                                }
-                            }
-                            post {
-                                success { script { G_build = "success" } }
-                                failure { script { G_build = "failure" } }
-                            }
-                        }
-                        stage('Tests') {
-                            agent {
-                                dockerfile {
-                                    registryCredentialsId "${G_docker_creds}"
-                                    additionalBuildArgs "--pull --target ton-labs-abi-rust " + 
-                                                        "--build-arg \"TON_LABS_TYPES_IMAGE=${G_images['ton-labs-types']}\" " +
-                                                        "--build-arg \"TON_LABS_BLOCK_IMAGE=${G_images['ton-labs-block']}\" " + 
-                                                        "--build-arg \"TON_LABS_ABI_IMAGE=${G_images['ton-labs-abi']}\""
-                                }
-                            }
-                            steps {
-                                script {
-                                    sh """
-                                        cd /tonlabs/ton-labs-abi
-                                        cargo update
-                                        cargo test --release --features ci_run
-                                    """
-                                }
-                            }
-                            post {
-                                success { script { G_test = "success" } }
-                                failure { script { G_test = "failure" } }
+                            if(image_ton_labs_abi) {
+                                changeParam('image_ton_labs_abi', image_ton_labs_abi)
+                                env.IMAGE = image_ton_labs_abi
+                                echo "Image: ${image_ton_labs_abi}"
                             }
                         }
                     }
@@ -480,7 +470,8 @@ pipeline {
                     def afterParams = G_params
                     afterParams.push(string("name": "project_name", "value": "ton-labs-abi"))
                     afterParams.push(string("name": "stage", "value": "after"))
-                    build job: 'Builder/build-flow', parameters: afterParams
+                    def job_data = build job: 'Builder/build-flow', parameters: afterParams
+                    fetchJobData(job_data)
                 }
             }
         }
