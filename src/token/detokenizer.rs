@@ -12,49 +12,53 @@
 */
 
 use crate::{
-    error::AbiError, param::Param, param_type::ParamType, token::{Token, TokenValue}
+    error::AbiError,
+    param::Param,
+    param_type::ParamType,
+    token::{Token, TokenValue},
 };
 
 use num_bigint::{BigInt, BigUint};
-use serde::ser::{Serialize, Serializer, SerializeMap};
+use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
-use ton_types::{Cell, error, fail, Result, serialize_tree_of_cells};
+use ton_types::{error, fail, serialize_tree_of_cells, Cell, Result};
 
 pub struct Detokenizer;
 
 impl Detokenizer {
     pub fn detokenize(params: &[Param], tokens: &[Token]) -> Result<String> {
-        Ok(
-            serde_json::to_string(
-                &Self::detokenize_to_json_value(params, tokens)?
-            )?
-        )
+        Ok(serde_json::to_string(&Self::detokenize_to_json_value(
+            params, tokens,
+        )?)?)
     }
 
-    pub fn detokenize_to_json_value(params: &[Param], tokens: &[Token]) -> Result<serde_json::Value> {
+    pub fn detokenize_to_json_value(
+        params: &[Param],
+        tokens: &[Token],
+    ) -> Result<serde_json::Value> {
         if params.len() != tokens.len() {
-            fail!(AbiError::WrongParametersCount { 
+            fail!(AbiError::WrongParametersCount {
                 expected: params.len(),
                 provided: tokens.len()
             });
         }
 
         if !Token::types_check(tokens, params) {
-             fail!(AbiError::WrongParameterType);
+            fail!(AbiError::WrongParameterType);
         }
 
-        Ok(serde_json::to_value(&FunctionParams{params: tokens})?)
+        Ok(serde_json::to_value(&FunctionParams { params: tokens })?)
     }
 
     pub fn detokenize_optional(tokens: &HashMap<String, TokenValue>) -> Result<String> {
-        Ok(
-            serde_json::to_string(
-                &Self::detokenize_optional_to_json_value(tokens)?
-            )?
-        )
+        Ok(serde_json::to_string(
+            &Self::detokenize_optional_to_json_value(tokens)?,
+        )?)
     }
 
-    pub fn detokenize_optional_to_json_value(tokens: &HashMap<String, TokenValue>) -> Result<serde_json::Value> {
+    pub fn detokenize_optional_to_json_value(
+        tokens: &HashMap<String, TokenValue>,
+    ) -> Result<serde_json::Value> {
         serde_json::to_value(&tokens).map_err(|err| err.into())
     }
 }
@@ -64,46 +68,52 @@ pub struct FunctionParams<'a> {
 }
 
 impl<'a> Serialize for FunctionParams<'a> {
-        fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut map = serializer.serialize_map(Some(self.params.len()))?;
 
         for token in self.params {
-                map.serialize_entry(&token.name, &token.value)?;
-            }
+            map.serialize_entry(&token.name, &token.value)?;
+        }
 
         map.end()
     }
 }
 
 impl Token {
-    pub fn detokenize_big_int<S>(number: &BigInt, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    pub fn detokenize_big_int<S>(
+        number: &BigInt,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut int_str = number.to_str_radix(16);
-        
-        if int_str.starts_with("-") {
-            int_str.insert_str(1, "0x");
-        } else {
-            int_str.insert_str(0, "0x");
-        };
-
-        serializer.serialize_str(&int_str)
+        serializer.serialize_str(&number.to_str_radix(10))
     }
 
-    pub fn detokenize_big_uint<S>(number: &BigUint, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    pub fn detokenize_big_uint<S>(
+        number: &BigUint,
+        size: usize,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let uint_str = "0x".to_owned() + &number.to_str_radix(16);
-
+        let uint_str = if size == 256 {
+            format!("0x{:0>64}", number.to_str_radix(16))
+        } else {
+            number.to_str_radix(10)
+        };
         serializer.serialize_str(&uint_str)
     }
 
-    pub fn detokenize_hashmap<S>(_key_type: &ParamType, values: &HashMap<String, TokenValue>, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    pub fn detokenize_hashmap<S>(
+        _key_type: &ParamType,
+        values: &HashMap<String, TokenValue>,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -134,7 +144,10 @@ impl Token {
         serializer.serialize_str(&data)
     }
 
-    pub fn detokenize_public_key<S>(value: &Option<ed25519_dalek::PublicKey>, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    pub fn detokenize_public_key<S>(
+        value: &Option<ed25519_dalek::PublicKey>,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -152,22 +165,28 @@ impl Serialize for TokenValue {
         S: Serializer,
     {
         match self {
-            TokenValue::Uint(uint) => Token::detokenize_big_uint(&uint.number, serializer),
+            TokenValue::Uint(uint) => {
+                Token::detokenize_big_uint(&uint.number, uint.size, serializer)
+            }
             TokenValue::Int(int) => Token::detokenize_big_int(&int.number, serializer),
             TokenValue::Bool(b) => serializer.serialize_bool(b.clone()),
-            TokenValue::Tuple(tokens) => {
-                FunctionParams {params: tokens}.serialize(serializer)
-            },
+            TokenValue::Tuple(tokens) => FunctionParams { params: tokens }.serialize(serializer),
             TokenValue::Array(ref tokens) => tokens.serialize(serializer),
             TokenValue::FixedArray(ref tokens) => tokens.serialize(serializer),
             TokenValue::Cell(ref cell) => Token::detokenize_cell(cell, serializer),
-            TokenValue::Map(key_type, ref map) => Token::detokenize_hashmap(key_type, map, serializer),
+            TokenValue::Map(key_type, ref map) => {
+                Token::detokenize_hashmap(key_type, map, serializer)
+            }
             TokenValue::Address(ref address) => serializer.serialize_str(&address.to_string()),
             TokenValue::Bytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::FixedBytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::Gram(gram) => Token::detokenize_big_int(&gram.value(), serializer),
-            TokenValue::Time(time) => Token::detokenize_big_uint(&BigUint::from(*time), serializer),
-            TokenValue::Expire(expire) => Token::detokenize_big_uint(&BigUint::from(*expire), serializer),
+            TokenValue::Time(time) => {
+                Token::detokenize_big_uint(&BigUint::from(*time), 64, serializer)
+            }
+            TokenValue::Expire(expire) => {
+                Token::detokenize_big_uint(&BigUint::from(*expire), 32, serializer)
+            }
             TokenValue::PublicKey(key) => Token::detokenize_public_key(&key, serializer),
         }
     }
