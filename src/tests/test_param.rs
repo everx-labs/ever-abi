@@ -20,24 +20,6 @@ use {TokenValue, Uint};
 
 #[test]
 fn int_json_representation() {
-    let s = r#"{
-        "name": "a",
-        "type": "int9"
-    }"#;
-
-    let deserialized: Param = serde_json::from_str(s).unwrap();
-
-    assert_eq!(
-        deserialized,
-        Param {
-            name: "a".to_owned(),
-            kind: ParamType::Int(9),
-        }
-    );
-}
-
-#[test]
-fn test_simple_param_deserialization() {
     let value = Detokenizer::detokenize_to_json_value(
         &[
             Param::new("u8", ParamType::Uint(8)),
@@ -65,6 +47,24 @@ fn test_simple_param_deserialization() {
             "u128": "1",
             "i256": "-1",
         })
+    );
+}
+
+#[test]
+fn test_simple_param_deserialization() {
+    let s = r#"{
+        "name": "a",
+        "type": "int9"
+    }"#;
+
+    let deserialized: Param = serde_json::from_str(s).unwrap();
+
+    assert_eq!(
+        deserialized,
+        Param {
+            name: "a".to_owned(),
+            kind: ParamType::Int(9),
+        }
     );
 }
 
