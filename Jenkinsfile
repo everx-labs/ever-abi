@@ -65,7 +65,7 @@ def buildBranchesMap() {
     }
 
     // own project branch set unconditionally
-    G_branches.put('ton-labs-abi', "${env.BRANCH_NAME}"
+    G_branches.put('ton-labs-abi', "${env.BRANCH_NAME}")
 
     if (params.branch_ton_executor == '') {
         G_branches.put('ton-executor', "master")
