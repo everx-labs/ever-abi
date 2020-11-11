@@ -254,7 +254,7 @@ fn test_five_refs_v1() {
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
-    
+
     builder.append_bit_one().unwrap();
     builder.append_reference(bytes_builder.clone());
     builder.append_reference(bytes_builder.clone());
@@ -295,7 +295,7 @@ fn test_five_refs_v2() {
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
-    
+
     builder.append_bit_one().unwrap();
     builder.append_reference(bytes_builder.clone());
     builder.append_reference(bytes_builder.clone());
@@ -330,7 +330,7 @@ fn test_nested_tuples_with_all_simples() {
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
 
-   
+
     builder.append_bit_zero().unwrap();
     builder.append_i8(-15 as i8).unwrap();
     builder.append_i16(9845 as i16).unwrap();
@@ -622,7 +622,7 @@ fn test_four_refs_and_four_int256() {
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
-    
+
     builder.append_reference(bytes_builder.clone());
     builder.append_reference(bytes_builder.clone());
 
@@ -665,7 +665,7 @@ fn test_four_refs_and_one_int256() {
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
-    
+
     builder.append_reference(bytes_builder.clone());
     builder.append_reference(bytes_builder.clone());
 
@@ -736,7 +736,7 @@ fn vec_to_map<K: Serializable>(vec: &[(K, BuilderData)], size: usize) -> Hashmap
 
     for (key, value) in vec {
         let key = key.write_to_new_cell().unwrap();
-        map.set(key.into(), &value.into()).unwrap(); 
+        map.set(key.into(), &value.into()).unwrap();
     }
 
     map
@@ -761,9 +761,9 @@ fn test_map() {
         ParamType::Uint(8),
         HashMap::from_iter(
             vec![
-                ("0x1".to_owned(), TokenValue::Bytes(bytes.clone())),
-                ("0x2".to_owned(), TokenValue::Bytes(bytes.clone())),
-                ("0x3".to_owned(), TokenValue::Bytes(bytes.clone())),
+                ("1".to_owned(), TokenValue::Bytes(bytes.clone())),
+                ("2".to_owned(), TokenValue::Bytes(bytes.clone())),
+                ("3".to_owned(), TokenValue::Bytes(bytes.clone())),
             ]
         )
     );
@@ -780,9 +780,9 @@ fn test_map() {
         ParamType::Int(16),
         HashMap::from_iter(
             vec![
-                ("-0x1".to_owned(), TokenValue::Int(Int::new(-1, 128))),
-                ("0x0".to_owned(), TokenValue::Int(Int::new(0, 128))),
-                ("0x1".to_owned(), TokenValue::Int(Int::new(1, 128))),
+                ("-1".to_owned(), TokenValue::Int(Int::new(-1, 128))),
+                ("0".to_owned(), TokenValue::Int(Int::new(0, 128))),
+                ("1".to_owned(), TokenValue::Int(Int::new(1, 128))),
             ]
         )
     );
@@ -790,7 +790,7 @@ fn test_map() {
     let tuples_array: Vec<(u32, bool)> =
         vec![(1, true), (2, false), (3, true), (4, false), (5, true)];
 
-        
+
     let bitstring_array: Vec<(u128, BuilderData)> = tuples_array
         .iter()
         .map(|a| (a.0 as u128, TupleDwordBool::from(a).write_to_new_cell().unwrap()))
@@ -805,7 +805,7 @@ fn test_map() {
                 .iter()
                 .map(|i| {
                     (
-                        format!("0x{:x}", i.0),
+                        i.0.to_string(),
                         TokenValue::Tuple(tokens_from_values(vec![
                             TokenValue::Uint(Uint::new(i.0 as u128, 32)),
                             TokenValue::Bool(i.1),
@@ -819,7 +819,7 @@ fn test_map() {
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
-    
+
     builder.append_builder(&bytes_map.write_to_new_cell().unwrap()).unwrap();
     builder.append_builder(&int_map.write_to_new_cell().unwrap()).unwrap();
 
@@ -882,7 +882,7 @@ fn test_map() {
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
-    
+
     builder.append_builder(&map.write_to_new_cell().unwrap()).unwrap();
 
     test_parameters_set(
