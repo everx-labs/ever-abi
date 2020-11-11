@@ -196,7 +196,7 @@ fn test_signed_call() {
     }"#;
     let header = "{}";
 
-    let expected_params = r#"{"value":"0xc","period":"0x1e"}"#;
+    let expected_params = r#"{"value":"0x000000000000000000000000000000000000000000000000000000000000000c","period":"30"}"#;
 
     let pair = Keypair::generate(&mut rand::thread_rng());
 
@@ -238,7 +238,7 @@ fn test_signed_call() {
     let hash = test_tree.into_cell().repr_hash();
     pair.verify(hash.as_slice(), &sign).unwrap();
 
-    let expected_response = r#"{"value0":"0x0"}"#;
+    let expected_response = r#"{"value0":"0"}"#;
 
     let response_tree = SliceData::from(
         BuilderData::with_bitstring(
@@ -294,7 +294,7 @@ fn test_not_signed_call() {
 
 #[test]
 fn test_add_signature_full() {
-    let params = r#"{"limitId":"0x2"}"#;
+    let params = r#"{"limitId":"2"}"#;
     let header = "{}";
 
     let (msg, data_to_sign) = prepare_function_call_for_sign(
@@ -329,7 +329,7 @@ fn test_find_event() {
     let decoded = decode_unknown_function_response(WALLET_ABI.to_owned(), event_tree, false).unwrap();
 
     assert_eq!(decoded.function_name, "event");
-    assert_eq!(decoded.params, r#"{"param":"0xff"}"#);
+    assert_eq!(decoded.params, r#"{"param":"255"}"#);
 }
 
 #[test]
