@@ -13,11 +13,12 @@
 
 use ed25519::signature::{Signature, Signer};
 
-use ton_types::{BuilderData, SliceData};
-use ton_types::dictionary::HashmapE;
 use ton_block::{MsgAddressInt, Serializable};
+use ton_types::dictionary::HashmapE;
+use ton_types::{BuilderData, SliceData};
 
 use json_abi::*;
+use abi_conv::{u256str, u32str, u64str, u8str};
 
 const WALLET_ABI: &str = r#"{
     "ABI version": 1,
@@ -144,43 +145,36 @@ fn test_constructor_call() {
         params.to_owned(),
         false,
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
-    let mut expected_tree = BuilderData::with_bitstring(vec![0x54, 0xc1, 0xf4, 0x0f, 0x80]).unwrap();
+    let mut expected_tree =
+        BuilderData::with_bitstring(vec![0x54, 0xc1, 0xf4, 0x0f, 0x80]).unwrap();
     expected_tree.prepend_reference(BuilderData::new());
 
     let test_tree = SliceData::from(test_tree);
     let expected_tree = SliceData::from(expected_tree);
     assert_eq!(test_tree, expected_tree);
 
-    let response = decode_unknown_function_call(
-        WALLET_ABI.to_owned(),
-        test_tree.clone(),
-        false
-    ).unwrap();
+    let response =
+        decode_unknown_function_call(WALLET_ABI.to_owned(), test_tree.clone(), false).unwrap();
 
     assert_eq!(response.params, params);
     assert_eq!(response.function_name, "constructor");
-
 
     let test_tree = SliceData::from_raw(vec![0xd4, 0xc1, 0xf4, 0x0f, 0x80], 32);
 
-    let response = decode_unknown_function_response(
-        WALLET_ABI.to_owned(),
-        test_tree.clone(),
-        false
-    )
-    .unwrap();
+    let response =
+        decode_unknown_function_response(WALLET_ABI.to_owned(), test_tree.clone(), false).unwrap();
 
     assert_eq!(response.params, params);
     assert_eq!(response.function_name, "constructor");
-
 
     let response = decode_function_response(
         WALLET_ABI.to_owned(),
         "constructor".to_owned(),
         test_tree,
-        false
+        false,
     )
     .unwrap();
 
@@ -196,7 +190,8 @@ fn test_signed_call() {
     }"#;
     let header = "{}";
 
-    let expected_params = r#"{"value":"0xc","period":"0x1e"}"#;
+    let expected_params =
+        json!({"value":u256str(0xc),"period":u32str(0x1e)}).to_string();
 
     let pair = Keypair::generate(&mut rand::thread_rng());
 
@@ -212,16 +207,13 @@ fn test_signed_call() {
 
     let mut test_tree = SliceData::from(test_tree);
 
-    let response = decode_unknown_function_call(
-        WALLET_ABI.to_owned(),
-        test_tree.clone(),
-        false
-    )
-    .unwrap();
+    let response =
+        decode_unknown_function_call(WALLET_ABI.to_owned(), test_tree.clone(), false).unwrap();
 
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&response.params).unwrap(),
-        serde_json::from_str::<serde_json::Value>(&expected_params).unwrap());
+        serde_json::from_str::<serde_json::Value>(&expected_params).unwrap()
+    );
     assert_eq!(response.function_name, "createArbitraryLimit");
 
     let mut vec = vec![0x3C, 0x0B, 0xB9, 0xBC];
@@ -238,30 +230,27 @@ fn test_signed_call() {
     let hash = test_tree.into_cell().repr_hash();
     pair.verify(hash.as_slice(), &sign).unwrap();
 
-    let expected_response = r#"{"value0":"0x0"}"#;
+    let expected_response = json!({"value0":u64str(0)}).to_string();
 
     let response_tree = SliceData::from(
-        BuilderData::with_bitstring(
-            vec![0xBC, 0x0B, 0xB9, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80])
-        .unwrap());
+        BuilderData::with_bitstring(vec![
+            0xBC, 0x0B, 0xB9, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80,
+        ])
+        .unwrap(),
+    );
 
     let response = decode_function_response(
         WALLET_ABI.to_owned(),
         "createArbitraryLimit".to_owned(),
         response_tree.clone(),
-        false
+        false,
     )
     .unwrap();
 
     assert_eq!(response, expected_response);
 
-
-    let response = decode_unknown_function_response(
-        WALLET_ABI.to_owned(),
-        response_tree,
-        false
-    )
-    .unwrap();
+    let response =
+        decode_unknown_function_response(WALLET_ABI.to_owned(), response_tree, false).unwrap();
 
     assert_eq!(response.params, expected_response);
     assert_eq!(response.function_name, "createArbitraryLimit");
@@ -285,8 +274,9 @@ fn test_not_signed_call() {
     .unwrap();
 
     let mut expected_tree = BuilderData::with_bitstring(vec![
-            0x23, 0xF3, 0x3E, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x80
-        ]).unwrap();
+        0x23, 0xF3, 0x3E, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x80,
+    ])
+    .unwrap();
     expected_tree.prepend_reference(BuilderData::new());
 
     assert_eq!(test_tree, expected_tree);
@@ -294,14 +284,14 @@ fn test_not_signed_call() {
 
 #[test]
 fn test_add_signature_full() {
-    let params = r#"{"limitId":"0x2"}"#;
+    let params = json!({"limitId":u64str(2)}).to_string();
     let header = "{}";
 
     let (msg, data_to_sign) = prepare_function_call_for_sign(
         WALLET_ABI.to_owned(),
         "getLimit".to_owned(),
         Some(header.to_owned()),
-        params.to_owned()
+        params.clone(),
     )
     .unwrap();
 
@@ -312,7 +302,9 @@ fn test_add_signature_full() {
         WALLET_ABI.to_owned(),
         &signature,
         Some(&pair.public.to_bytes()),
-        msg.into()).unwrap();
+        msg.into(),
+    )
+    .unwrap();
 
     let decoded = decode_unknown_function_call(WALLET_ABI.to_owned(), msg.into(), false).unwrap();
 
@@ -322,35 +314,39 @@ fn test_add_signature_full() {
 #[test]
 fn test_find_event() {
     let event_tree = SliceData::from(
-        BuilderData::with_bitstring(
-            vec![0x13, 0x47, 0xD7, 0x9D, 0xFF, 0x80])
-        .unwrap());
+        BuilderData::with_bitstring(vec![0x13, 0x47, 0xD7, 0x9D, 0xFF, 0x80]).unwrap(),
+    );
 
-    let decoded = decode_unknown_function_response(WALLET_ABI.to_owned(), event_tree, false).unwrap();
+    let decoded =
+        decode_unknown_function_response(WALLET_ABI.to_owned(), event_tree, false).unwrap();
 
     assert_eq!(decoded.function_name, "event");
-    assert_eq!(decoded.params, r#"{"param":"0xff"}"#);
+    assert_eq!(
+        decoded.params,
+        json!({"param":u8str(0xff)}).to_string()
+    );
 }
 
 #[test]
 fn test_store_pubkey() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
     let test_pubkey = vec![11u8; 32];
-    test_map.set(
-        0u64.write_to_new_cell().unwrap().into(),
-        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap().into(),
-    ).unwrap();
+    test_map
+        .set(
+            0u64.write_to_new_cell().unwrap().into(),
+            &BuilderData::with_raw(vec![0u8; 32], 256).unwrap().into(),
+        )
+        .unwrap();
 
     let data = test_map.write_to_new_cell().unwrap();
 
     let new_data = Contract::insert_pubkey(data.into(), &test_pubkey).unwrap();
 
     let new_map = HashmapE::with_data(Contract::DATA_MAP_KEYLEN, new_data.into());
-    let key_slice = new_map.get(
-        0u64.write_to_new_cell().unwrap().into(),
-    )
-    .unwrap()
-    .unwrap();
+    let key_slice = new_map
+        .get(0u64.write_to_new_cell().unwrap().into())
+        .unwrap()
+        .unwrap();
 
     assert_eq!(key_slice.get_bytestring(0), test_pubkey);
 }
@@ -358,10 +354,12 @@ fn test_store_pubkey() {
 #[test]
 fn test_update_contract_data() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
-    test_map.set(
-        0u64.write_to_new_cell().unwrap().into(),
-        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap().into(),
-    ).unwrap();
+    test_map
+        .set(
+            0u64.write_to_new_cell().unwrap().into(),
+            &BuilderData::with_raw(vec![0u8; 32], 256).unwrap().into(),
+        )
+        .unwrap();
 
     let params = r#"{
         "subscription": "0:1111111111111111111111111111111111111111111111111111111111111111",
@@ -373,32 +371,31 @@ fn test_update_contract_data() {
     let new_data = update_contract_data(WALLET_ABI, params, data.into()).unwrap();
     let new_map = HashmapE::with_data(Contract::DATA_MAP_KEYLEN, new_data.into());
 
-
-    let key_slice = new_map.get(
-        0u64.write_to_new_cell().unwrap().into(),
-    )
-    .unwrap()
-    .unwrap();
+    let key_slice = new_map
+        .get(0u64.write_to_new_cell().unwrap().into())
+        .unwrap()
+        .unwrap();
 
     assert_eq!(key_slice.get_bytestring(0), vec![0u8; 32]);
 
-
-    let subscription_slice = new_map.get(
-        101u64.write_to_new_cell().unwrap().into(),
-    )
-    .unwrap()
-    .unwrap();
+    let subscription_slice = new_map
+        .get(101u64.write_to_new_cell().unwrap().into())
+        .unwrap()
+        .unwrap();
 
     assert_eq!(
         subscription_slice,
-        MsgAddressInt::with_standart(None, 0, [0x11; 32].into()).unwrap().write_to_new_cell().unwrap().into());
+        MsgAddressInt::with_standart(None, 0, [0x11; 32].into())
+            .unwrap()
+            .write_to_new_cell()
+            .unwrap()
+            .into()
+    );
 
-
-    let owner_slice = new_map.get(
-        100u64.write_to_new_cell().unwrap().into(),
-    )
-    .unwrap()
-    .unwrap();
+    let owner_slice = new_map
+        .get(100u64.write_to_new_cell().unwrap().into())
+        .unwrap()
+        .unwrap();
 
     assert_eq!(owner_slice.get_bytestring(0), vec![0x22; 32]);
 }

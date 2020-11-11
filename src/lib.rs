@@ -54,3 +54,46 @@ pub use error::*;
 #[cfg(test)]
 extern crate rand;
 extern crate byteorder;
+
+#[cfg(test)]
+pub(crate) mod abi_conv {
+    use ::{TokenValue, Uint};
+
+    fn ustr(n: u128, size: usize) -> String {
+        serde_json::to_value(&TokenValue::Uint(Uint::new(n, size)))
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn u8str(n: u8) -> String {
+        ustr(n as u128, 8)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn u32str(n: u32) -> String {
+        ustr(n as u128, 32)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn u64str(n: u64) -> String {
+        ustr(n as u128, 64)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn u128str(n: u128) -> String {
+        ustr(n, 128)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn u256str(n: u128) -> String {
+        ustr(n, 256)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn i16str(n: i16) -> String {
+        n.to_string()
+    }
+}

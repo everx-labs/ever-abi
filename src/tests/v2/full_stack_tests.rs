@@ -18,6 +18,7 @@ use ton_types::dictionary::HashmapE;
 use ton_block::{MsgAddressInt, Serializable};
 
 use json_abi::*;
+use abi_conv::{u128str, u32str, u64str, u8str};
 
 const WALLET_ABI: &str = r#"{
     "ABI version": 2,
@@ -201,7 +202,7 @@ fn test_signed_call() {
         "period": 30
     }"#;
 
-    let expected_params = r#"{"value":"0xc","period":"0x1e"}"#;
+    let expected_params = json!({"value":u128str(0xc),"period":u32str(0x1e)}).to_string();
 
     let pair = Keypair::generate(&mut rand::thread_rng());
 
@@ -247,7 +248,7 @@ fn test_signed_call() {
     let hash = test_tree.into_cell().repr_hash();
     pair.verify(hash.as_slice(), &sign).unwrap();
 
-    let expected_response = r#"{"value0":"0x0"}"#;
+    let expected_response = json!({"value0":u64str(0)}).to_string();
 
     let response_tree = SliceData::from(
         BuilderData::with_bitstring(
@@ -311,14 +312,15 @@ fn test_not_signed_call() {
 
 #[test]
 fn test_add_signature_full() {
-    let params = r#"{"limitId":"0x2"}"#;
+
+    let params = json!({"limitId":u64str(2)}).to_string();
     let header = "{}";
 
     let (msg, data_to_sign) = prepare_function_call_for_sign(
         WALLET_ABI.to_owned(),
         "getLimit".to_owned(),
         Some(header.to_owned()),
-        params.to_owned()
+        params.clone()
     )
     .unwrap();
 
@@ -346,7 +348,7 @@ fn test_find_event() {
     let decoded = decode_unknown_function_response(WALLET_ABI.to_owned(), event_tree, false).unwrap();
 
     assert_eq!(decoded.function_name, "event");
-    assert_eq!(decoded.params, r#"{"param":"0xff"}"#);
+    assert_eq!(decoded.params, json!({"param":u8str(0xff)}).to_string());
 }
 
 #[test]
