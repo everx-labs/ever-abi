@@ -33,7 +33,7 @@ impl Detokenizer {
 
     pub fn detokenize_to_json_value(params: &[Param], tokens: &[Token]) -> Result<serde_json::Value> {
         if params.len() != tokens.len() {
-            fail!(AbiError::WrongParametersCount { 
+            fail!(AbiError::WrongParametersCount {
                 expected: params.len(),
                 provided: tokens.len()
             });
@@ -83,23 +83,22 @@ impl Token {
     where
         S: Serializer,
     {
-        let mut int_str = number.to_str_radix(16);
-        
-        if int_str.starts_with("-") {
-            int_str.insert_str(1, "0x");
-        } else {
-            int_str.insert_str(0, "0x");
-        };
-
-        serializer.serialize_str(&int_str)
+        serializer.serialize_str(&number.to_str_radix(10))
     }
 
-    pub fn detokenize_big_uint<S>(number: &BigUint, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    pub fn detokenize_big_uint<S>(
+        number: &BigUint,
+        size: usize,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let uint_str = "0x".to_owned() + &number.to_str_radix(16);
-
+        let uint_str = if size == 256 {
+            format!("0x{:0>64}", number.to_str_radix(16))
+        } else {
+            number.to_str_radix(10)
+        };
         serializer.serialize_str(&uint_str)
     }
 
@@ -152,7 +151,9 @@ impl Serialize for TokenValue {
         S: Serializer,
     {
         match self {
-            TokenValue::Uint(uint) => Token::detokenize_big_uint(&uint.number, serializer),
+            TokenValue::Uint(uint) => {
+                Token::detokenize_big_uint(&uint.number, uint.size, serializer)
+            }
             TokenValue::Int(int) => Token::detokenize_big_int(&int.number, serializer),
             TokenValue::Bool(b) => serializer.serialize_bool(b.clone()),
             TokenValue::Tuple(tokens) => {
@@ -166,8 +167,12 @@ impl Serialize for TokenValue {
             TokenValue::Bytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::FixedBytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::Gram(gram) => Token::detokenize_big_int(&gram.value(), serializer),
-            TokenValue::Time(time) => Token::detokenize_big_uint(&BigUint::from(*time), serializer),
-            TokenValue::Expire(expire) => Token::detokenize_big_uint(&BigUint::from(*expire), serializer),
+            TokenValue::Time(time) => {
+                Token::detokenize_big_uint(&BigUint::from(*time), 64, serializer)
+            }
+            TokenValue::Expire(expire) => {
+                Token::detokenize_big_uint(&BigUint::from(*expire), 32, serializer)
+            }
             TokenValue::PublicKey(key) => Token::detokenize_public_key(&key, serializer),
         }
     }

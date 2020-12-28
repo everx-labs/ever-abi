@@ -20,6 +20,7 @@ extern crate pretty_assertions;
 extern crate ton_block;
 extern crate ton_types;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
