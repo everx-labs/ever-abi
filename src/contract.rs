@@ -326,6 +326,16 @@ impl Contract {
         Ok(map.write_to_new_cell()?.into())
     }
 
+    // Gets public key from contract data
+    pub fn get_pubkey(data: &SliceData) -> Result<Vec<u8>> {
+        let map = HashmapE::with_data(
+            Self::DATA_MAP_KEYLEN,
+            data.clone(),
+        );
+        map.get(0u64.write_to_new_cell()?.into())
+            .map(|opt| opt.unwrap().get_bytestring(0))
+    }
+
     /// Sets public key into contract data
     pub fn insert_pubkey(data: SliceData, pubkey: &[u8]) -> Result<SliceData> {
         let pubkey_vec = pubkey.to_vec();
@@ -355,6 +365,9 @@ impl Contract {
     }
 }
 
+#[cfg(test)]
+#[path = "tests/test_contract.rs"]
+mod tests_common;
 #[cfg(test)]
 #[path = "tests/v1/test_contract.rs"]
 mod tests_v1;
