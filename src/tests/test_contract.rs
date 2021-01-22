@@ -19,7 +19,7 @@ fn test_pubkey() -> Result<()> {
     let state_init = StateInit::construct_from(&mut SliceData::from(si_roots.remove(0)))?;
     let data = state_init.data.unwrap().into();
 
-    let pub_key = Contract::get_pubkey(&data)?;
+    let pub_key = Contract::get_pubkey(&data)?.unwrap();
 
     assert_eq!(pub_key.len(), PUB_KEY.len());
     for b in pub_key {
@@ -27,7 +27,7 @@ fn test_pubkey() -> Result<()> {
     }
 
     let data = Contract::insert_pubkey(data, &PUB_KEY)?;
-    let pub_key = Contract::get_pubkey(&data)?;
+    let pub_key = Contract::get_pubkey(&data)?.unwrap();
 
     assert_eq!(pub_key, PUB_KEY);
 

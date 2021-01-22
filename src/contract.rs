@@ -327,13 +327,13 @@ impl Contract {
     }
 
     // Gets public key from contract data
-    pub fn get_pubkey(data: &SliceData) -> Result<Vec<u8>> {
+    pub fn get_pubkey(data: &SliceData) -> Result<Option<Vec<u8>>> {
         let map = HashmapE::with_data(
             Self::DATA_MAP_KEYLEN,
             data.clone(),
         );
         map.get(0u64.write_to_new_cell()?.into())
-            .map(|opt| opt.unwrap().get_bytestring(0))
+            .map(|opt| opt.map(|slice| slice.get_bytestring(0)))
     }
 
     /// Sets public key into contract data
