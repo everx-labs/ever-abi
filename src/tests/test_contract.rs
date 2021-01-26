@@ -6,8 +6,7 @@ use ton_types::{deserialize_cells_tree, Result, SliceData};
 use Contract;
 
 const DEPOOL_TVC: &[u8] = include_bytes!("data/DePool.tvc");
-const PUBKEY_LEN: usize = 32;
-const PUB_KEY: [u8; PUBKEY_LEN] = [
+const PUB_KEY: [u8; ed25519_dalek::PUBLIC_KEY_LENGTH] = [
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
     17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32
 ];
@@ -21,7 +20,7 @@ fn test_pubkey() -> Result<()> {
     let data = state_init.data.unwrap().into();
 
     let pub_key = Contract::get_pubkey(&data)?.unwrap();
-    assert_eq!(pub_key, vec![0; PUBKEY_LEN]);
+    assert_eq!(pub_key, vec![0; ed25519_dalek::PUBLIC_KEY_LENGTH]);
 
     let data = Contract::insert_pubkey(data, &PUB_KEY)?;
     let pub_key = Contract::get_pubkey(&data)?.unwrap();
