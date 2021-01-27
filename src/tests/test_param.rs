@@ -17,6 +17,9 @@ use Int;
 use Token;
 use {Param, ParamType};
 use {TokenValue, Uint};
+use Function;
+use ton_types::BuilderData;
+use ton_types::IBitstring;
 
 #[test]
 fn int_json_representation() {
@@ -48,6 +51,44 @@ fn int_json_representation() {
             "i256": "-1",
         })
     );
+}
+
+#[test]
+fn test_encode_internal_output() {
+    let func: Function = Function {
+        abi_version: 2,
+        name: "func".to_string(),
+        header: [].to_vec(),
+        inputs: [].to_vec(),
+        outputs: [].to_vec(),
+        input_id: 0,
+        output_id: 0,
+    };
+
+    let tokens =
+        [
+            Token::new("u8", TokenValue::Uint(Uint::new(1, 8))),
+            Token::new("i32", TokenValue::Int(Int::new(-1, 32))),
+            Token::new("u256", TokenValue::Uint(Uint::new(1, 256))),
+            Token::new("u128", TokenValue::Uint(Uint::new(1, 128))),
+            Token::new("i256", TokenValue::Int(Int::new(-1, 256))),
+        ];
+    let test_tree = func.encode_internal_output(1u32 << 31, &tokens).unwrap();
+
+    let mut expected_tree = BuilderData::new();
+    expected_tree.append_u32(1u32 << 31).unwrap();        // answer_id
+    expected_tree.append_u8(1).unwrap();
+    expected_tree.append_i32(-1).unwrap();
+    expected_tree.append_raw(
+        &hex::decode("0000000000000000000000000000000000000000000000000000000000000001").unwrap(),
+        32 * 8).unwrap();
+    expected_tree.append_raw(
+        &hex::decode("00000000000000000000000000000001").unwrap(),
+        16 * 8).unwrap();
+    expected_tree.append_raw(
+        &hex::decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap(),
+        32 * 8).unwrap();
+    assert_eq!(test_tree, expected_tree);
 }
 
 #[test]

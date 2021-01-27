@@ -204,6 +204,18 @@ impl Function {
         Ok(builder)
     }
 
+    /// Encodes provided function return values into `BuilderData`
+    pub fn encode_internal_output(
+        &self,
+        answer_id: u32,
+        input: &[Token]
+    ) -> Result<BuilderData> {
+        let mut vec = vec![];
+        vec.push(answer_id.write_to_new_cell()?);
+        let builder = TokenValue::pack_values_into_chain(input, vec, self.abi_version)?;
+        Ok(builder)
+    }
+
     /// Encodes function header with provided header parameters
     fn encode_header(
         &self,
