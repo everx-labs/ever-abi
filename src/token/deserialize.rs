@@ -93,7 +93,7 @@ impl TokenValue {
     -> Result<(Vec<Self>, SliceData)> {
         let original = cursor.clone();
         cursor = find_next_bits(cursor, 1)?;
-        let map = HashmapE::with_data(32, cursor.get_dictionary()?);
+        let map = HashmapE::with_hashmap(32, cursor.get_dictionary()?.reference_opt(0));
         let mut result = vec![];
         for i in 0..size {
             let mut index = BuilderData::new();
@@ -148,7 +148,7 @@ impl TokenValue {
             ParamType::Address => super::STD_ADDRESS_BIT_LENGTH,
             _ => fail!(AbiError::InvalidData { msg: "Only integer and std address values can be map keys".to_owned() } )
         };
-        let hashmap = HashmapE::with_data(bit_len, cursor.get_dictionary()?);
+        let hashmap = HashmapE::with_hashmap(bit_len, cursor.get_dictionary()?.reference_opt(0));
         hashmap.iterate_slices(|key, value| {
             let key = Self::read_from(key_type, key, true, abi_version)?.0;
             let key = serde_json::to_value(&key)?.as_str().ok_or(AbiError::InvalidData {

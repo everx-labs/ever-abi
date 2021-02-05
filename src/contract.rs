@@ -211,7 +211,7 @@ impl Contract {
 
     /// Returns `Function` struct with provided function name.
     pub fn function(&self, name: &str) -> Result<&Function> {
-        self.functions.get(name).ok_or(AbiError::InvalidName { name: name.to_owned() }.into())
+        self.functions.get(name).ok_or_else(|| AbiError::InvalidName { name: name.to_owned() }.into())
     }
 
     /// Returns `Function` struct with provided function id.
@@ -304,16 +304,16 @@ impl Contract {
 
     /// Changes initial values for public contract variables
     pub fn update_data(&self, data: SliceData, tokens: &[Token]) -> Result<SliceData> {
-        let mut map = HashmapE::with_data(
+        let mut map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN, 
-            data,
+            data.reference_opt(0),
         );
 
         for token in tokens {
             let builder = token.value.pack_into_chain(self.abi_version)?;
             let key = self.data
                 .get(&token.name)
-                .ok_or(
+                .ok_or_else(||
                     AbiError::InvalidData { msg: format!("data item {} not found in contract ABI", token.name) }
                 )?.key;
 
@@ -328,9 +328,9 @@ impl Contract {
 
     // Gets public key from contract data
     pub fn get_pubkey(data: &SliceData) -> Result<Option<Vec<u8>>> {
-        let map = HashmapE::with_data(
+        let map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN,
-            data.clone(),
+            data.reference_opt(0),
         );
         map.get(0u64.write_to_new_cell()?.into())
             .map(|opt| opt.map(|slice| slice.get_bytestring(0)))
@@ -343,9 +343,9 @@ impl Contract {
         let value = BuilderData::with_raw(pubkey_vec, pubkey_len)
                 .unwrap_or(BuilderData::new());
 
-        let mut map = HashmapE::with_data(
+        let mut map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN, 
-            data,
+            data.reference_opt(0)
         );
         map.set(
             0u64.write_to_new_cell().unwrap().into(), 
