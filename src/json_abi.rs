@@ -77,24 +77,6 @@ pub fn prepare_function_call_for_sign(
     function.create_unsigned_call(&header_tokens, &input_tokens, false, true)
 }
 
-/// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
-/// which can be used as internal message body for calling contract.
-pub fn prepare_function_call_int(
-    abi: String,
-    function: String,
-    parameters: String,
-) -> Result<BuilderData> {
-    let contract = Contract::load(abi.as_bytes())?;
-
-    let function = contract.function(&function)?;
-
-    let values: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err } )?;
-    let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &values)?;
-
-    function.create_unsigned_call(&HashMap::new(), &input_tokens, true, true)
-        .map(|(body, _hash)| body)
-}
-
 /// Add sign to messsage body returned by `prepare_function_call_for_sign` function
 pub fn add_sign_to_function_call(
     abi: String,
