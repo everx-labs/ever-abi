@@ -345,7 +345,7 @@ fn test_store_pubkey() {
 
     let new_data = Contract::insert_pubkey(data.into(), &test_pubkey).unwrap();
 
-    let new_map = HashmapE::with_data(Contract::DATA_MAP_KEYLEN, new_data.into());
+    let new_map = HashmapE::with_hashmap(Contract::DATA_MAP_KEYLEN, new_data.reference_opt(0));
     let key_slice = new_map.get(
         0u64.write_to_new_cell().unwrap().into(),
     )
@@ -371,7 +371,7 @@ fn test_update_contract_data() {
 
     let data = test_map.write_to_new_cell().unwrap();
     let new_data = update_contract_data(WALLET_ABI, params, data.into()).unwrap();
-    let new_map = HashmapE::with_data(Contract::DATA_MAP_KEYLEN, new_data.into());
+    let new_map = HashmapE::with_hashmap(Contract::DATA_MAP_KEYLEN, new_data.reference_opt(0));
 
 
     let key_slice = new_map.get(
