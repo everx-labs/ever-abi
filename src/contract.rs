@@ -340,8 +340,7 @@ impl Contract {
     pub fn insert_pubkey(data: SliceData, pubkey: &[u8]) -> Result<SliceData> {
         let pubkey_vec = pubkey.to_vec();
         let pubkey_len = pubkey_vec.len() * 8;
-        let value = BuilderData::with_raw(pubkey_vec, pubkey_len)
-                .unwrap_or(BuilderData::new());
+        let value = BuilderData::with_raw(pubkey_vec, pubkey_len).unwrap_or_default();
 
         let mut map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN, 
