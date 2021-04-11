@@ -40,7 +40,6 @@ fn int_json_representation() {
         ],
     )
     .unwrap();
-    serde_json::json!({});
     assert_eq!(
         value,
         serde_json::json!({

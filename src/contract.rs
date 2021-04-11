@@ -211,7 +211,7 @@ impl Contract {
 
     /// Returns `Function` struct with provided function name.
     pub fn function(&self, name: &str) -> Result<&Function> {
-        self.functions.get(name).ok_or(AbiError::InvalidName { name: name.to_owned() }.into())
+        self.functions.get(name).ok_or_else(|| AbiError::InvalidName { name: name.to_owned() }.into())
     }
 
     /// Returns `Function` struct with provided function id.
@@ -313,7 +313,7 @@ impl Contract {
             let builder = token.value.pack_into_chain(self.abi_version)?;
             let key = self.data
                 .get(&token.name)
-                .ok_or(
+                .ok_or_else(||
                     AbiError::InvalidData { msg: format!("data item {} not found in contract ABI", token.name) }
                 )?.key;
 
@@ -340,12 +340,11 @@ impl Contract {
     pub fn insert_pubkey(data: SliceData, pubkey: &[u8]) -> Result<SliceData> {
         let pubkey_vec = pubkey.to_vec();
         let pubkey_len = pubkey_vec.len() * 8;
-        let value = BuilderData::with_raw(pubkey_vec, pubkey_len)
-                .unwrap_or(BuilderData::new());
+        let value = BuilderData::with_raw(pubkey_vec, pubkey_len).unwrap_or_default();
 
         let mut map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN, 
-            data.reference_opt(0),
+            data.reference_opt(0)
         );
         map.set_builder(
             0u64.write_to_new_cell().unwrap().into(), 

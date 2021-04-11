@@ -44,7 +44,7 @@ impl Tokenizer {
             ParamType::Address => {
                 let address = MsgAddress::from_str(
                     &value.as_str()
-                        .ok_or(AbiError::WrongDataFormat { val: value.clone() } )?)
+                        .ok_or_else(|| AbiError::WrongDataFormat { val: value.clone() } )?)
                     .map_err(|_| AbiError::WrongDataFormat { val: value.clone() } )?;
                 Ok(TokenValue::Address(address))
             }
@@ -252,7 +252,7 @@ impl Tokenizer {
     fn tokenize_cell(value: &Value) -> Result<TokenValue> {
         let string = value
             .as_str()
-            .ok_or(AbiError::WrongDataFormat { val: value.clone() } )?;
+            .ok_or_else(|| AbiError::WrongDataFormat { val: value.clone() } )?;
 
         if string.len() == 0 {
             return Ok(TokenValue::Cell(BuilderData::new().into()));
@@ -281,7 +281,7 @@ impl Tokenizer {
     fn tokenize_bytes(value: &Value, size: Option<usize>) -> Result<TokenValue> {
         let string = value
             .as_str()
-            .ok_or(AbiError::WrongDataFormat { val: value.clone() } )?;
+            .ok_or_else(|| AbiError::WrongDataFormat { val: value.clone() } )?;
         let mut data = hex::decode(string)
             .map_err(|_| AbiError::InvalidParameterValue { val: value.clone() } )?;
         match size {
@@ -306,7 +306,7 @@ impl Tokenizer {
     fn tokenize_time(value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
-        let time = number.to_u64().ok_or(error!(AbiError::InvalidInputData {
+        let time = number.to_u64().ok_or_else(|| error!(AbiError::InvalidInputData {
             msg: "`time` value should fit into u64".into()
         }))?;
 
@@ -317,7 +317,7 @@ impl Tokenizer {
     fn tokenize_expire(value: &Value) -> Result<TokenValue> {
         let number = Self::read_uint(value)?;
 
-        let expire = number.to_u32().ok_or(error!(AbiError::InvalidInputData {
+        let expire = number.to_u32().ok_or_else(|| error!(AbiError::InvalidInputData {
             msg: "`expire` value should fit into u32".into()
         }))?;
 
@@ -327,7 +327,7 @@ impl Tokenizer {
     fn tokenize_public_key(value: &Value) -> Result<TokenValue> {
         let string = value
             .as_str()
-            .ok_or(AbiError::WrongDataFormat { val: value.clone() } )?;
+            .ok_or_else(|| AbiError::WrongDataFormat { val: value.clone() } )?;
 
         if string.len() == 0 {
             Ok(TokenValue::PublicKey(None))
