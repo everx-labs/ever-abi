@@ -57,9 +57,9 @@ fn test_encode_internal_output() {
     let func: Function = Function {
         abi_version: 2,
         name: "func".to_string(),
-        header: [].to_vec(),
-        inputs: [].to_vec(),
-        outputs: [].to_vec(),
+        header: vec![],
+        inputs: vec![],
+        outputs: vec![],
         input_id: 0,
         output_id: 0,
     };
