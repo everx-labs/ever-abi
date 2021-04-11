@@ -304,9 +304,9 @@ impl Contract {
 
     /// Changes initial values for public contract variables
     pub fn update_data(&self, data: SliceData, tokens: &[Token]) -> Result<SliceData> {
-        let mut map = HashmapE::with_data(
+        let mut map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN, 
-            data,
+            data.reference_opt(0),
         );
 
         for token in tokens {
@@ -328,9 +328,9 @@ impl Contract {
 
     // Gets public key from contract data
     pub fn get_pubkey(data: &SliceData) -> Result<Option<Vec<u8>>> {
-        let map = HashmapE::with_data(
+        let map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN,
-            data.clone(),
+            data.reference_opt(0),
         );
         map.get(0u64.write_to_new_cell()?.into())
             .map(|opt| opt.map(|slice| slice.get_bytestring(0)))
@@ -343,9 +343,9 @@ impl Contract {
         let value = BuilderData::with_raw(pubkey_vec, pubkey_len)
                 .unwrap_or(BuilderData::new());
 
-        let mut map = HashmapE::with_data(
+        let mut map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN, 
-            data,
+            data.reference_opt(0),
         );
         map.set_builder(
             0u64.write_to_new_cell().unwrap().into(), 

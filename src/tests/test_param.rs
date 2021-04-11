@@ -40,10 +40,10 @@ fn int_json_representation() {
         ],
     )
     .unwrap();
-    json!({});
+    serde_json::json!({});
     assert_eq!(
         value,
-        json!({
+        serde_json::json!({
             "u8": "1",
             "i32": "-1",
             "u256": "0x0000000000000000000000000000000000000000000000000000000000000001",

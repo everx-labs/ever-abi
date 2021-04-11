@@ -353,16 +353,16 @@ fn test_find_event() {
 fn test_store_pubkey() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
     let test_pubkey = vec![11u8; 32];
-    test_map.set(
+    test_map.set_builder(
         0u64.write_to_new_cell().unwrap().into(),
-        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap().into(),
+        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
     ).unwrap();
 
     let data = test_map.write_to_new_cell().unwrap();
 
     let new_data = Contract::insert_pubkey(data.into(), &test_pubkey).unwrap();
 
-    let new_map = HashmapE::with_data(Contract::DATA_MAP_KEYLEN, new_data.into());
+    let new_map = HashmapE::with_hashmap(Contract::DATA_MAP_KEYLEN, new_data.reference_opt(0));
     let key_slice = new_map.get(
         0u64.write_to_new_cell().unwrap().into(),
     )
@@ -375,9 +375,9 @@ fn test_store_pubkey() {
 #[test]
 fn test_update_contract_data() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
-    test_map.set(
+    test_map.set_builder(
         0u64.write_to_new_cell().unwrap().into(),
-        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap().into(),
+        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
     ).unwrap();
 
     let params = r#"{
@@ -388,7 +388,7 @@ fn test_update_contract_data() {
 
     let data = test_map.write_to_new_cell().unwrap();
     let new_data = update_contract_data(WALLET_ABI, params, data.into()).unwrap();
-    let new_map = HashmapE::with_data(Contract::DATA_MAP_KEYLEN, new_data.into());
+    let new_map = HashmapE::with_hashmap(Contract::DATA_MAP_KEYLEN, new_data.reference_opt(0));
 
 
     let key_slice = new_map.get(
