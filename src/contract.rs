@@ -317,9 +317,9 @@ impl Contract {
                     AbiError::InvalidData { msg: format!("data item {} not found in contract ABI", token.name) }
                 )?.key;
 
-                map.set(
+                map.set_builder(
                     key.write_to_new_cell().unwrap().into(), 
-                    &builder.into(), 
+                    &builder, 
                 )?;
         }
 
@@ -347,9 +347,9 @@ impl Contract {
             Self::DATA_MAP_KEYLEN, 
             data,
         );
-        map.set(
+        map.set_builder(
             0u64.write_to_new_cell().unwrap().into(), 
-            &value.into(), 
+            &value, 
         )?;
         Ok(map.write_to_new_cell()?.into())
     }
