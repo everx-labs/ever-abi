@@ -353,9 +353,9 @@ fn test_find_event() {
 fn test_store_pubkey() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
     let test_pubkey = vec![11u8; 32];
-    test_map.set(
+    test_map.set_builder(
         0u64.write_to_new_cell().unwrap().into(),
-        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap().into(),
+        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
     ).unwrap();
 
     let data = test_map.write_to_new_cell().unwrap();
@@ -375,9 +375,9 @@ fn test_store_pubkey() {
 #[test]
 fn test_update_contract_data() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
-    test_map.set(
+    test_map.set_builder(
         0u64.write_to_new_cell().unwrap().into(),
-        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap().into(),
+        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
     ).unwrap();
 
     let params = r#"{

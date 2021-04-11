@@ -28,7 +28,7 @@ fn put_array_into_map<T: Serializable>(array: &[T]) -> HashmapE {
     for i in 0..array.len() {
         let index = (i as u32).write_to_new_cell().unwrap();
         let data = array[i].write_to_new_cell().unwrap();
-        map.set(index.into(), &data.into()).unwrap();
+        map.set_builder(index.into(), &data).unwrap();
     }
 
     map
@@ -546,7 +546,7 @@ fn test_tuples_with_combined_types() {
         let mut index = BuilderData::new();
         index.append_u32(i).unwrap();
 
-        map.set(index.into(), &builder.into()).unwrap();
+        map.set_builder(index.into(), &builder).unwrap();
     }
 
     let mut chain_builder_v2 = chain_builder.clone();
@@ -736,7 +736,7 @@ fn vec_to_map<K: Serializable>(vec: &[(K, BuilderData)], size: usize) -> Hashmap
 
     for (key, value) in vec {
         let key = key.write_to_new_cell().unwrap();
-        map.set(key.into(), &value.into()).unwrap();
+        map.set_builder(key.into(), &value).unwrap();
     }
 
     map

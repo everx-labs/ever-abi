@@ -170,7 +170,7 @@ impl TokenValue {
 
             let data = Self::pack_cells_into_chain(array[i].write_to_cells(abi_version)?, abi_version)?;
 
-            map.set(index.into(), &data.into())?;
+            map.set_builder(index.into(), &data)?;
         }
 
         Ok(map)
@@ -243,7 +243,7 @@ impl TokenValue {
 
             let data = Self::pack_cells_into_chain(value.write_to_cells(abi_version)?, abi_version)?;
 
-            hashmap.set(key_vec.pop().unwrap().into(), &data.into())?;
+            hashmap.set_builder(key_vec.pop().unwrap().into(), &data)?;
         }
 
         let mut builder = BuilderData::new();
