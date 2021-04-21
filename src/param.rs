@@ -80,48 +80,9 @@ impl<'a> Deserialize<'a> for Param {
                 kind: serde_param.kind,
             };
 
-            let tuple_err = D::Error::custom(
-                "Tuple description should contain non empty `components` field");
-
-            result.kind = match result.kind {
-                ParamType::Tuple(_) => {
-                    if serde_param.components.len() == 0 {
-                        return Err(tuple_err);
-                    }
-                    ParamType::Tuple(serde_param.components)
-                } 
-                ParamType::Array(array_type) => {
-                    if let ParamType::Tuple(_) = *array_type {
-                        if serde_param.components.len() == 0 {
-                            return Err(tuple_err);
-                        }
-                        ParamType::Array(Box::new(ParamType::Tuple(serde_param.components)))
-                    } else {
-                        ParamType::Array(array_type)
-                    }
-                }
-                ParamType::FixedArray(array_type, size) => {
-                    if let ParamType::Tuple(_) = *array_type {
-                        if serde_param.components.len() == 0 {
-                            return Err(tuple_err);
-                        }
-                        ParamType::FixedArray(Box::new(ParamType::Tuple(serde_param.components)), size)
-                    } else {
-                        ParamType::FixedArray(array_type, size)
-                    }
-                }
-                ParamType::Map(key_type, value_type) => {
-                    if let ParamType::Tuple(_) = *value_type {
-                        if serde_param.components.len() == 0 {
-                            return Err(tuple_err);
-                        }
-                        ParamType::Map(key_type, Box::new(ParamType::Tuple(serde_param.components)))
-                    } else {
-                        ParamType::Map(key_type, value_type)
-                    }
-                }
-                _ => result.kind,
-            };
+            result.kind
+                .set_components(serde_param.components)
+                .map_err(D::Error::custom)?;
 
             Ok(result)  
         }

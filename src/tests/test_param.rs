@@ -184,6 +184,42 @@ fn test_tuples_array_deserialization() {
 }
 
 #[test]
+fn test_tuples_array_map() {
+    let s = r#"{
+        "components":[
+            {
+                "name": "a",
+                "type": "uint256"
+            },
+            {
+                "name": "b",
+                "type": "uint256"
+            }
+        ],
+        "name": "d",
+        "type": "map(uint32,tuple[][5])"
+    }"#;
+
+    let deserialized: Param = serde_json::from_str(s).unwrap();
+
+    assert_eq!(deserialized, Param {
+        name: "d".to_owned(),
+        kind: ParamType::Map(
+                Box::new(ParamType::Uint(32)),
+                Box::new(ParamType::FixedArray(
+                    Box::new(ParamType::Array(
+                        Box::new(ParamType::Tuple(vec![
+                            Param { name: "a".to_owned(), kind: ParamType::Uint(256) },
+                            Param { name: "b".to_owned(), kind: ParamType::Uint(256) },
+                        ]))
+                    )),
+                    5
+                )),
+            ),
+    });
+}
+
+#[test]
 fn test_empty_tuple_error() {
     let s = r#"{
         "name": "a",
