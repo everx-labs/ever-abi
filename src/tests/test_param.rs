@@ -184,7 +184,7 @@ fn test_tuples_array_deserialization() {
 }
 
 #[test]
-fn test_tuples_array_map() {
+fn test_tuples_array_map_map() {
     let s = r#"{
         "components":[
             {
@@ -197,7 +197,7 @@ fn test_tuples_array_map() {
             }
         ],
         "name": "d",
-        "type": "map(uint32,tuple[][5])"
+        "type": "map(uint32,map(uint32,tuple[][5]))"
     }"#;
 
     let deserialized: Param = serde_json::from_str(s).unwrap();
@@ -206,15 +206,18 @@ fn test_tuples_array_map() {
         name: "d".to_owned(),
         kind: ParamType::Map(
                 Box::new(ParamType::Uint(32)),
-                Box::new(ParamType::FixedArray(
-                    Box::new(ParamType::Array(
-                        Box::new(ParamType::Tuple(vec![
-                            Param { name: "a".to_owned(), kind: ParamType::Uint(256) },
-                            Param { name: "b".to_owned(), kind: ParamType::Uint(256) },
-                        ]))
+                Box::new(ParamType::Map(
+                    Box::new(ParamType::Uint(32)),
+                    Box::new(ParamType::FixedArray(
+                        Box::new(ParamType::Array(
+                            Box::new(ParamType::Tuple(vec![
+                                Param { name: "a".to_owned(), kind: ParamType::Uint(256) },
+                                Param { name: "b".to_owned(), kind: ParamType::Uint(256) },
+                            ]))
+                        )),
+                        5
                     )),
-                    5
-                )),
+                ))
             ),
     });
 }
