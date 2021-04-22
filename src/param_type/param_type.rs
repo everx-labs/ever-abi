@@ -16,6 +16,10 @@
 use std::fmt;
 use Param;
 
+use crate::AbiError;
+
+use ton_types::{error, Result};
+
 /// Function and event param types.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParamType {
@@ -88,6 +92,34 @@ impl ParamType {
             ParamType::Time => format!("time"),
             ParamType::Expire => format!("expire"),
             ParamType::PublicKey => format!("pubkey"),
+        }
+    }
+
+    pub fn set_components(&mut self, components: Vec<Param>) -> Result<()> {
+        match self {
+            ParamType::Tuple(params) => {
+                if components.len() == 0 {
+                    Err(error!(AbiError::EmptyComponents))
+                } else {
+                    Ok(*params = components)
+                }
+            } 
+            ParamType::Array(array_type) => {
+                array_type.set_components(components)
+            }
+            ParamType::FixedArray(array_type, _) => {
+                array_type.set_components(components)
+            }
+            ParamType::Map(_, value_type) => {
+                value_type.set_components(components)
+            }
+            _ => { 
+                if components.len() != 0 {
+                    Err(error!(AbiError::UnusedComponents))
+                } else {
+                    Ok(())
+                }
+            },
         }
     }
 

@@ -96,5 +96,11 @@ pub enum AbiError {
     TryFromIntError {
         err: std::num::TryFromIntError
     },
+
+    #[fail(display = "Tuple description should contain non empty `components` field")]
+    EmptyComponents,
+
+    #[fail(display = "Type description contains non empty `components` field but it is not a tuple")]
+    UnusedComponents,
 }
 

@@ -86,7 +86,7 @@ pub fn read_type(name: &str) -> Result<ParamType> {
             ParamType::Uint(len)
         },
         s if s.starts_with("map(") && s.ends_with(")") => {
-            let types: Vec<&str> = name[4..name.len() - 1].split(",").collect();
+            let types: Vec<&str> = name[4..name.len() - 1].splitn(2, ",").collect();
             if types.len() != 2 {
                 fail!(AbiError::InvalidName { name: name.to_owned() } );
             }
