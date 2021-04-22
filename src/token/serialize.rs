@@ -13,7 +13,7 @@
 
 use crate::{
     error::AbiError, int::{Int, Uint}, param_type::ParamType, 
-    token::{Token, Tokenizer, TokenValue}
+    token::{Tokenizer, TokenValue}
 };
 
 use num_bigint::{BigInt, Sign};
@@ -22,25 +22,117 @@ use ton_block::Serializable;
 use ton_types::{BuilderData, Cell, error, fail, HashmapE, IBitstring, Result};
 
 impl TokenValue {
-    pub fn pack_values_into_chain(tokens: &[Token], mut cells: Vec<BuilderData>, abi_version: u8) -> Result<BuilderData> {
+    pub fn pack_values_into_chain(tokens: &[TokenValue], mut cells: Vec<BuilderData>, abi_version: u8) -> Result<(BuilderData, i32)> {
         for token in tokens {
-            cells.append(&mut token.value.write_to_cells(abi_version)?);
+            cells.append(&mut token.write_to_cells(abi_version)?);
         }
-        Self::pack_cells_into_chain(cells, abi_version)
+        Self::pack_cells_into_chain(cells, abi_version, Some(tokens))
     }
 
-    pub fn pack_into_chain(&self, abi_version: u8) -> Result<BuilderData> {
-        Self::pack_cells_into_chain(self.write_to_cells(abi_version)?, abi_version)
+    pub fn pack_into_chain(&self, abi_version: u8) -> Result<(BuilderData, i32)> {
+        let values  = vec![self.clone()];
+        Self::pack_cells_into_chain(self.write_to_cells(abi_version)?, abi_version, Some(values.as_slice()))
+    }
+
+    fn unroll<'a>(token_value: &'a TokenValue, values: &mut Vec<&'a TokenValue>) {
+        match token_value {
+            TokenValue::Tuple(tuple) => {
+                for t in tuple {
+                    Self::unroll(&t.value, values);
+                }
+            }
+            TokenValue::Uint(_) |
+            TokenValue::Int(_) |
+            TokenValue::Bool(_) |
+            TokenValue::Array(_) |
+            TokenValue::FixedArray(_) |
+            TokenValue::Cell(_) |
+            TokenValue::Map(_, _) |
+            TokenValue::Address(_) |
+            TokenValue::Bytes(_) |
+            TokenValue::FixedBytes(_) |
+            TokenValue::Gram(_) |
+            TokenValue::Time(_) |
+            TokenValue::Expire(_) |
+            TokenValue::PublicKey(_) => {
+                values.push(&token_value);
+            }
+        }
+    }
+
+    fn max_possible_size(token_value: &TokenValue) -> i32 {
+        match token_value {
+            TokenValue::Uint(i) => {
+                i.size as i32
+            }
+            TokenValue::Int(i) => {
+                i.size as i32
+            }
+            TokenValue::Bool(_) => {
+                1
+            }
+            TokenValue::Array(_) => {
+                33
+            }
+            TokenValue::FixedArray(arr) => {
+                8 * arr.len()  as i32
+            }
+            TokenValue::Cell(_) => {
+                0
+            }
+            TokenValue::Map(_, _) => {
+                1
+            }
+            TokenValue::Address(_) => {
+                591
+            }
+            TokenValue::Bytes(_) => {
+                0
+            }
+            TokenValue::FixedBytes(b) => {
+                b.len() as i32
+            }
+            TokenValue::Gram(_) => {
+                128
+            }
+            TokenValue::Time(_) => {
+                64
+            }
+            TokenValue::Expire(_) => {
+                32
+            }
+            TokenValue::PublicKey(_) => {
+                256
+            }
+            TokenValue::Tuple(_) => {
+                panic!("See fn unroll");
+            }
+        }
     }
 
     // first cell is resulting builder
     // every next cell: put data to root
-    fn pack_cells_into_chain(mut cells: Vec<BuilderData>, abi_version: u8) -> Result<BuilderData> {
+    fn pack_cells_into_chain(mut cells: Vec<BuilderData>, abi_version: u8, values: Option<&[TokenValue]>) -> Result<(BuilderData, i32)> {
+        let mut new_values = vec![];
+        if values.is_some() {
+            for v in values.unwrap() {
+                Self::unroll(v, &mut new_values);
+            }
+        }
+        assert!(new_values.len() <= cells.len());
+
         cells.reverse();
         let mut packed_cells = match cells.pop() {
             Some(cell) => vec![cell],
-            None => fail!(AbiError::InvalidData { msg: "No cells".to_owned() } )
+            None => {
+                fail!(AbiError::InvalidData { msg: "No cells".to_owned() })
+            }
         };
+        let mut max_possible_size_of_first_cell = 0;
+        if !new_values.is_empty() {
+            max_possible_size_of_first_cell += Self::max_possible_size(new_values[0]);
+        }
+        let mut i = 1;
         while let Some(cell) = cells.pop() {
             let builder = packed_cells.last_mut().unwrap();
             if  builder.bits_free() < cell.bits_used() ||
@@ -60,18 +152,26 @@ impl TokenValue {
                     (refs == 0 && bits + cell.bits_used() <= builder.bits_free())
                 {
                     builder.append_builder(&cell)?;
+                    if i < new_values.len() {
+                        max_possible_size_of_first_cell += Self::max_possible_size(new_values[i]);
+                    }
                 } else {
                     packed_cells.push(cell);
                 }
                 
             } else {
                 builder.append_builder(&cell)?;
+                if i < new_values.len() {
+                    max_possible_size_of_first_cell += Self::max_possible_size(new_values[i]);
+                }
             }
+
+            i += 1;
         }
         while let Some(cell) = packed_cells.pop() {
             match packed_cells.last_mut() {
                 Some(builder) => builder.append_reference(cell),
-                None => return Ok(cell)
+                None => return Ok((cell, max_possible_size_of_first_cell))
             }
         }
         fail!(AbiError::NotImplemented)
@@ -168,7 +268,7 @@ impl TokenValue {
         for i in 0..array.len() {
             let index = (i as u32).write_to_new_cell()?;
 
-            let data = Self::pack_cells_into_chain(array[i].write_to_cells(abi_version)?, abi_version)?;
+            let data = array[i].pack_into_chain(abi_version)?.0;
 
             map.set_builder(index.into(), &data)?;
         }
@@ -221,12 +321,13 @@ impl TokenValue {
     }
 
     fn write_map(key_type: &ParamType, value: &HashMap<String, TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
-        let bit_len = match key_type {
+        // TODO copy-pasta move to function
+        let key_length = match key_type {
             ParamType::Int(size) | ParamType::Uint(size) => *size,
             ParamType::Address => super::STD_ADDRESS_BIT_LENGTH,
             _ => fail!(AbiError::InvalidData { msg: "Only integer and std address values can be map keys".to_owned() } )
         };
-        let mut hashmap = HashmapE::with_bit_len(bit_len);
+        let mut hashmap = HashmapE::with_bit_len(key_length);
 
         for (key, value) in value.iter() {
             let key = Tokenizer::tokenize_parameter(key_type, &key.as_str().into())?;
@@ -241,9 +342,14 @@ impl TokenValue {
                 fail!(AbiError::InvalidData { msg: "Only std non-anycast address can be used as map key".to_owned() } )
             }
 
-            let data = Self::pack_cells_into_chain(value.write_to_cells(abi_version)?, abi_version)?;
+            let (data, value_len) = value.pack_into_chain(abi_version)?;
 
-            hashmap.set_builder(key_vec.pop().unwrap().into(), &data)?;
+            let slice_key = key_vec.pop().unwrap().into();
+            if super::MAX_HASH_MAP_INFO_ABOUT_KEY + (key_length as i32) + value_len <= 1023 {
+                hashmap.set_builder(slice_key, &data)?;
+            } else {
+                hashmap.setref(slice_key, &data.into_cell()?)?;
+            }
         }
 
         let mut builder = BuilderData::new();
@@ -273,17 +379,17 @@ fn test_pack_cells() {
         BuilderData::with_bitstring(vec![3, 4, 0x80]).unwrap(),
     ];
     let builder = BuilderData::with_bitstring(vec![1, 2, 3, 4, 0x80]).unwrap();
-    assert_eq!(TokenValue::pack_cells_into_chain(cells, 1).unwrap(), builder);
+    assert_eq!(TokenValue::pack_cells_into_chain(cells, 1, None).unwrap().0, builder);
 
     let cells = vec![
         BuilderData::with_raw(vec![0x55; 100], 100 * 8).unwrap(),
         BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap(),
         BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap(),
     ];
-    
+
     let builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
     let builder = BuilderData::with_raw_and_refs(vec![0x55; 127], 127 * 8, vec![builder.into()]).unwrap();
     let builder = BuilderData::with_raw_and_refs(vec![0x55; 100], 100 * 8, vec![builder.into()]).unwrap();
-    let tree = TokenValue::pack_cells_into_chain(cells, 1).unwrap();
+    let tree = TokenValue::pack_cells_into_chain(cells, 1, None).unwrap().0;
     assert_eq!(tree, builder);
 }

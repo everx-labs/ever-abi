@@ -62,7 +62,8 @@ fn test_parameters_set(
         prefix.append_u32(0).unwrap();
 
         // tree check
-        let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix], *version).unwrap();
+        let values : Vec<TokenValue> = inputs.iter().map(|x| x.value.clone()).collect();
+        let test_tree = TokenValue::pack_values_into_chain(values.as_slice(), vec![prefix], *version).unwrap().0;
 
         println!("{:#.2}", Cell::from(&test_tree));
         println!("{:#.2}", Cell::from(&params_tree));

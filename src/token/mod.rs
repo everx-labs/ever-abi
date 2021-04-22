@@ -38,6 +38,7 @@ mod tests;
 mod test_encoding;
 
 pub const STD_ADDRESS_BIT_LENGTH: usize = 267;
+pub const MAX_HASH_MAP_INFO_ABOUT_KEY: i32 = 12;
 
 /// TON ABI params.
 #[derive(Debug, PartialEq, Clone)]

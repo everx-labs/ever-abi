@@ -210,9 +210,10 @@ impl Function {
         answer_id: u32,
         input: &[Token]
     ) -> Result<BuilderData> {
-        let mut vec = vec![];
-        vec.push(answer_id.write_to_new_cell()?);
-        let builder = TokenValue::pack_values_into_chain(input, vec, self.abi_version)?;
+        let mut cells = vec![];
+        cells.push(answer_id.write_to_new_cell()?);
+        let values : Vec<TokenValue> = input.iter().map(|x| x.value.clone()).collect();
+        let builder = TokenValue::pack_values_into_chain(&values, cells, self.abi_version)?.0;
         Ok(builder)
     }
 
@@ -229,9 +230,9 @@ impl Function {
                     if !token.type_check(&param.kind) {
                         return Err(AbiError::WrongParameterType.into());
                     }
-                    vec.push(token.pack_into_chain(self.abi_version)?);
+                    vec.push(token.pack_into_chain(self.abi_version)?.0);
                 } else {
-                    vec.push(TokenValue::get_default_value_for_header(&param.kind)?.pack_into_chain(self.abi_version)?);
+                    vec.push(TokenValue::get_default_value_for_header(&param.kind)?.pack_into_chain(self.abi_version)?.0);
                 }
             }
         }
@@ -319,7 +320,8 @@ impl Function {
         }
 
         // encoding itself
-        let mut builder = TokenValue::pack_values_into_chain(input, cells, self.abi_version)?;
+        let values : Vec<TokenValue> = input.iter().map(|x| x.value.clone()).collect();
+        let mut builder = TokenValue::pack_values_into_chain(&values, cells, self.abi_version)?.0;
 
         if !internal {
             // delete reserved sign before hash

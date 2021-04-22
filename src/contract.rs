@@ -310,7 +310,7 @@ impl Contract {
         );
 
         for token in tokens {
-            let builder = token.value.pack_into_chain(self.abi_version)?;
+            let builder = token.value.pack_into_chain(self.abi_version)?.0;
             let key = self.data
                 .get(&token.name)
                 .ok_or_else(||
