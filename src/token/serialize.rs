@@ -393,3 +393,17 @@ fn test_pack_cells() {
     let tree = TokenValue::pack_cells_into_chain(cells, 1, None).unwrap().0;
     assert_eq!(tree, builder);
 }
+
+#[test]
+fn test_big_map() {
+    let big_struct = TokenValue::Tuple(vec![
+        Token::new("x", TokenValue::Uint(Uint::new(9, 256))),
+        Token::new("y", TokenValue::Uint(Uint::new(1, 256))),
+        Token::new("z", TokenValue::Uint(Uint::new(1, 256)))
+    ]);
+    let mut hm = HashMap::new();
+    hm.insert("my_str".to_owned(),big_struct);
+    let tv = TokenValue::Map(ParamType::Int(256), hm);
+    let cells = tv.pack_into_chain(2);
+    assert!(cells.is_ok())
+}
