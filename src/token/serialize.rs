@@ -243,11 +243,7 @@ impl TokenValue {
     }
 
     fn write_map(key_type: &ParamType, value: &HashMap<String, TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
-        let key_length = match key_type {
-            ParamType::Int(size) | ParamType::Uint(size) => *size,
-            ParamType::Address => super::STD_ADDRESS_BIT_LENGTH,
-            _ => fail!(AbiError::InvalidData { msg: "Only integer and std address values can be map keys".to_owned() } )
-        };
+        let key_length = key_type.get_map_key_size()?;
         let mut hashmap = HashmapE::with_bit_len(key_length);
 
         for (key, value) in value.iter() {

@@ -139,4 +139,14 @@ impl ParamType {
             _ => abi_version >= 1
         }
     }
+
+    pub fn get_map_key_size(&self) -> Result<usize> {
+        match self {
+            ParamType::Int(size) | ParamType::Uint(size) => Ok(*size),
+            ParamType::Address => Ok(crate::token::STD_ADDRESS_BIT_LENGTH),
+            _ => Err(error!(AbiError::InvalidData { 
+                msg: "Only integer and std address values can be map keys".to_owned() 
+            }))
+        }
+    }
 }
