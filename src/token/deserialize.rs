@@ -143,11 +143,7 @@ impl TokenValue {
     -> Result<(Self, SliceData)> {
         cursor = find_next_bits(cursor, 1)?;
         let mut new_map = HashMap::new();
-        let bit_len = match key_type {
-            ParamType::Int(size) | ParamType::Uint(size) => *size,
-            ParamType::Address => super::STD_ADDRESS_BIT_LENGTH,
-            _ => fail!(AbiError::InvalidData { msg: "Only integer and std address values can be map keys".to_owned() } )
-        };
+        let bit_len = key_type.get_map_key_size()?;
         let hashmap = HashmapE::with_hashmap(bit_len, cursor.get_dictionary()?.reference_opt(0));
         hashmap.iterate_slices(|key, value| {
             let key = Self::read_from(key_type, key, true, abi_version)?.0;

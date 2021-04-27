@@ -853,8 +853,9 @@ fn test_map() {
         &[2],
     );
 }
+
  #[test]
- fn test_address_map_key() {
+fn test_address_map_key() {
      let addr1_str = "0:1111111111111111111111111111111111111111111111111111111111111111";
      let addr2_str = "0:2222222222222222222222222222222222222222222222222222222222222222";
 
@@ -892,3 +893,51 @@ fn test_map() {
         &[1, 2],
     );
  }
+
+ #[test]
+ fn test_big_map_value() {
+    let mut map = HashmapE::with_bit_len(256);
+    
+    let mut map_value = BuilderData::new();
+    map_value.append_u128(0).unwrap();
+    map_value.append_u128(1).unwrap();
+    map_value.append_u128(0).unwrap();
+    map_value.append_u128(2).unwrap();
+    map_value.append_u128(0).unwrap();
+    map_value.append_u128(3).unwrap();
+
+    let mut map_key = BuilderData::new();
+    map_key.append_u128(0).unwrap();
+    map_key.append_u128(123).unwrap();
+
+    map.setref(map_key.into(), &map_value.into_cell().unwrap()).unwrap();
+
+    let value = TokenValue::Map(
+        ParamType::Uint(256),
+        HashMap::from_iter(
+            vec![(
+                "0x000000000000000000000000000000000000000000000000000000000000007b".to_owned(),
+                TokenValue::Tuple(tokens_from_values(vec![
+                    TokenValue::Uint(Uint::new(1, 256)),
+                    TokenValue::Uint(Uint::new(2, 256)),
+                    TokenValue::Uint(Uint::new(3, 256)),
+                ]))
+            )]
+        )
+    );
+
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+
+    builder.append_builder(&map.write_to_new_cell().unwrap()).unwrap();
+
+    test_parameters_set(
+        &tokens_from_values(vec![value]),
+        None,
+        builder,
+        &[2],
+    );
+ }
+
