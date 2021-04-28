@@ -898,6 +898,10 @@ fn test_address_map_key() {
  fn test_big_map_value() {
     let mut map = HashmapE::with_bit_len(256);
     
+    let mut map_value_ref = BuilderData::new();
+    map_value_ref.append_u128(0).unwrap();
+    map_value_ref.append_u128(4).unwrap();
+    
     let mut map_value = BuilderData::new();
     map_value.append_u128(0).unwrap();
     map_value.append_u128(1).unwrap();
@@ -905,6 +909,7 @@ fn test_address_map_key() {
     map_value.append_u128(2).unwrap();
     map_value.append_u128(0).unwrap();
     map_value.append_u128(3).unwrap();
+    map_value.append_reference(map_value_ref);
 
     let mut map_key = BuilderData::new();
     map_key.append_u128(0).unwrap();
@@ -921,6 +926,7 @@ fn test_address_map_key() {
                     TokenValue::Uint(Uint::new(1, 256)),
                     TokenValue::Uint(Uint::new(2, 256)),
                     TokenValue::Uint(Uint::new(3, 256)),
+                    TokenValue::Uint(Uint::new(4, 256)),
                 ]))
             )]
         )
