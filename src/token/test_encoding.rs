@@ -897,6 +897,7 @@ fn test_address_map_key() {
  #[test]
  fn test_big_map_value() {
     let mut map = HashmapE::with_bit_len(256);
+    let mut array = HashmapE::with_bit_len(32);
     
     let mut map_value_ref = BuilderData::new();
     map_value_ref.append_u128(0).unwrap();
@@ -915,22 +916,31 @@ fn test_address_map_key() {
     map_key.append_u128(0).unwrap();
     map_key.append_u128(123).unwrap();
 
-    map.setref(map_key.into(), &map_value.into_cell().unwrap()).unwrap();
+    map.setref(map_key.into(), &map_value.clone().into_cell().unwrap()).unwrap();
 
-    let value = TokenValue::Map(
+    let mut array_key = BuilderData::new();
+    array_key.append_u32(0).unwrap();
+
+    array.setref(array_key.into(), &map_value.into_cell().unwrap()).unwrap();
+
+    let tuple = TokenValue::Tuple(tokens_from_values(vec![
+        TokenValue::Uint(Uint::new(1, 256)),
+        TokenValue::Uint(Uint::new(2, 256)),
+        TokenValue::Uint(Uint::new(3, 256)),
+        TokenValue::Uint(Uint::new(4, 256)),
+    ]));
+
+    let value_map = TokenValue::Map(
         ParamType::Uint(256),
         HashMap::from_iter(
             vec![(
                 "0x000000000000000000000000000000000000000000000000000000000000007b".to_owned(),
-                TokenValue::Tuple(tokens_from_values(vec![
-                    TokenValue::Uint(Uint::new(1, 256)),
-                    TokenValue::Uint(Uint::new(2, 256)),
-                    TokenValue::Uint(Uint::new(3, 256)),
-                    TokenValue::Uint(Uint::new(4, 256)),
-                ]))
+                tuple.clone()
             )]
         )
     );
+
+    let value_array = TokenValue::Array(vec![tuple]);
 
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
@@ -938,9 +948,11 @@ fn test_address_map_key() {
     builder.append_reference(BuilderData::new());
 
     builder.append_builder(&map.write_to_new_cell().unwrap()).unwrap();
+    builder.append_u32(1).unwrap();
+    builder.append_builder(&array.write_to_new_cell().unwrap()).unwrap();
 
     test_parameters_set(
-        &tokens_from_values(vec![value]),
+        &tokens_from_values(vec![value_map, value_array]),
         None,
         builder,
         &[2],
