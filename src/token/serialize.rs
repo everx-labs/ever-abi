@@ -187,12 +187,21 @@ impl TokenValue {
     fn put_array_into_dictionary(array: &[TokenValue], abi_version: u8) -> Result<HashmapE> {
         let mut map = HashmapE::with_bit_len(32);
 
+        let value_len = array.get(0)
+            .map(|value| value.max_bit_size())
+            .unwrap_or_default();
+        let value_in_ref = Self::value_in_ref(32, value_len);
+
         for i in 0..array.len() {
             let index = (i as u32).write_to_new_cell()?;
 
             let data = Self::pack_cells_into_chain(array[i].write_to_cells(abi_version)?, abi_version)?;
 
-            map.set_builder(index.into(), &data)?;
+            if value_in_ref {
+                map.set_builder(index.into(), &data)?;
+            } else {
+                map.setref(index.into(), &data.into_cell()?)?;
+            }
         }
 
         Ok(map)
@@ -242,9 +251,19 @@ impl TokenValue {
         Ok(vec![builder])
     }
 
+    fn value_in_ref(key_len: usize, value_len: usize) -> bool {
+        super::MAX_HASH_MAP_INFO_ABOUT_KEY + key_len + value_len <= 1023
+    }
+
     fn write_map(key_type: &ParamType, value: &HashMap<String, TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
-        let key_length = key_type.get_map_key_size()?;
-        let mut hashmap = HashmapE::with_bit_len(key_length);
+        let key_len = key_type.get_map_key_size()?;
+        let value_len = value.values()
+            .next()
+            .map(|value| value.max_bit_size())
+            .unwrap_or_default();
+        let value_in_ref = Self::value_in_ref(key_len, value_len);
+
+        let mut hashmap = HashmapE::with_bit_len(key_len);
 
         for (key, value) in value.iter() {
             let key = Tokenizer::tokenize_parameter(key_type, &key.as_str().into())?;
@@ -262,8 +281,7 @@ impl TokenValue {
             let data = Self::pack_cells_into_chain(value.write_to_cells(abi_version)?, abi_version)?;
 
             let slice_key = key_vec.pop().unwrap().into();
-            let value_len = value.max_bit_size();
-            if super::MAX_HASH_MAP_INFO_ABOUT_KEY + key_length + value_len <= 1023 {
+            if value_in_ref {
                 hashmap.set_builder(slice_key, &data)?;
             } else {
                 hashmap.setref(slice_key, &data.into_cell()?)?;
