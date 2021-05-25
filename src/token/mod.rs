@@ -273,4 +273,12 @@ impl Token {
             kind: self.value.get_param_type(),
         }
     }
+
+    /// Checks if all tokens provided correspond to the expected parameters
+    pub fn check_params_provided(params: &[Param], tokens: &[Token]) -> bool {
+        params.len() == tokens.len()
+            && params.iter()
+            .zip(tokens)
+            .all(|(param, token)| param.name == token.name)
+    }
 }

@@ -20,22 +20,47 @@ use serde::ser::{Serialize, Serializer, SerializeMap};
 use std::collections::HashMap;
 use ton_types::{Cell, error, fail, Result, serialize_tree_of_cells};
 
+pub enum DetokenizeWhat<'a> {
+    Function(&'a str),
+    Output(&'a str),
+    Test,
+}
+
+impl ToString for DetokenizeWhat<'_> {
+    fn to_string(&self) -> String {
+        match *self {
+            DetokenizeWhat::Function(name) => format!("function `{}`", name),
+            DetokenizeWhat::Output(name) => format!("<output of function `{}`>", name),
+            DetokenizeWhat::Test => "<test>".to_string(),
+        }
+    }
+}
+
 pub struct Detokenizer;
 
 impl Detokenizer {
-    pub fn detokenize(params: &[Param], tokens: &[Token]) -> Result<String> {
+    pub fn detokenize(what: DetokenizeWhat, params: &[Param], tokens: &[Token]) -> Result<String> {
         Ok(
             serde_json::to_string(
-                &Self::detokenize_to_json_value(params, tokens)?
+                &Self::detokenize_to_json_value(what, params, tokens)?
             )?
         )
     }
 
-    pub fn detokenize_to_json_value(params: &[Param], tokens: &[Token]) -> Result<serde_json::Value> {
-        if params.len() != tokens.len() {
-            fail!(AbiError::WrongParametersCount {
-                expected: params.len(),
-                provided: tokens.len()
+    pub fn detokenize_to_json_value(
+        what: DetokenizeWhat,
+        params: &[Param],
+        tokens: &[Token]
+    ) -> Result<serde_json::Value> {
+        if !Token::check_params_provided(params, tokens) {
+            let expected: Vec<String> = params.iter().map(|param| param.name.to_owned()).collect();
+            let provided: Vec<String> = tokens.iter().map(|token| token.name.to_owned()).collect();
+            fail!(AbiError::IncorrectParametersProvided {
+                for_what: what.to_string(),
+                expected_count: expected.len(),
+                expected,
+                provided_count: provided.len(),
+                provided,
             });
         }
 

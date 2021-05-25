@@ -11,7 +11,7 @@
 * limitations under the License.
 */
 
-use token::Detokenizer;
+use token::{Detokenizer, DetokenizeWhat};
 use Int;
 
 use Token;
@@ -24,6 +24,7 @@ use ton_types::IBitstring;
 #[test]
 fn int_json_representation() {
     let value = Detokenizer::detokenize_to_json_value(
+        DetokenizeWhat::Test,
         &[
             Param::new("u8", ParamType::Uint(8)),
             Param::new("i32", ParamType::Int(32)),
