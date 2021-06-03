@@ -38,10 +38,20 @@ pub enum AbiError {
     #[fail(display = "Not implemented")]
     NotImplemented,
 
-    #[fail(display = "Wrong parameters count. Expected: {}, provided: {}", expected, provided)]
-    WrongParametersCount {
-        expected: usize,
-        provided: usize
+    #[fail(
+        display = "Incorrect parameters provided for {}. Expected ({}): {:?}, provided ({}): {:?}",
+        for_what,
+        expected_count,
+        expected,
+        provided_count,
+        provided,
+    )]
+    IncorrectParametersProvided {
+        for_what: String,
+        expected_count: usize,
+        expected: Vec<String>,
+        provided_count: usize,
+        provided: Vec<String>,
     },
 
     #[fail(display = "Wrong parameter type")]

@@ -19,6 +19,7 @@ use ed25519_dalek::Keypair;
 use serde_json::Value;
 use std::collections::HashMap;
 use ton_types::{Result, BuilderData, SliceData};
+use token::DetokenizeWhat;
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
 /// which can be used as message body for calling contract
@@ -46,7 +47,7 @@ pub fn encode_function_call(
     }
 
     let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err } )?;
-    let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
+    let input_tokens = Tokenizer::tokenize_all_params(&function.name, function.input_params(), &v)?;
 
     function.encode_input(&header_tokens, &input_tokens, internal, pair)
 }
@@ -72,7 +73,7 @@ pub fn prepare_function_call_for_sign(
     };
 
     let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err } )?;
-    let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
+    let input_tokens = Tokenizer::tokenize_all_params(&function.name, function.input_params(), &v)?;
 
     function.create_unsigned_call(&header_tokens, &input_tokens, false, true)
 }
@@ -101,7 +102,11 @@ pub fn decode_function_response(
 
     let tokens = function.decode_output(response, internal)?;
 
-    Detokenizer::detokenize(&function.output_params(), &tokens)
+    Detokenizer::detokenize(
+        DetokenizeWhat::Function(&function.name),
+        &function.output_params(),
+        &tokens
+    )
 }
 
 pub struct DecodedMessage {
@@ -109,7 +114,7 @@ pub struct DecodedMessage {
     pub params: String
 }
 
-/// Decodes output parameters returned by some function call. Returns parametes and function name
+/// Decodes output parameters returned by some function call. Returns parameters and function name
 pub fn decode_unknown_function_response(
     abi: String,
     response: SliceData,
@@ -119,7 +124,11 @@ pub fn decode_unknown_function_response(
 
     let result = contract.decode_output(response, internal)?;
 
-    let output = Detokenizer::detokenize(&result.params, &result.tokens)?;
+    let output = Detokenizer::detokenize(
+        DetokenizeWhat::Output(&result.function_name),
+        &result.params,
+        &result.tokens
+    )?;
 
     Ok(DecodedMessage {
         function_name: result.function_name,
@@ -137,7 +146,11 @@ pub fn decode_unknown_function_call(
 
     let result = contract.decode_input(response, internal)?;
 
-    let input = Detokenizer::detokenize(&result.params, &result.tokens)?;
+    let input = Detokenizer::detokenize(
+        DetokenizeWhat::Output(&result.function_name),
+        &result.params,
+        &result.tokens,
+    )?;
 
     Ok(DecodedMessage {
         function_name: result.function_name,
@@ -157,7 +170,7 @@ pub fn update_contract_data(abi: &str, parameters: &str, data: SliceData) -> Res
         .map(|item| item.value.clone())
         .collect();
 
-    let tokens = Tokenizer::tokenize_all_params(&params[..], &data_json)?;
+    let tokens = Tokenizer::tokenize_all_params("", &params[..], &data_json)?;
 
     contract.update_data(data, &tokens)
 }
