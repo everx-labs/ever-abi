@@ -60,16 +60,14 @@ impl Tokenizer {
     /// Tries to parse parameters from JSON values to tokens.
     pub fn tokenize_all_params(params: &[Param], values: &Value) -> Result<Vec<Token>> {
         if let Value::Object(map) = values {
-            if map.len() != params.len() {
-                fail!(AbiError::WrongParametersCount { 
-                    expected: params.len(),
-                    provided: map.len()
-                })
-            }
-
             let mut tokens = Vec::new();
             for param in params {
-                let token_value = Self::tokenize_parameter(&param.kind, &values[&param.name])?;
+                let value = map
+                    .get(&param.name)
+                    .ok_or_else(|| error!(AbiError::InvalidInputData { 
+                        msg: format!("Parameter `{}` is not specified", param.name) 
+                    }))?;
+                let token_value = Self::tokenize_parameter(&param.kind, value)?;
                 tokens.push(Token { name: param.name.clone(), value: token_value});
             }
 
