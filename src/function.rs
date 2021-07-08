@@ -358,9 +358,9 @@ impl Function {
                 }
         
                 let len = signature.len() * 8;
-                builder.prepend_reference(BuilderData::with_raw(signature, len).unwrap());
+                builder.prepend_reference_cell(BuilderData::with_raw(signature, len).unwrap().into_cell().unwrap());
             } else {
-                builder.prepend_reference(BuilderData::new());
+                builder.prepend_reference_cell(Cell::default());
             }
         } else {
             // sign in cell body
