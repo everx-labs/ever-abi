@@ -851,7 +851,7 @@ mod tokenize_tests {
 
 mod types_check_tests {
     use {Int, Param, ParamType, Token, TokenValue, Uint};
-    use ton_types::{BuilderData, Cell};
+    use ton_types::{Cell};
     use ton_block::MsgAddress;
     use std::collections::HashMap;
 
