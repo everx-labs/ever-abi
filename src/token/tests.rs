@@ -17,7 +17,7 @@ mod tokenize_tests {
     use std::collections::HashMap;
     use token::{Detokenizer, Tokenizer};
     use ton_block::{MsgAddress};
-    use ton_types::{AccountId, BuilderData, SliceData};
+    use ton_types::{AccountId, BuilderData, SliceData, Cell};
 
     #[test]
     fn test_tokenize_ints() {
@@ -425,10 +425,10 @@ mod tokenize_tests {
 
         let mut expected_tokens = vec![];
         let mut builder = BuilderData::with_bitstring(vec![1, 2, 3, 4, 5, 6, 7, 8, 0x80]).unwrap();
-        builder.append_reference(BuilderData::with_bitstring(vec![11, 12, 13, 14, 15, 16, 17, 18, 0x80]).unwrap());
-        builder.append_reference(BuilderData::with_bitstring(vec![21, 22, 23, 24, 25, 26, 27, 28, 0x80]).unwrap());
-        expected_tokens.push(Token::new("a", TokenValue::Cell(builder.into())));
-        expected_tokens.push(Token::new("b", TokenValue::Cell(BuilderData::new().into())));
+        builder.append_reference_cell(BuilderData::with_bitstring(vec![11, 12, 13, 14, 15, 16, 17, 18, 0x80]).unwrap().into_cell().unwrap());
+        builder.append_reference_cell(BuilderData::with_bitstring(vec![21, 22, 23, 24, 25, 26, 27, 28, 0x80]).unwrap().into_cell().unwrap());
+        expected_tokens.push(Token::new("a", TokenValue::Cell(builder.into_cell().unwrap())));
+        expected_tokens.push(Token::new("b", TokenValue::Cell(Cell::default())));
 
         assert_eq!(
             Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
@@ -851,7 +851,7 @@ mod tokenize_tests {
 
 mod types_check_tests {
     use {Int, Param, ParamType, Token, TokenValue, Uint};
-    use ton_types::BuilderData;
+    use ton_types::{Cell};
     use ton_block::MsgAddress;
     use std::collections::HashMap;
 
@@ -909,7 +909,7 @@ mod types_check_tests {
             },
             Token {
                 name: "k".to_owned(),
-                value: TokenValue::Cell(BuilderData::new().into()),
+                value: TokenValue::Cell(Cell::default()),
             },
             Token {
                 name: "l".to_owned(),

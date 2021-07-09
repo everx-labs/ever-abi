@@ -19,7 +19,7 @@ use crate::{
 use num_bigint::{BigInt, Sign};
 use std::collections::HashMap;
 use ton_block::Serializable;
-use ton_types::{BuilderData, Cell, error, fail, HashmapE, IBitstring, Result};
+use ton_types::{BuilderData, Cell, error, fail, HashmapE, IBitstring, Result, SliceData};
 
 impl TokenValue {
     pub fn pack_values_into_chain(tokens: &[Token], mut cells: Vec<BuilderData>, abi_version: u8) -> Result<BuilderData> {
@@ -70,7 +70,7 @@ impl TokenValue {
         }
         while let Some(cell) = packed_cells.pop() {
             match packed_cells.last_mut() {
-                Some(builder) => builder.append_reference(cell),
+                Some(builder) => builder.append_reference_cell(cell.into_cell()?),
                 None => return Ok(cell)
             }
         }
@@ -198,9 +198,9 @@ impl TokenValue {
             let data = Self::pack_cells_into_chain(array[i].write_to_cells(abi_version)?, abi_version)?;
 
             if value_in_ref {
-                map.set_builder(index.into(), &data)?;
+                map.set_builder(index.into_cell()?.into(), &data)?;
             } else {
-                map.setref(index.into(), &data.into_cell()?)?;
+                map.setref(index.into_cell()?.into(), &data.into_cell()?)?;
             }
         }
 
@@ -240,13 +240,13 @@ impl TokenValue {
             len -= cell_capacity;
             builder.append_raw(&data[len..len + cell_capacity], cell_capacity * 8)?;
             let mut new_builder = BuilderData::new();
-            new_builder.append_reference(builder);
+            new_builder.append_reference_cell(builder.into_cell()?);
             builder = new_builder;
             cell_capacity = std::cmp::min(cell_len, len);
         }
         // if bytes are empty then we need builder with ref to empty cell
         if builder.references_used() == 0 {
-            builder.append_reference(BuilderData::new());
+            builder.append_reference_cell(Cell::default());
         }
         Ok(vec![builder])
     }
@@ -280,7 +280,7 @@ impl TokenValue {
 
             let data = Self::pack_cells_into_chain(value.write_to_cells(abi_version)?, abi_version)?;
 
-            let slice_key = key_vec.pop().unwrap().into();
+            let slice_key: SliceData = key_vec.pop().unwrap().into_cell()?.into();
             if value_in_ref {
                 hashmap.set_builder(slice_key, &data)?;
             } else {
@@ -324,8 +324,8 @@ fn test_pack_cells() {
     ];
     
     let builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
-    let builder = BuilderData::with_raw_and_refs(vec![0x55; 127], 127 * 8, vec![builder.into()]).unwrap();
-    let builder = BuilderData::with_raw_and_refs(vec![0x55; 100], 100 * 8, vec![builder.into()]).unwrap();
+    let builder = BuilderData::with_raw_and_refs(vec![0x55; 127], 127 * 8, vec![builder.into_cell().unwrap().into()]).unwrap();
+    let builder = BuilderData::with_raw_and_refs(vec![0x55; 100], 100 * 8, vec![builder.into_cell().unwrap().into()]).unwrap();
     let tree = TokenValue::pack_cells_into_chain(cells, 1).unwrap();
     assert_eq!(tree, builder);
 }

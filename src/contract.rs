@@ -318,12 +318,12 @@ impl Contract {
                 )?.key;
 
                 map.set_builder(
-                    key.write_to_new_cell().unwrap().into(), 
+                    key.serialize()?.into(),
                     &builder, 
                 )?;
         }
 
-        Ok(map.write_to_new_cell()?.into())
+        Ok(map.serialize()?.into())
     }
 
     // Gets public key from contract data
@@ -332,7 +332,7 @@ impl Contract {
             Self::DATA_MAP_KEYLEN,
             data.reference_opt(0),
         );
-        map.get(0u64.write_to_new_cell()?.into())
+        map.get(0u64.serialize()?.into())
             .map(|opt| opt.map(|slice| slice.get_bytestring(0)))
     }
 
@@ -347,10 +347,10 @@ impl Contract {
             data.reference_opt(0)
         );
         map.set_builder(
-            0u64.write_to_new_cell().unwrap().into(), 
+            0u64.serialize()?.into(),
             &value, 
         )?;
-        Ok(map.write_to_new_cell()?.into())
+        Ok(map.serialize()?.into())
     }
 
     /// Add sign to messsage body returned by `prepare_input_for_sign` function

@@ -98,7 +98,7 @@ impl TokenValue {
         for i in 0..size {
             let mut index = BuilderData::new();
             index.append_u32(i as u32)?;
-            match map.get(index.into()) {
+            match map.get(index.into_cell()?.into()) {
                 Ok(Some(item_slice)) => {
                     let (token, item_slice) = Self::read_from(param_type, item_slice, true, abi_version)?;
                     if item_slice.remaining_references() != 0 || item_slice.remaining_bits() != 0 {
