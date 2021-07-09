@@ -22,7 +22,7 @@ use std::{collections::HashMap, io::Cursor, str::FromStr};
 use num_bigint::{Sign, BigInt, BigUint};
 use num_traits::cast::ToPrimitive;
 use ton_block::{Grams, MsgAddress};
-use ton_types::{deserialize_tree_of_cells, error, fail, Result, Cell};
+use ton_types::{deserialize_tree_of_cells, error, fail, Result, BuilderData};
 //use ton_types::cells_serialization::deserialize_tree_of_cells;
 
 /// This struct should be used to parse string values as tokens.
@@ -253,7 +253,7 @@ impl Tokenizer {
             .ok_or_else(|| AbiError::WrongDataFormat { val: value.clone() } )?;
 
         if string.len() == 0 {
-            return Ok(TokenValue::Cell(Cell::default()));
+            return Ok(TokenValue::Cell(BuilderData::new().into()));
         }
 
         let data = base64::decode(string)
