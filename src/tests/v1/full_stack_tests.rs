@@ -149,8 +149,8 @@ fn test_constructor_call() {
     let mut expected_tree = BuilderData::with_bitstring(vec![0x54, 0xc1, 0xf4, 0x0f, 0x80]).unwrap();
     expected_tree.prepend_reference(BuilderData::new());
 
-    let test_tree = SliceData::from(test_tree);
-    let expected_tree = SliceData::from(expected_tree);
+    let test_tree: SliceData = test_tree.into_cell().unwrap().into();
+    let expected_tree: SliceData = expected_tree.into_cell().unwrap().into();
     assert_eq!(test_tree, expected_tree);
 
     let response = decode_unknown_function_call(
@@ -210,7 +210,7 @@ fn test_signed_call() {
     )
     .unwrap();
 
-    let mut test_tree = SliceData::from(test_tree);
+    let mut test_tree: SliceData = test_tree.into_cell().unwrap().into();
 
     let response = decode_unknown_function_call(
         WALLET_ABI.to_owned(),
@@ -233,17 +233,18 @@ fn test_signed_call() {
     let mut sign = SliceData::from(test_tree.checked_drain_reference().unwrap());
     let sign = Signature::from_bytes(sign.get_next_bytes(64).unwrap().as_slice()).unwrap();
 
-    assert_eq!(test_tree, SliceData::from(expected_tree));
+    let answer: SliceData = expected_tree.into_cell().unwrap().into();
+    assert_eq!(test_tree, answer);
 
     let hash = test_tree.into_cell().repr_hash();
     pair.verify(hash.as_slice(), &sign).unwrap();
 
     let expected_response = r#"{"value0":"0"}"#;
 
-    let response_tree = SliceData::from(
+    let response_tree: SliceData =
         BuilderData::with_bitstring(
             vec![0xBC, 0x0B, 0xB9, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80])
-        .unwrap());
+        .unwrap().into_cell().unwrap().into();
 
     let response = decode_function_response(
         WALLET_ABI.to_owned(),
@@ -312,19 +313,19 @@ fn test_add_signature_full() {
         WALLET_ABI.to_owned(),
         &signature,
         Some(&pair.public.to_bytes()),
-        msg.into()).unwrap();
+        msg.into_cell().unwrap().into()).unwrap();
 
-    let decoded = decode_unknown_function_call(WALLET_ABI.to_owned(), msg.into(), false).unwrap();
+    let decoded = decode_unknown_function_call(WALLET_ABI.to_owned(), msg.into_cell().unwrap().into(), false).unwrap();
 
     assert_eq!(decoded.params, params);
 }
 
 #[test]
 fn test_find_event() {
-    let event_tree = SliceData::from(
+    let event_tree: SliceData =
         BuilderData::with_bitstring(
             vec![0x13, 0x47, 0xD7, 0x9D, 0xFF, 0x80])
-        .unwrap());
+        .unwrap().into_cell().unwrap().into();
 
     let decoded = decode_unknown_function_response(WALLET_ABI.to_owned(), event_tree, false).unwrap();
 
@@ -337,17 +338,17 @@ fn test_store_pubkey() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
     let test_pubkey = vec![11u8; 32];
     test_map.set_builder(
-        0u64.write_to_new_cell().unwrap().into(),
+        0u64.serialize().unwrap().into(),
         &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
     ).unwrap();
 
     let data = test_map.write_to_new_cell().unwrap();
 
-    let new_data = Contract::insert_pubkey(data.into(), &test_pubkey).unwrap();
+    let new_data = Contract::insert_pubkey(data.into_cell().unwrap().into(), &test_pubkey).unwrap();
 
     let new_map = HashmapE::with_hashmap(Contract::DATA_MAP_KEYLEN, new_data.reference_opt(0));
     let key_slice = new_map.get(
-        0u64.write_to_new_cell().unwrap().into(),
+        0u64.serialize().unwrap().into(),
     )
     .unwrap()
     .unwrap();
@@ -359,7 +360,7 @@ fn test_store_pubkey() {
 fn test_update_contract_data() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
     test_map.set_builder(
-        0u64.write_to_new_cell().unwrap().into(),
+        0u64.serialize().unwrap().into(),
         &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
     ).unwrap();
 
@@ -370,12 +371,12 @@ fn test_update_contract_data() {
     "#;
 
     let data = test_map.write_to_new_cell().unwrap();
-    let new_data = update_contract_data(WALLET_ABI, params, data.into()).unwrap();
+    let new_data = update_contract_data(WALLET_ABI, params, data.into_cell().unwrap().into()).unwrap();
     let new_map = HashmapE::with_hashmap(Contract::DATA_MAP_KEYLEN, new_data.reference_opt(0));
 
 
     let key_slice = new_map.get(
-        0u64.write_to_new_cell().unwrap().into(),
+        0u64.serialize().unwrap().into(),
     )
     .unwrap()
     .unwrap();
@@ -384,18 +385,18 @@ fn test_update_contract_data() {
 
 
     let subscription_slice = new_map.get(
-        101u64.write_to_new_cell().unwrap().into(),
+        101u64.serialize().unwrap().into(),
     )
     .unwrap()
     .unwrap();
 
     assert_eq!(
         subscription_slice,
-        MsgAddressInt::with_standart(None, 0, [0x11; 32].into()).unwrap().write_to_new_cell().unwrap().into());
+        MsgAddressInt::with_standart(None, 0, [0x11; 32].into()).unwrap().serialize().unwrap().into());
 
 
     let owner_slice = new_map.get(
-        100u64.write_to_new_cell().unwrap().into(),
+        100u64.serialize().unwrap().into(),
     )
     .unwrap()
     .unwrap();
