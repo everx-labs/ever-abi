@@ -17,7 +17,7 @@ use crate::{
 
 use num_bigint::{BigInt, BigUint};
 use serde::ser::{Serialize, Serializer, SerializeMap};
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use ton_types::{Cell, error, fail, Result, serialize_tree_of_cells};
 
 pub struct Detokenizer;
@@ -102,7 +102,7 @@ impl Token {
         serializer.serialize_str(&uint_str)
     }
 
-    pub fn detokenize_hashmap<S>(_key_type: &ParamType, values: &HashMap<String, TokenValue>, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    pub fn detokenize_hashmap<S>(_key_type: &ParamType, values: &BTreeMap<String, TokenValue>, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {

@@ -18,7 +18,7 @@ use crate::{
 };
 
 use serde_json::Value;
-use std::{collections::HashMap, io::Cursor, str::FromStr};
+use std::{collections::{HashMap, BTreeMap}, io::Cursor, str::FromStr};
 use num_bigint::{Sign, BigInt, BigUint};
 use num_traits::cast::ToPrimitive;
 use ton_block::{Grams, MsgAddress};
@@ -265,7 +265,7 @@ impl Tokenizer {
 
     fn tokenize_hashmap(key_type: &ParamType, value_type: &ParamType, map_value: &Value) -> Result<TokenValue> {
         if let Value::Object(map) = map_value {
-            let mut new_map = HashMap::<String, TokenValue>::new();
+            let mut new_map = BTreeMap::<String, TokenValue>::new();
             for (key, value) in map.iter() {
                 let value = Self::tokenize_parameter(value_type, value)?;
                 new_map.insert(key.to_string(), value);

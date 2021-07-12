@@ -18,7 +18,7 @@ use crate::{
 
 use num_bigint::{BigInt, BigUint};
 use serde_json;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use ton_block::{MsgAddress, types::Grams};
 use ton_types::{
     BuilderData, Cell, error, fail, HashmapE, HashmapType, IBitstring, Result, SliceData
@@ -142,7 +142,7 @@ impl TokenValue {
     fn read_hashmap(key_type: &ParamType, value_type: &ParamType, mut cursor: SliceData, abi_version: u8)
     -> Result<(Self, SliceData)> {
         cursor = find_next_bits(cursor, 1)?;
-        let mut new_map = HashMap::new();
+        let mut new_map = BTreeMap::new();
         let bit_len = key_type.get_map_key_size()?;
         let hashmap = HashmapE::with_hashmap(bit_len, cursor.get_dictionary()?.reference_opt(0));
         hashmap.iterate_slices(|key, value| {
