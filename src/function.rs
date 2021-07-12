@@ -302,7 +302,7 @@ impl Function {
             let mut sign_builder = BuilderData::new();
             if self.abi_version == 1 {
                 // reserve reference for sign
-                sign_builder.append_reference_cell(Cell::default());
+                sign_builder.append_reference(BuilderData::new());
                 remove_ref = true;
             } else {
                 // reserve in-cell data
@@ -323,7 +323,7 @@ impl Function {
 
         if !internal {
             // delete reserved sign before hash
-            let mut slice: SliceData = builder.into_cell()?.into();
+            let mut slice = SliceData::from(builder);
             if remove_ref {
                 slice.checked_drain_reference()?;
             }
@@ -333,7 +333,7 @@ impl Function {
             builder = BuilderData::from_slice(&slice);
         }
 
-        let hash = builder.clone().into_cell()?.repr_hash().as_slice().to_vec();
+        let hash = Cell::from(&builder).repr_hash().as_slice().to_vec();
 
         Ok((builder, hash))
     }
@@ -358,9 +358,9 @@ impl Function {
                 }
         
                 let len = signature.len() * 8;
-                builder.prepend_reference_cell(BuilderData::with_raw(signature, len).unwrap().into_cell().unwrap());
+                builder.prepend_reference(BuilderData::with_raw(signature, len).unwrap());
             } else {
-                builder.prepend_reference_cell(Cell::default());
+                builder.prepend_reference(BuilderData::new());
             }
         } else {
             // sign in cell body
