@@ -318,6 +318,16 @@ impl Contract {
         &self.data
     }
 
+    /// Returns storage fields collection
+    pub fn fields(&self) -> &Vec<Param> {
+        &self.fields
+    }
+
+    /// Returns version
+    pub fn version(&self) -> &AbiVersion {
+        &self.abi_version
+    }
+
     /// Decodes contract answer and returns name of the function called
     pub fn decode_output(&self, data: SliceData, internal: bool) -> Result<DecodedMessage> {
         let original_data = data.clone();
