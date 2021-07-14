@@ -235,3 +235,25 @@ fn test_empty_tuple_error() {
         format!("{}", result)
     )
 }
+
+#[test]
+fn test_optional_tuple_param_deserialization() {
+    let s = r#"{
+        "name": "a",
+        "type": "optional(tuple)",
+        "components" : [
+            { "name" : "a", "type" : "int8" },
+            { "name" : "b", "type" : "int8" }
+        ]
+    }"#;
+
+    let deserialized: Param = serde_json::from_str(s).unwrap();
+
+    assert_eq!(deserialized, Param {
+        name: "a".to_owned(),
+        kind: ParamType::Optional(Box::new(ParamType::Tuple(vec![
+            Param { name: "a".to_owned(), kind: ParamType::Int(8) },
+            Param { name: "b".to_owned(), kind: ParamType::Int(8) },
+        ]))),
+    });
+}

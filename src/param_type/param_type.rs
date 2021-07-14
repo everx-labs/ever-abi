@@ -124,6 +124,9 @@ impl ParamType {
             ParamType::Map(_, value_type) => {
                 value_type.set_components(components)
             }
+            ParamType::Optional(inner_type) => {
+                inner_type.set_components(components)
+            }
             _ => { 
                 if components.len() != 0 {
                     Err(error!(AbiError::UnusedComponents))
