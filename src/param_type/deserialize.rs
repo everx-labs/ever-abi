@@ -85,6 +85,16 @@ pub fn read_type(name: &str) -> Result<ParamType> {
                 .map_err(|_| AbiError::InvalidName { name: name.to_owned() } )?;
             ParamType::Uint(len)
         },
+        s if s.starts_with("varint") => {
+            let len = usize::from_str_radix(&s[6..], 10)
+                .map_err(|_| AbiError::InvalidName { name: name.to_owned() } )?;
+            ParamType::VarInt(len)
+        },
+        s if s.starts_with("varuint") => {
+            let len = usize::from_str_radix(&s[7..], 10)
+                .map_err(|_| AbiError::InvalidName { name: name.to_owned() } )?;
+            ParamType::VarUint(len)
+        },
         s if s.starts_with("map(") && s.ends_with(")") => {
             let types: Vec<&str> = name[4..name.len() - 1].splitn(2, ",").collect();
             if types.len() != 2 {
@@ -128,6 +138,9 @@ pub fn read_type(name: &str) -> Result<ParamType> {
         }
         "pubkey" => {
             ParamType::PublicKey
+        }
+        "string" => {
+            ParamType::String
         }
         _ => {
             fail!(AbiError::InvalidName { name: name.to_owned() } );

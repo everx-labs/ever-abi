@@ -162,6 +162,15 @@ pub fn update_contract_data(abi: &str, parameters: &str, data: SliceData) -> Res
     contract.update_data(data, &tokens)
 }
 
+/// Decode account storage fields
+pub fn decode_storage_fields(abi: &str, data: SliceData) -> Result<String> {
+    let contract = Contract::load(abi.as_bytes())?;
+
+    let decoded = contract.decode_storage_fields(data)?;
+
+    Detokenizer::detokenize(&decoded.params, &decoded.fields)
+}
+
 #[cfg(test)]
 #[path = "tests/v1/full_stack_tests.rs"]
 mod tests_v1;

@@ -21,6 +21,8 @@ use Function;
 use ton_types::BuilderData;
 use ton_types::IBitstring;
 
+use crate::contract::AbiVersion;
+
 #[test]
 fn int_json_representation() {
     let value = Detokenizer::detokenize_to_json_value(
@@ -30,6 +32,8 @@ fn int_json_representation() {
             Param::new("u256", ParamType::Uint(256)),
             Param::new("u128", ParamType::Uint(128)),
             Param::new("i256", ParamType::Int(256)),
+            Param::new("vi16", ParamType::VarInt(16)),
+            Param::new("vu32", ParamType::VarUint(32)),
         ],
         &[
             Token::new("u8", TokenValue::Uint(Uint::new(1, 8))),
@@ -37,6 +41,8 @@ fn int_json_representation() {
             Token::new("u256", TokenValue::Uint(Uint::new(1, 256))),
             Token::new("u128", TokenValue::Uint(Uint::new(1, 128))),
             Token::new("i256", TokenValue::Int(Int::new(-1, 256))),
+            Token::new("vi16", TokenValue::VarInt(16, (-1i32).into())),
+            Token::new("vu32", TokenValue::VarUint(32, 1u32.into())),
         ],
     )
     .unwrap();
@@ -48,6 +54,8 @@ fn int_json_representation() {
             "u256": "0x0000000000000000000000000000000000000000000000000000000000000001",
             "u128": "1",
             "i256": "-1",
+            "vi16": "-1",
+            "vu32": "1",
         })
     );
 }
@@ -55,7 +63,7 @@ fn int_json_representation() {
 #[test]
 fn test_encode_internal_output() {
     let func: Function = Function {
-        abi_version: 2,
+        abi_version: AbiVersion::from_parts(2, 0),
         name: "func".to_string(),
         header: vec![],
         inputs: vec![],

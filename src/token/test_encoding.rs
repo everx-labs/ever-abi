@@ -385,6 +385,7 @@ fn test_static_array_of_ints() {
     add_array_as_map(&mut builder, &input_array, true);
 
     let values = vec![TokenValue::FixedArray(
+        ParamType::Uint(32),
         input_array
             .iter()
             .map(|i| TokenValue::Uint(Uint::new(i.to_owned() as u128, 32)))
@@ -408,7 +409,7 @@ fn test_empty_dynamic_array() {
 
     add_array_as_map(&mut builder, &Vec::<u16>::new(), false);
 
-    let values = vec![TokenValue::Array(vec![])];
+    let values = vec![TokenValue::Array(ParamType::Uint(16), vec![])];
 
     let params = vec![Param {
         name: "a".to_owned(),
@@ -435,6 +436,7 @@ fn test_dynamic_array_of_ints() {
     add_array_as_map(&mut builder, &input_array, false);
 
     let values = vec![TokenValue::Array(
+        ParamType::Uint(16),
         input_array
             .iter()
             .map(|i| TokenValue::Uint(Uint::new(i.to_owned() as u128, 16)))
@@ -483,8 +485,12 @@ fn test_dynamic_array_of_tuples() {
     add_array_as_map(&mut builder, &bitstring_array, false);
 
     let expected_tree = builder.into();
-
+    
     let values = vec![TokenValue::Array(
+        ParamType::Tuple(vec![
+            Param::new("a", ParamType::Uint(32)),
+            Param::new("b", ParamType::Bool),
+        ]),
         input_array
             .iter()
             .map(|i| {
@@ -560,6 +566,10 @@ fn test_tuples_with_combined_types() {
     chain_builder.append_reference(second_builder);
 
     let array1_token_value = TokenValue::Array(
+        ParamType::Tuple(vec![
+            Param::new("a", ParamType::Uint(32)),
+            Param::new("b", ParamType::Bool),
+        ]),
         input_array1
             .iter()
             .map(|i| {
@@ -572,18 +582,21 @@ fn test_tuples_with_combined_types() {
     );
 
     let array2_token_value = TokenValue::Array(
+        ParamType::Int(64),
         input_array2
             .iter()
             .map(|i| TokenValue::Int(Int::new(*i as i128, 64)))
             .collect(),
     );
 
-    let array3_token_value = TokenValue::FixedArray(vec![
-        array2_token_value.clone(),
-        array2_token_value.clone(),
-        array2_token_value.clone(),
-        array2_token_value.clone(),
-        array2_token_value.clone(),
+    let array3_token_value = TokenValue::FixedArray(
+        ParamType::Array(Box::new(ParamType::Int(64))),
+        vec![
+            array2_token_value.clone(),
+            array2_token_value.clone(),
+            array2_token_value.clone(),
+            array2_token_value.clone(),
+            array2_token_value.clone(),
     ]);
 
     let values = vec![
@@ -759,6 +772,7 @@ fn test_map() {
     );
     let bytes_value = TokenValue::Map(
         ParamType::Uint(8),
+        ParamType::Bytes,
         HashMap::from_iter(
             vec![
                 ("1".to_owned(), TokenValue::Bytes(bytes.clone())),
@@ -778,6 +792,7 @@ fn test_map() {
     );
     let int_value = TokenValue::Map(
         ParamType::Int(16),
+        ParamType::Int(128),
         HashMap::from_iter(
             vec![
                 ("-1".to_owned(), TokenValue::Int(Int::new(-1, 128))),
@@ -800,6 +815,10 @@ fn test_map() {
 
     let tuples_value = TokenValue::Map(
         ParamType::Uint(128),
+        ParamType::Tuple(vec![
+            Param::new("a", ParamType::Uint(32)),
+            Param::new("b", ParamType::Bool),
+        ]),
         HashMap::from_iter(
             tuples_array
                 .iter()
@@ -836,7 +855,7 @@ fn test_map() {
         bytes_value,
         int_value,
         tuples_value,
-        TokenValue::Map(ParamType::Int(256), HashMap::new())
+        TokenValue::Map(ParamType::Int(256), ParamType::Bool, HashMap::new())
     ];
 
     test_parameters_set(
@@ -871,6 +890,7 @@ fn test_address_map_key() {
 
     let value = TokenValue::Map(
         ParamType::Address,
+        ParamType::Uint(32),
         HashMap::from_iter(
             vec![
                 (addr1_str.to_owned(), TokenValue::Uint(Uint::new(123, 32))),
@@ -923,15 +943,17 @@ fn test_address_map_key() {
 
     array.setref(array_key.into(), &map_value.into_cell().unwrap()).unwrap();
 
-    let tuple = TokenValue::Tuple(tokens_from_values(vec![
+    let tuple_tokens = tokens_from_values(vec![
         TokenValue::Uint(Uint::new(1, 256)),
         TokenValue::Uint(Uint::new(2, 256)),
         TokenValue::Uint(Uint::new(3, 256)),
         TokenValue::Uint(Uint::new(4, 256)),
-    ]));
+    ]);
+    let tuple = TokenValue::Tuple(tuple_tokens.clone());
 
     let value_map = TokenValue::Map(
         ParamType::Uint(256),
+        ParamType::Tuple(params_from_tokens(&tuple_tokens)),
         HashMap::from_iter(
             vec![(
                 "0x000000000000000000000000000000000000000000000000000000000000007b".to_owned(),
@@ -940,7 +962,10 @@ fn test_address_map_key() {
         )
     );
 
-    let value_array = TokenValue::Array(vec![tuple]);
+    let value_array = TokenValue::Array(
+        ParamType::Tuple(params_from_tokens(&tuple_tokens)),
+        vec![tuple]
+    );
 
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
@@ -959,3 +984,93 @@ fn test_address_map_key() {
     );
  }
 
+ #[test]
+fn test_abi_2_1_types() {
+    let string = "Some string";
+    let string_builder = BuilderData::with_raw(
+        string.as_bytes().to_vec(), string.as_bytes().len() * 8
+    ).unwrap();
+    let string_value = TokenValue::String(string.into());
+
+    let tuple_tokens = tokens_from_values(vec![
+        string_value.clone(),
+        string_value.clone(),
+        string_value.clone(),
+        string_value.clone(),
+    ]);
+    let tuple = TokenValue::Tuple(tuple_tokens.clone());
+
+    let values = vec![
+        TokenValue::VarInt(16, (-123i32).into()),
+        TokenValue::VarUint(32, 456u32.into()),
+        TokenValue::Optional(ParamType::Bool, None),
+        TokenValue::Optional(
+            ParamType::Uint(1022),
+            Some(Box::new(
+                TokenValue::Uint(Uint::new(1, 1022))
+        ))),
+        TokenValue::Optional(
+            ParamType::VarUint(128),
+            Some(Box::new(
+                TokenValue::VarUint(128, 123u32.into())
+        ))),
+        TokenValue::Optional(
+            ParamType::Tuple(params_from_tokens(&tuple_tokens)),
+            Some(Box::new(tuple))
+        ),
+    ];
+
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+
+    builder.append_bits(1, 4).unwrap();
+    builder.append_i8(-123).unwrap();
+
+    builder.append_bits(2, 5).unwrap();
+    builder.append_u16(456).unwrap();
+
+    builder.append_bit_zero().unwrap();
+
+    let mut uint_builder = BuilderData::new();
+    uint_builder.append_bit_one().unwrap();
+    uint_builder.append_raw(&[0u8; 127], 127 * 8).unwrap();
+    uint_builder.append_raw(&[0x4], 6).unwrap();
+
+    let mut varuint_builder = BuilderData::new();
+    varuint_builder.append_raw(&[0x2], 7).unwrap();
+    varuint_builder.append_u8(123).unwrap();
+    let mut varuint_builder = BuilderData::with_raw_and_refs(
+        vec![0x80],
+        1,
+        vec![varuint_builder.into_cell().unwrap()]
+    ).unwrap();
+
+    let tuple_builder = BuilderData::with_raw_and_refs(
+        vec![],
+        0,
+        vec![
+            string_builder.clone().into_cell().unwrap(),
+            string_builder.clone().into_cell().unwrap(),
+            string_builder.clone().into_cell().unwrap(),
+            string_builder.clone().into_cell().unwrap(),
+        ]
+    ).unwrap();
+    let tuple_builder = BuilderData::with_raw_and_refs(
+        vec![0x80],
+        1,
+        vec![tuple_builder.into_cell().unwrap()]
+    ).unwrap();
+
+    varuint_builder.append_builder(&tuple_builder).unwrap();
+    uint_builder.checked_append_reference(varuint_builder.into_cell().unwrap()).unwrap();
+    builder.checked_append_reference(uint_builder.into_cell().unwrap()).unwrap();
+
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder,
+        &[2],
+    );
+ }

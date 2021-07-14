@@ -17,6 +17,7 @@ use crate::{
 };
 
 use num_bigint::{BigInt, BigUint};
+use num_traits::ToPrimitive;
 use serde_json;
 use std::collections::HashMap;
 use ton_block::{MsgAddress, types::Grams};
@@ -28,10 +29,10 @@ impl TokenValue {
     /// Deserializes value from `SliceData` to `TokenValue`
     pub fn read_from(param_type: &ParamType, mut cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
         match param_type {
-            ParamType::Unknown => 
-                fail!(AbiError::DeserializationError { msg: "Unknown ParamType", cursor } ),
             ParamType::Uint(size) => Self::read_uint(*size, cursor),
             ParamType::Int(size) => Self::read_int(*size, cursor),
+            ParamType::VarUint(size) => Self::read_varuint(*size, cursor),
+            ParamType::VarInt(size) => Self::read_varint(*size, cursor),
             ParamType::Bool => {
                 cursor = find_next_bits(cursor, 1)?;
                 Ok((TokenValue::Bool(cursor.get_next_bit()?), cursor))
@@ -51,6 +52,7 @@ impl TokenValue {
             }
             ParamType::Bytes => Self::read_bytes(None, cursor, last, abi_version),
             ParamType::FixedBytes(size) => Self::read_bytes(Some(*size), cursor, last, abi_version),
+            ParamType::String => Self::read_string(cursor, last, abi_version),
             ParamType::Gram => {
                 cursor = find_next_bits(cursor, 1)?;
                 let gram = <Grams as ton_block::Deserializable>::construct_from(&mut cursor)?;
@@ -58,20 +60,45 @@ impl TokenValue {
             },
             ParamType::Time => Self::read_time(cursor),
             ParamType::Expire => Self::read_expire(cursor),
-            ParamType::PublicKey => Self::read_public_key(cursor)
+            ParamType::PublicKey => Self::read_public_key(cursor),
+            ParamType::Optional(param_type) => Self::read_optional(&param_type, cursor, last, abi_version),
         }
     }
 
-    fn read_uint(size: usize, cursor: SliceData) -> Result<(Self, SliceData)> {
+    fn read_uint_from_chain(size: usize, cursor: SliceData) -> Result<(BigUint, SliceData)> {
         let (vec, cursor) = get_next_bits_from_chain(cursor, size)?;
         let number = BigUint::from_bytes_be(&vec) >> (vec.len() * 8 - size);
+        Ok((number, cursor))
+    }
+
+    fn read_int_from_chain(size: usize, cursor: SliceData) -> Result<(BigInt, SliceData)> {
+        let (vec, cursor) = get_next_bits_from_chain(cursor, size)?;
+        let number = BigInt::from_signed_bytes_be(&vec) >> (vec.len() * 8 - size);
+        Ok((number, cursor))
+    }
+
+    fn read_uint(size: usize, cursor: SliceData) -> Result<(Self, SliceData)> {
+        let (number, cursor) = Self::read_uint_from_chain(size, cursor)?;
         Ok((TokenValue::Uint(Uint { number, size }), cursor))
     }
 
     fn read_int(size: usize, cursor: SliceData) -> Result<(Self, SliceData)> {
-        let (vec, cursor) = get_next_bits_from_chain(cursor, size)?;
-        let number = BigInt::from_signed_bytes_be(&vec) >> (vec.len() * 8 - size);
+        let (number, cursor) = Self::read_int_from_chain(size, cursor)?;
         Ok((TokenValue::Int(Int { number, size }), cursor))
+    }
+
+    fn read_varuint(size: usize, cursor: SliceData) -> Result<(Self, SliceData)> {
+        let (len, cursor) = Self::read_uint_from_chain(ParamType::varint_size_len(size), cursor)?;
+        let len = len.to_usize().unwrap();
+        let (number, cursor) = Self::read_uint_from_chain(len * 8, cursor)?;
+        Ok((TokenValue::VarUint(size, number), cursor))
+    }
+
+    fn read_varint(size: usize, cursor: SliceData) -> Result<(Self, SliceData)> {
+        let (len, cursor) = Self::read_uint_from_chain(ParamType::varint_size_len(size), cursor)?;
+        let len = len.to_usize().unwrap();
+        let (number, cursor) = Self::read_int_from_chain(len * 8, cursor)?;
+        Ok((TokenValue::VarInt(size, number), cursor))
     }
 
     fn read_tuple(tuple_params: &[Param], cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
@@ -118,13 +145,13 @@ impl TokenValue {
         let size = cursor.get_next_u32()?;
         let (result, cursor) = Self::read_array_from_map(param_type, cursor, size as usize, abi_version)?;
 
-        Ok((TokenValue::Array(result), cursor))
+        Ok((TokenValue::Array(param_type.clone(), result), cursor))
     }
 
     fn read_fixed_array(param_type: &ParamType, size: usize, cursor: SliceData, abi_version: u8) -> Result<(Self, SliceData)> {
         let (result, cursor) = Self::read_array_from_map(param_type, cursor, size, abi_version)?;
 
-        Ok((TokenValue::FixedArray(result), cursor))
+        Ok((TokenValue::FixedArray(param_type.clone(), result), cursor))
     }
 
     fn read_cell(mut cursor: SliceData, last: bool, abi_version: u8) -> Result<(Cell, SliceData)> {
@@ -154,7 +181,7 @@ impl TokenValue {
             new_map.insert(key, value);
             Ok(true)
         })?;
-        Ok((TokenValue::Map(key_type.clone(), new_map), cursor))
+        Ok((TokenValue::Map(key_type.clone(), value_type.clone(), new_map), cursor))
     }
 
     fn read_bytes(size: Option<usize>, cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
@@ -180,6 +207,20 @@ impl TokenValue {
         }
     }
 
+    fn read_string(cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
+        let (bytes, cursor) = Self::read_bytes(None, cursor, last, abi_version)?;
+
+        if let TokenValue::Bytes(bytes) = bytes {
+            let string = String::from_utf8(bytes)
+                .map_err(|err| AbiError::InvalidData {
+                    msg: format!("Can not deserialize string: {}", err)
+                })?;
+            Ok((TokenValue::String(string), cursor))
+        } else {
+            unreachable!()
+        }
+    }
+
     fn read_time(mut cursor: SliceData) -> Result<(Self, SliceData)> {
         cursor = find_next_bits(cursor, 64)?;
         Ok((TokenValue::Time(cursor.get_next_u64()?), cursor))
@@ -197,6 +238,26 @@ impl TokenValue {
             Ok((TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&vec)?)), cursor))
         } else {
             Ok((TokenValue::PublicKey(None), cursor))
+        }
+    }
+
+    fn read_optional(param_type: &ParamType, cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
+        let original = cursor.clone();
+        let mut cursor = find_next_bits(cursor, 1)?;
+        if cursor.get_next_bit()? {
+            if param_type.is_large_optional() {
+                let (cell, cursor) = Self::read_cell(cursor, last, abi_version)?;
+                let (result, remaining) = Self::read_from(param_type, cell.into(), last, abi_version)?;
+                if remaining.remaining_references() != 0 || remaining.remaining_bits() != 0 {
+                    fail!(AbiError::IncompleteDeserializationError { cursor: original } )
+                }
+                Ok((TokenValue::Optional(param_type.clone(), Some(Box::new(result))), cursor))
+            } else {
+                let (result, cursor) = Self::read_from(param_type, cursor, last, abi_version)?;
+                Ok((TokenValue::Optional(param_type.clone(), Some(Box::new(result))), cursor))
+            }
+        } else {
+            Ok((TokenValue::Optional(param_type.clone(), None), cursor))
         }
     }
 

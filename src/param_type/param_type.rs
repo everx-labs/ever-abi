@@ -17,17 +17,21 @@ use std::fmt;
 use Param;
 
 use crate::AbiError;
+use crate::contract::AbiVersion;
 
-use ton_types::{error, Result};
+use ton_types::{BuilderData, Result, error};
 
 /// Function and event param types.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParamType {
-    Unknown,
     /// uint<M>: unsigned integer type of M bits.
     Uint(usize),
     /// int<M>: signed integer type of M bits.
     Int(usize),
+    /// varuint<M>: variable length unsigned integer type of maximum M bytes.
+    VarUint(usize),
+    /// varint<M>: variable length integer type of maximum M bytes.
+    VarInt(usize),
     /// bool: boolean value.
     Bool,
     /// Tuple: several values combined into tuple.
@@ -46,6 +50,8 @@ pub enum ParamType {
     Bytes,
     /// fixed size byte array
     FixedBytes(usize),
+    /// UTF8 string
+    String,
     /// Nanograms
     Gram,
     /// Timestamp
@@ -53,7 +59,9 @@ pub enum ParamType {
     /// Message expiration time
     Expire,
     /// Public key
-    PublicKey
+    PublicKey,
+    /// Optional parameter
+    Optional(Box<ParamType>),
 }
 
 impl fmt::Display for ParamType {
@@ -66,9 +74,10 @@ impl ParamType {
     /// Returns type signature according to ABI specification
     pub fn type_signature(&self) -> String {
         match self {
-            ParamType::Unknown => format!("unknown"),
             ParamType::Uint(size) => format!("uint{}", size),
             ParamType::Int(size) => format!("int{}", size),
+            ParamType::VarUint(size) => format!("varuint{}", size),
+            ParamType::VarInt(size) => format!("varint{}", size),
             ParamType::Bool => "bool".to_owned(),
             ParamType::Tuple(params) => {
                 let mut signature = "".to_owned();
@@ -88,10 +97,12 @@ impl ParamType {
             ParamType::Address => format!("address"),
             ParamType::Bytes => format!("bytes"),
             ParamType::FixedBytes(size) => format!("fixedbytes{}", size),
+            ParamType::String => format!("string"),
             ParamType::Gram => format!("gram"),
             ParamType::Time => format!("time"),
             ParamType::Expire => format!("expire"),
             ParamType::PublicKey => format!("pubkey"),
+            ParamType::Optional(ref param_type) => format!("optional({})", param_type.type_signature()),
         }
     }
 
@@ -123,20 +134,12 @@ impl ParamType {
         }
     }
 
-    /// Returns type bit_len for hashmap key
-    pub fn bit_len(&self) -> usize {
-        match self {
-            ParamType::Uint(size) => *size,
-            ParamType::Int(size) => *size,
-            _ => 0
-        }
-    }
-
     /// Check if parameter type is supoorted in particular ABI version
-    pub fn is_supported(&self, abi_version: u8) -> bool {
+    pub fn is_supported(&self, abi_version: &AbiVersion) -> bool {
         match self {
-            ParamType::Time | ParamType::Expire | ParamType::PublicKey => abi_version >= 2,
-            _ => abi_version >= 1
+            ParamType::Time | ParamType::Expire | ParamType::PublicKey => abi_version >= &AbiVersion::from_parts(2, 0),
+            ParamType::String | ParamType::Optional(_)| ParamType::VarInt(_) | ParamType::VarUint(_) => abi_version >= &AbiVersion::from_parts(2, 1),
+            _ => abi_version >= &AbiVersion::from_parts(1, 0),
         }
     }
 
@@ -147,6 +150,81 @@ impl ParamType {
             _ => Err(error!(AbiError::InvalidData { 
                 msg: "Only integer and std address values can be map keys".to_owned() 
             }))
+        }
+    }
+
+    pub(crate) fn varint_size_len(size: usize) -> usize {
+        8 - ((size - 1) as u8).leading_zeros() as usize
+    }
+
+    pub(crate) fn is_large_optional(&self) -> bool {
+        self.max_bit_size() >= BuilderData::bits_capacity() || 
+        self.max_refs_count() >= BuilderData::references_capacity()
+    }
+
+    pub(crate) fn max_refs_count(&self) -> usize {
+        match self {
+            ParamType::Uint(_) => 0,
+            ParamType::Int(_) => 0,
+            ParamType::VarUint(_) => 0,
+            ParamType::VarInt(_) => 0,
+            ParamType::Bool => 0,
+            ParamType::Array(_) => 1,
+            ParamType::FixedArray(_, _) => 1,
+            ParamType::Cell => 1,
+            ParamType::Map(_, _) => 1,
+            ParamType::Address => 0,
+            ParamType::Bytes | ParamType::FixedBytes(_) => 1,
+            ParamType::String => 1,
+            ParamType::Gram => 0,
+            ParamType::Time => 0,
+            ParamType::Expire => 0,
+            ParamType::PublicKey => 0,
+            ParamType::Tuple(params) => {
+                params
+                    .iter()
+                    .fold(0, |acc, param| acc + param.kind.max_refs_count())
+            },
+            ParamType::Optional(param_type) => {
+                if param_type.is_large_optional() {
+                    1
+                } else {
+                    0
+                }
+            }
+        }
+    }
+
+    pub(crate) fn max_bit_size(&self) -> usize {
+        match self {
+            ParamType::Uint(size) => *size,
+            ParamType::Int(size) => *size,
+            ParamType::VarUint(size) => Self::varint_size_len(*size) + (size - 1) * 8,
+            ParamType::VarInt(size) => Self::varint_size_len(*size) + (size - 1) * 8,
+            ParamType::Bool => 1,
+            ParamType::Array(_) => 33,
+            ParamType::FixedArray(_, _) => 1,
+            ParamType::Cell => 0,
+            ParamType::Map(_, _) => 1,
+            ParamType::Address => 591,
+            ParamType::Bytes | ParamType::FixedBytes(_) => 0,
+            ParamType::String => 0,
+            ParamType::Gram => 128,
+            ParamType::Time => 64,
+            ParamType::Expire => 32,
+            ParamType::PublicKey => 257,
+            ParamType::Tuple(params) => {
+                params
+                    .iter()
+                    .fold(0, |acc, param| acc + param.kind.max_bit_size())
+            },
+            ParamType::Optional(param_type) => {
+                if param_type.is_large_optional() {
+                    1
+                } else {
+                    1 + param_type.max_bit_size()
+                }
+            }
         }
     }
 }

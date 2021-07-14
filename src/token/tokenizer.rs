@@ -32,9 +32,10 @@ impl Tokenizer {
     /// Tries to parse a JSON value as a token of given type.
     pub fn tokenize_parameter(param: &ParamType, value: &Value) -> Result<TokenValue> {
         match param {
-            ParamType::Unknown => fail!(AbiError::NotImplemented),
             ParamType::Uint(size) => Self::tokenize_uint(*size, value),
             ParamType::Int(size) => Self::tokenize_int(*size, value),
+            ParamType::VarUint(size) => Self::tokenize_varuint(*size, value),
+            ParamType::VarInt(size) => Self::tokenize_varint(*size, value),
             ParamType::Bool => Self::tokenize_bool(value),
             ParamType::Tuple(tuple_params) => Self::tokenize_tuple(tuple_params, value),
             ParamType::Array(param_type) => Self::tokenize_array(&param_type, value),
@@ -50,10 +51,12 @@ impl Tokenizer {
             }
             ParamType::Bytes => Self::tokenize_bytes(value, None),
             ParamType::FixedBytes(size) => Self::tokenize_bytes(value, Some(*size)),
+            ParamType::String => Self::tokenize_string(value),
             ParamType::Gram => Self::tokenize_gram(value),
             ParamType::Time => Self::tokenize_time(value),
             ParamType::Expire => Self::tokenize_expire(value),
             ParamType::PublicKey => Self::tokenize_public_key(value),
+            ParamType::Optional(param_type) => Self::tokenize_optional(param_type, value),
         }
     }
 
@@ -64,9 +67,7 @@ impl Tokenizer {
             for param in params {
                 let value = map
                     .get(&param.name)
-                    .ok_or_else(|| error!(AbiError::InvalidInputData { 
-                        msg: format!("Parameter `{}` is not specified", param.name) 
-                    }))?;
+                    .unwrap_or(&Value::Null);
                 let token_value = Self::tokenize_parameter(&param.kind, value)?;
                 tokens.push(Token { name: param.name.clone(), value: token_value});
             }
@@ -127,7 +128,7 @@ impl Tokenizer {
     ) -> Result<TokenValue> {
         let vec = Self::read_array(param, value)?;
         match vec.len() == size {
-            true => Ok(TokenValue::FixedArray(vec)),
+            true => Ok(TokenValue::FixedArray(param.clone(), vec)),
             false => fail!(AbiError::InvalidParameterLength { val: value.clone() } ),
         }
     }
@@ -136,7 +137,7 @@ impl Tokenizer {
     fn tokenize_array(param: &ParamType, value: &Value) -> Result<TokenValue> {
         let vec = Self::read_array(param, value)?;
 
-        Ok(TokenValue::Array(vec))
+        Ok(TokenValue::Array(param.clone(), vec))
     }
 
     /// Tries to parse a value as a bool.
@@ -247,6 +248,26 @@ impl Tokenizer {
         }
     }
 
+    fn tokenize_varuint(size: usize, value: &Value) -> Result<TokenValue> {
+        let number = Self::read_uint(value)?;
+
+        if !Self::check_uint_size(&number, (size - 1) * 8) {
+            fail!(AbiError::InvalidParameterValue { val: value.clone() } )
+        } else {
+            Ok(TokenValue::VarUint(size, number))
+        }
+    }
+
+    fn tokenize_varint(size: usize, value: &Value) -> Result<TokenValue> {
+        let number = Self::read_int(value)?;
+
+        if !Self::check_int_size(&number, (size - 1) * 8) {
+            fail!(AbiError::InvalidParameterValue { val: value.clone() } )
+        } else {
+            Ok(TokenValue::VarInt(size, number))
+        }
+    }
+
     fn tokenize_cell(value: &Value) -> Result<TokenValue> {
         let string = value
             .as_str()
@@ -270,7 +291,7 @@ impl Tokenizer {
                 let value = Self::tokenize_parameter(value_type, value)?;
                 new_map.insert(key.to_string(), value);
             }
-            Ok(TokenValue::Map(key_type.clone(), new_map))
+            Ok(TokenValue::Map(key_type.clone(), value_type.clone(), new_map))
         } else {
             fail!(AbiError::WrongDataFormat { val: map_value.clone() } )
         }
@@ -291,6 +312,14 @@ impl Tokenizer {
             }
             None => Ok(TokenValue::Bytes(data))
         }
+    }
+
+    fn tokenize_string(value: &Value) -> Result<TokenValue> {
+        let string = value
+            .as_str()
+            .ok_or_else(|| AbiError::WrongDataFormat { val: value.clone() } )?
+            .to_owned();
+        Ok(TokenValue::String(string))
     }
 
     /// Tries to parse a value as tuple.
@@ -336,6 +365,17 @@ impl Tokenizer {
                 fail!(AbiError::InvalidParameterLength { val: value.clone() } )
             };
             Ok(TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&data)?)))
+        }
+    }
+
+    fn tokenize_optional(param: &ParamType, value: &Value) -> Result<TokenValue> {
+        if value.is_null() {
+            Ok(TokenValue::Optional(param.clone(), None))
+        } else {
+            Ok(TokenValue::Optional(
+                param.clone(),
+                Some(Box::new(Self::tokenize_parameter(param, value)?))
+            ))
         }
     }
 }

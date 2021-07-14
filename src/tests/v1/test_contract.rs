@@ -73,7 +73,7 @@ fn test_abi_parse() {
     functions.insert(
         "input_and_output".to_owned(),
         Function {
-            abi_version: 1,
+            abi_version: 1.into(),
             name: "input_and_output".to_owned(),
             header: header.clone(),
             inputs: vec![
@@ -93,7 +93,7 @@ fn test_abi_parse() {
     functions.insert(
         "no_output".to_owned(),
         Function {
-            abi_version: 1,
+            abi_version: 1.into(),
             name: "no_output".to_owned(),
             header: header.clone(),
             inputs: vec![
@@ -107,7 +107,7 @@ fn test_abi_parse() {
     functions.insert(
         "no_input".to_owned(),
         Function {
-            abi_version: 1,
+            abi_version: 1.into(),
             name: "no_input".to_owned(),
             header: header.clone(),
             inputs: vec![],
@@ -121,7 +121,7 @@ fn test_abi_parse() {
     functions.insert(
         "constructor".to_owned(),
         Function {
-            abi_version: 1,
+            abi_version: 1.into(),
             name: "constructor".to_owned(),
             header: header.clone(),
             inputs: vec![],
@@ -133,7 +133,7 @@ fn test_abi_parse() {
     functions.insert(
         "has_id".to_owned(),
         Function {
-            abi_version: 1,
+            abi_version: 1.into(),
             name: "has_id".to_owned(),
             header: header.clone(),
             inputs: vec![],
@@ -147,7 +147,7 @@ fn test_abi_parse() {
     events.insert(
         "input".to_owned(),
         Event {
-            abi_version: 1,
+            abi_version: 1.into(),
             name: "input".to_owned(),
             inputs: vec![
                 Param { name: "a".to_owned(), kind: ParamType::Uint(64) },
@@ -158,7 +158,7 @@ fn test_abi_parse() {
     events.insert(
         "no_input".to_owned(),
         Event {
-            abi_version: 1,
+            abi_version: 1.into(),
             name: "no_input".to_owned(),
             inputs: vec![],
             id: Function::calc_function_id("no_input()v1") & 0x7FFFFFFF
@@ -167,7 +167,7 @@ fn test_abi_parse() {
     events.insert(
         "has_id".to_owned(),
         Event {
-            abi_version: 1,
+            abi_version: 1.into(),
             name: "has_id".to_owned(),
             inputs: vec![],
             id: 0x89abcdef
@@ -185,7 +185,7 @@ fn test_abi_parse() {
             key: 100
         });
 
-    let expected_contract = Contract { abi_version: 1, header, functions, events, data };
+    let expected_contract = Contract { abi_version: 1.into(), header, functions, events, data, fields: vec![] };
 
     assert_eq!(parsed_contract, expected_contract);
 }
