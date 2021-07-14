@@ -142,6 +142,10 @@ pub fn read_type(name: &str) -> Result<ParamType> {
         "string" => {
             ParamType::String
         }
+        s if s.starts_with("optional(") && s.ends_with(")") => {
+            let inner_type = read_type(&name[9..name.len() - 1])?;
+            ParamType::Optional(Box::new(inner_type))
+        },
         _ => {
             fail!(AbiError::InvalidName { name: name.to_owned() } );
         }
