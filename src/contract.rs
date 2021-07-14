@@ -173,12 +173,6 @@ struct SerdeContract {
 pub struct DecodedMessage {
     pub function_name: String,
     pub tokens: Vec<Token>,
-    pub params: Vec<Param>
-}
-
-pub struct DecodedStorage {
-    pub fields: Vec<Token>,
-    pub params: Vec<Param>
 }
 
 /// API building calls to contracts ABI.
@@ -336,7 +330,6 @@ impl Contract {
             Ok( DecodedMessage {
                 function_name: func.name.clone(),
                 tokens: tokens,
-                params: func.output_params().clone()
             })
         } else {
             let event = self.event_by_id(func_id)?;
@@ -345,7 +338,6 @@ impl Contract {
             Ok( DecodedMessage {
                 function_name: event.name.clone(),
                 tokens: tokens,
-                params: event.input_params()
             })
         }
     }
@@ -363,7 +355,6 @@ impl Contract {
         Ok( DecodedMessage {
             function_name: func.name.clone(),
             tokens: tokens,
-            params: func.input_params().clone()
         })
     }
 
@@ -431,9 +422,8 @@ impl Contract {
     }
 
     /// Decode account storage fields
-    pub fn decode_storage_fields(&self, data: SliceData) -> Result<DecodedStorage> {
-        let fields = TokenValue::decode_params(&self.fields, data, self.abi_version.major)?;
-        Ok(DecodedStorage { fields, params: self.fields.clone() })
+    pub fn decode_storage_fields(&self, data: SliceData) -> Result<Vec<Token>> {
+        TokenValue::decode_params(&self.fields, data, self.abi_version.major)
     }
 }
 

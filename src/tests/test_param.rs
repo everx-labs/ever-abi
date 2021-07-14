@@ -27,15 +27,6 @@ use crate::contract::AbiVersion;
 fn int_json_representation() {
     let value = Detokenizer::detokenize_to_json_value(
         &[
-            Param::new("u8", ParamType::Uint(8)),
-            Param::new("i32", ParamType::Int(32)),
-            Param::new("u256", ParamType::Uint(256)),
-            Param::new("u128", ParamType::Uint(128)),
-            Param::new("i256", ParamType::Int(256)),
-            Param::new("vi16", ParamType::VarInt(16)),
-            Param::new("vu32", ParamType::VarUint(32)),
-        ],
-        &[
             Token::new("u8", TokenValue::Uint(Uint::new(1, 8))),
             Token::new("i32", TokenValue::Int(Int::new(-1, 32))),
             Token::new("u256", TokenValue::Uint(Uint::new(1, 256))),

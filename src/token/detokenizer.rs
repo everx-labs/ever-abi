@@ -11,38 +11,25 @@
 * limitations under the License.
 */
 
-use crate::{
-    error::AbiError, param::Param, param_type::ParamType, token::{Token, TokenValue}
-};
+use crate::{ param_type::ParamType, token::{Token, TokenValue} };
 
 use num_bigint::{BigInt, BigUint};
 use serde::ser::{Serialize, Serializer, SerializeMap};
 use std::collections::HashMap;
-use ton_types::{Cell, error, fail, Result, serialize_tree_of_cells};
+use ton_types::{Cell, Result, serialize_tree_of_cells};
 
 pub struct Detokenizer;
 
 impl Detokenizer {
-    pub fn detokenize(params: &[Param], tokens: &[Token]) -> Result<String> {
+    pub fn detokenize(tokens: &[Token]) -> Result<String> {
         Ok(
             serde_json::to_string(
-                &Self::detokenize_to_json_value(params, tokens)?
+                &Self::detokenize_to_json_value(tokens)?
             )?
         )
     }
 
-    pub fn detokenize_to_json_value(params: &[Param], tokens: &[Token]) -> Result<serde_json::Value> {
-        if params.len() != tokens.len() {
-            fail!(AbiError::WrongParametersCount {
-                expected: params.len(),
-                provided: tokens.len()
-            });
-        }
-
-        if !Token::types_check(tokens, params) {
-             fail!(AbiError::WrongParameterType);
-        }
-
+    pub fn detokenize_to_json_value(tokens: &[Token]) -> Result<serde_json::Value> {
         Ok(serde_json::to_value(&FunctionParams{params: tokens})?)
     }
 
