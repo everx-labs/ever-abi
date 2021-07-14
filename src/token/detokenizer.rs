@@ -16,7 +16,7 @@ use crate::{ param_type::ParamType, token::{Token, TokenValue} };
 use num_bigint::{BigInt, BigUint};
 use serde::ser::{Serialize, Serializer, SerializeMap};
 use std::collections::{HashMap, BTreeMap};
-use ton_types::{Cell, error, fail, Result, serialize_tree_of_cells};
+use ton_types::{Cell, Result, serialize_tree_of_cells};
 
 pub struct Detokenizer;
 
