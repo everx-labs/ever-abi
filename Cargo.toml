@@ -1,6 +1,6 @@
 [package]
 name = "ton_abi"
-version = "1.4.0"
+version = "1.4.1"
 
 [dependencies]
 ton_types = { git = "https://github.com/tonlabs/ton-labs-types.git" }
