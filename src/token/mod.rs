@@ -16,7 +16,7 @@ use crate::{
     error::AbiError, int::{Int, Uint}, param::Param, param_type::ParamType
 };
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 use ton_block::{Grams, MsgAddress};
 use ton_types::{Result, Cell};
@@ -100,7 +100,7 @@ pub enum TokenValue {
     Cell(Cell),
     /// Dictionary of values
     ///
-    Map(ParamType, ParamType, HashMap<String, TokenValue>),
+    Map(ParamType, ParamType, BTreeMap<String, TokenValue>),
     /// MsgAddress
     ///
     Address(MsgAddress),

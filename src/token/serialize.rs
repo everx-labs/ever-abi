@@ -14,7 +14,7 @@
 use crate::{error::AbiError, int::{Int, Uint}, param_type::ParamType, token::{Token, Tokenizer, TokenValue}};
 
 use num_bigint::{BigInt, BigUint, Sign};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use ton_block::Serializable;
 use ton_types::{BuilderData, Cell, error, fail, HashmapE, IBitstring, Result};
 
@@ -258,7 +258,7 @@ impl TokenValue {
         super::MAX_HASH_MAP_INFO_ABOUT_KEY + key_len + value_len <= 1023
     }
 
-    fn write_map(key_type: &ParamType, value_type: &ParamType, value: &HashMap<String, TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
+    fn write_map(key_type: &ParamType, value_type: &ParamType, value: &BTreeMap<String, TokenValue>, abi_version: u8) -> Result<Vec<BuilderData>> {
         let key_len = key_type.get_map_key_size()?;
         let value_len = value_type.max_bit_size();
         let value_in_ref = Self::map_value_in_ref(key_len, value_len);

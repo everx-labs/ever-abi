@@ -11,7 +11,7 @@
 * limitations under the License.
 */
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::str::FromStr;
 use num_bigint::{BigInt, BigUint};
@@ -773,7 +773,7 @@ fn test_map() {
     let bytes_value = TokenValue::Map(
         ParamType::Uint(8),
         ParamType::Bytes,
-        HashMap::from_iter(
+        BTreeMap::from_iter(
             vec![
                 ("1".to_owned(), TokenValue::Bytes(bytes.clone())),
                 ("2".to_owned(), TokenValue::Bytes(bytes.clone())),
@@ -793,7 +793,7 @@ fn test_map() {
     let int_value = TokenValue::Map(
         ParamType::Int(16),
         ParamType::Int(128),
-        HashMap::from_iter(
+        BTreeMap::from_iter(
             vec![
                 ("-1".to_owned(), TokenValue::Int(Int::new(-1, 128))),
                 ("0".to_owned(), TokenValue::Int(Int::new(0, 128))),
@@ -819,7 +819,7 @@ fn test_map() {
             Param::new("a", ParamType::Uint(32)),
             Param::new("b", ParamType::Bool),
         ]),
-        HashMap::from_iter(
+        BTreeMap::from_iter(
             tuples_array
                 .iter()
                 .map(|i| {
@@ -855,7 +855,7 @@ fn test_map() {
         bytes_value,
         int_value,
         tuples_value,
-        TokenValue::Map(ParamType::Int(256), ParamType::Bool, HashMap::new())
+        TokenValue::Map(ParamType::Int(256), ParamType::Bool, BTreeMap::new())
     ];
 
     test_parameters_set(
@@ -891,7 +891,7 @@ fn test_address_map_key() {
     let value = TokenValue::Map(
         ParamType::Address,
         ParamType::Uint(32),
-        HashMap::from_iter(
+        BTreeMap::from_iter(
             vec![
                 (addr1_str.to_owned(), TokenValue::Uint(Uint::new(123, 32))),
                 (addr2_str.to_owned(), TokenValue::Uint(Uint::new(456, 32))),
@@ -954,7 +954,7 @@ fn test_address_map_key() {
     let value_map = TokenValue::Map(
         ParamType::Uint(256),
         ParamType::Tuple(params_from_tokens(&tuple_tokens)),
-        HashMap::from_iter(
+        BTreeMap::from_iter(
             vec![(
                 "0x000000000000000000000000000000000000000000000000000000000000007b".to_owned(),
                 tuple.clone()
