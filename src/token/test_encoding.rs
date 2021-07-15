@@ -137,7 +137,7 @@ fn test_with_grams() {
     let grams = Grams::from(173742);
     grams.write_to(&mut builder).unwrap();
 
-    let values = vec![TokenValue::Gram(grams)];
+    let values = vec![TokenValue::Token(grams)];
 
     test_parameters_set(
         &tokens_from_values(values),

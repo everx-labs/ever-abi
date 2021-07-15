@@ -118,7 +118,7 @@ pub enum TokenValue {
     String(String),
     /// Nanograms
     /// 
-    Gram(Grams),
+    Token(Grams),
     /// Timestamp
     Time(u64),
     /// Message expiration time
@@ -168,7 +168,7 @@ impl fmt::Display for TokenValue {
             TokenValue::Address(a) => write!(f, "{}", a),
             TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) => write!(f, "{:?}", arr),
             TokenValue::String(string) => write!(f, "{}", string),
-            TokenValue::Gram(g) => write!(f, "{}", g),
+            TokenValue::Token(g) => write!(f, "{}", g),
             TokenValue::Time(time) => write!(f, "{}", time),
             TokenValue::Expire(expire) => write!(f, "{}", expire),
             TokenValue::PublicKey(key) => if let Some(key) = key {
@@ -235,7 +235,7 @@ impl TokenValue {
             TokenValue::Bytes(_) => *param_type == ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => *param_type == ParamType::FixedBytes(arr.len()),
             TokenValue::String(_) => *param_type == ParamType::String,
-            TokenValue::Gram(_) => *param_type == ParamType::Gram,
+            TokenValue::Token(_) => *param_type == ParamType::Token,
             TokenValue::Time(_) => *param_type == ParamType::Time,
             TokenValue::Expire(_) => *param_type == ParamType::Expire,
             TokenValue::PublicKey(_) => *param_type == ParamType::PublicKey,
@@ -274,7 +274,7 @@ impl TokenValue {
             TokenValue::Bytes(_) => ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => ParamType::FixedBytes(arr.len()),
             TokenValue::String(_) => ParamType::String,
-            TokenValue::Gram(_) => ParamType::Gram,
+            TokenValue::Token(_) => ParamType::Token,
             TokenValue::Time(_) => ParamType::Time,
             TokenValue::Expire(_) => ParamType::Expire,
             TokenValue::PublicKey(_) => ParamType::PublicKey,

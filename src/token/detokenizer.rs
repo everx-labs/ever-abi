@@ -170,7 +170,7 @@ impl Serialize for TokenValue {
             TokenValue::Bytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::FixedBytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::String(string) => serializer.serialize_str(string),
-            TokenValue::Gram(gram) => Token::detokenize_big_int(&gram.value(), serializer),
+            TokenValue::Token(gram) => Token::detokenize_big_int(&gram.value(), serializer),
             TokenValue::Time(time) => {
                 Token::detokenize_big_uint(&BigUint::from(*time), 64, serializer)
             }

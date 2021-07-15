@@ -16,8 +16,8 @@
 use std::fmt;
 use Param;
 
-use crate::AbiError;
-use crate::contract::AbiVersion;
+use crate::{AbiError, contract::ABI_VBERSION_2_0};
+use crate::contract::{ABI_VBERSION_1_0, ABI_VBERSION_2_1, AbiVersion};
 
 use ton_types::{BuilderData, Result, error};
 
@@ -53,7 +53,7 @@ pub enum ParamType {
     /// UTF8 string
     String,
     /// Nanograms
-    Gram,
+    Token,
     /// Timestamp
     Time,
     /// Message expiration time
@@ -98,7 +98,7 @@ impl ParamType {
             ParamType::Bytes => format!("bytes"),
             ParamType::FixedBytes(size) => format!("fixedbytes{}", size),
             ParamType::String => format!("string"),
-            ParamType::Gram => format!("gram"),
+            ParamType::Token => format!("gram"),
             ParamType::Time => format!("time"),
             ParamType::Expire => format!("expire"),
             ParamType::PublicKey => format!("pubkey"),
@@ -140,9 +140,9 @@ impl ParamType {
     /// Check if parameter type is supoorted in particular ABI version
     pub fn is_supported(&self, abi_version: &AbiVersion) -> bool {
         match self {
-            ParamType::Time | ParamType::Expire | ParamType::PublicKey => abi_version >= &AbiVersion::from_parts(2, 0),
-            ParamType::String | ParamType::Optional(_)| ParamType::VarInt(_) | ParamType::VarUint(_) => abi_version >= &AbiVersion::from_parts(2, 1),
-            _ => abi_version >= &AbiVersion::from_parts(1, 0),
+            ParamType::Time | ParamType::Expire | ParamType::PublicKey => abi_version >= &ABI_VBERSION_2_0,
+            ParamType::String | ParamType::Optional(_)| ParamType::VarInt(_) | ParamType::VarUint(_) => abi_version >= &ABI_VBERSION_2_1,
+            _ => abi_version >= &ABI_VBERSION_1_0,
         }
     }
 
@@ -167,27 +167,20 @@ impl ParamType {
 
     pub(crate) fn max_refs_count(&self) -> usize {
         match self {
-            ParamType::Uint(_) => 0,
-            ParamType::Int(_) => 0,
-            ParamType::VarUint(_) => 0,
-            ParamType::VarInt(_) => 0,
-            ParamType::Bool => 0,
-            ParamType::Array(_) => 1,
-            ParamType::FixedArray(_, _) => 1,
-            ParamType::Cell => 1,
-            ParamType::Map(_, _) => 1,
-            ParamType::Address => 0,
-            ParamType::Bytes | ParamType::FixedBytes(_) => 1,
-            ParamType::String => 1,
-            ParamType::Gram => 0,
-            ParamType::Time => 0,
-            ParamType::Expire => 0,
-            ParamType::PublicKey => 0,
+            // in-cell serialized types
+            ParamType::Uint(_) | ParamType::Int(_) | ParamType::VarUint(_) |ParamType::VarInt(_)
+            | ParamType::Bool | ParamType::Address |  ParamType::Token | ParamType::Time
+            | ParamType::Expire |ParamType::PublicKey => 0,
+            // reference serialized types
+            ParamType::Array(_) | ParamType::FixedArray(_, _) | ParamType::Cell | ParamType::String
+            | ParamType::Map(_, _) | ParamType::Bytes | ParamType::FixedBytes(_) => 1,
+            // tuple refs is sum of inner types refs
             ParamType::Tuple(params) => {
                 params
                     .iter()
                     .fold(0, |acc, param| acc + param.kind.max_refs_count())
             },
+            // large optional is serialized into reference
             ParamType::Optional(param_type) => {
                 if param_type.is_large_optional() {
                     1
@@ -212,7 +205,7 @@ impl ParamType {
             ParamType::Address => 591,
             ParamType::Bytes | ParamType::FixedBytes(_) => 0,
             ParamType::String => 0,
-            ParamType::Gram => 128,
+            ParamType::Token => 128,
             ParamType::Time => 64,
             ParamType::Expire => 32,
             ParamType::PublicKey => 257,

@@ -56,7 +56,7 @@ mod tokenize_tests {
             },
             Param {
                 name: "g".to_owned(),
-                kind: ParamType::Gram,
+                kind: ParamType::Token,
             },
             Param {
                 name: "h".to_owned(),
@@ -89,7 +89,7 @@ mod tokenize_tests {
                 name: "f".to_owned(),
                 value: TokenValue::Int(Int::new(-12345678900987654321i128, 128)),
             },
-            Token::new("g", TokenValue::Gram(max_gram.into())),
+            Token::new("g", TokenValue::Token(max_gram.into())),
             Token {
                 name: "h".to_owned(),
                 value: TokenValue::VarInt(16, (-1000i32).into()),
@@ -1016,7 +1016,7 @@ mod types_check_tests {
             },
             Token {
                 name: "p".to_owned(),
-                value: TokenValue::Gram(17u32.into())
+                value: TokenValue::Token(17u32.into())
             },
             Token {
                 name: "q".to_owned(),
@@ -1106,7 +1106,7 @@ mod types_check_tests {
             },
             Param {
                 name: "p".to_owned(),
-                kind: ParamType::Gram,
+                kind: ParamType::Token,
             },
             Param {
                 name: "q".to_owned(),

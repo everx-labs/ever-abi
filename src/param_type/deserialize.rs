@@ -119,8 +119,8 @@ pub fn read_type(name: &str) -> Result<ParamType> {
         "address" => {
             ParamType::Address
         }
-        "gram" => {
-            ParamType::Gram
+        "token" => {
+            ParamType::Token
         }
         "bytes" => {
             ParamType::Bytes

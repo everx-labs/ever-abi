@@ -52,7 +52,7 @@ impl Tokenizer {
             ParamType::Bytes => Self::tokenize_bytes(value, None),
             ParamType::FixedBytes(size) => Self::tokenize_bytes(value, Some(*size)),
             ParamType::String => Self::tokenize_string(value),
-            ParamType::Gram => Self::tokenize_gram(value),
+            ParamType::Token => Self::tokenize_gram(value),
             ParamType::Time => Self::tokenize_time(value),
             ParamType::Expire => Self::tokenize_expire(value),
             ParamType::PublicKey => Self::tokenize_public_key(value),
@@ -108,11 +108,11 @@ impl Tokenizer {
     }
 
     /// Tries to read tokens array from `Value`
-    fn read_array(param: &ParamType, value: &Value) -> Result<Vec<TokenValue>> {
+    fn read_array(item_type: &ParamType, value: &Value) -> Result<Vec<TokenValue>> {
         if let Value::Array(array) = value {
             let mut tokens = Vec::new();
             for value in array {
-                tokens.push(Self::tokenize_parameter(param, value)?);
+                tokens.push(Self::tokenize_parameter(item_type, value)?);
             }
             
             Ok(tokens)
@@ -123,21 +123,21 @@ impl Tokenizer {
 
     /// Tries to parse a value as a vector of tokens of fixed size.
     fn tokenize_fixed_array(
-        param: &ParamType,
+        item_type: &ParamType,
         size: usize, value: &Value
     ) -> Result<TokenValue> {
-        let vec = Self::read_array(param, value)?;
+        let vec = Self::read_array(item_type, value)?;
         match vec.len() == size {
-            true => Ok(TokenValue::FixedArray(param.clone(), vec)),
+            true => Ok(TokenValue::FixedArray(item_type.clone(), vec)),
             false => fail!(AbiError::InvalidParameterLength { val: value.clone() } ),
         }
     }
 
     /// Tries to parse a value as a vector of tokens.
-    fn tokenize_array(param: &ParamType, value: &Value) -> Result<TokenValue> {
-        let vec = Self::read_array(param, value)?;
+    fn tokenize_array(item_type: &ParamType, value: &Value) -> Result<TokenValue> {
+        let vec = Self::read_array(item_type, value)?;
 
-        Ok(TokenValue::Array(param.clone(), vec))
+        Ok(TokenValue::Array(item_type.clone(), vec))
     }
 
     /// Tries to parse a value as a bool.
@@ -222,7 +222,7 @@ impl Tokenizer {
         if !Self::check_uint_size(&number, 120) {
             fail!(AbiError::InvalidParameterValue { val: value.clone() } )
         } else {
-            Ok(TokenValue::Gram(Grams::from(number)))
+            Ok(TokenValue::Token(Grams::from(number)))
         }
     }
 
@@ -368,13 +368,13 @@ impl Tokenizer {
         }
     }
 
-    fn tokenize_optional(param: &ParamType, value: &Value) -> Result<TokenValue> {
+    fn tokenize_optional(inner_type: &ParamType, value: &Value) -> Result<TokenValue> {
         if value.is_null() {
-            Ok(TokenValue::Optional(param.clone(), None))
+            Ok(TokenValue::Optional(inner_type.clone(), None))
         } else {
             Ok(TokenValue::Optional(
-                param.clone(),
-                Some(Box::new(Self::tokenize_parameter(param, value)?))
+                inner_type.clone(),
+                Some(Box::new(Self::tokenize_parameter(inner_type, value)?))
             ))
         }
     }

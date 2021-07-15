@@ -105,7 +105,7 @@ impl TokenValue {
             TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) =>
                 Self::write_bytes(arr, abi_version),
             TokenValue::String(ref string) => Self::write_bytes(string.as_bytes(), abi_version),
-            TokenValue::Gram(gram) => Ok(vec![gram.write_to_new_cell()?]),
+            TokenValue::Token(gram) => Ok(vec![gram.write_to_new_cell()?]),
             TokenValue::Time(time) => Ok(vec![time.write_to_new_cell()?]),
             TokenValue::Expire(expire) => Ok(vec![expire.write_to_new_cell()?]),
             TokenValue::PublicKey(key) => Self::write_public_key(key),

@@ -21,10 +21,14 @@ use ton_block::Serializable;
 use ton_types::{BuilderData, error, fail, HashmapE, Result, SliceData};
 
 
-const MIN_SUPPORTED_VERSION: u32 = 1000;
-const MAX_SUPPORTED_VERSION: u32 = 2001;
+const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VBERSION_1_0;
+const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VBERSION_2_1;
 
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub const ABI_VBERSION_1_0: AbiVersion = AbiVersion::from_parts(1, 0);
+pub const ABI_VBERSION_2_0: AbiVersion = AbiVersion::from_parts(2, 0);
+pub const ABI_VBERSION_2_1: AbiVersion = AbiVersion::from_parts(2, 1);
+
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct AbiVersion {
     pub major: u8,
     pub minor: u8,
@@ -45,13 +49,12 @@ impl AbiVersion {
         Ok(Self { major, minor })
     }
 
-    pub fn from_parts(major: u8, minor: u8) -> Self {
+    pub const fn from_parts(major: u8, minor: u8) -> Self {
         Self { major, minor }
     }
 
     pub fn is_supported(&self) -> bool {
-        let single_version = self.major as u32 * 1000 + self.minor as u32;
-        single_version >= MIN_SUPPORTED_VERSION && single_version <= MAX_SUPPORTED_VERSION
+        self >= &MIN_SUPPORTED_VERSION && self <= &MAX_SUPPORTED_VERSION
     }
 }
 
@@ -222,7 +225,7 @@ impl Contract {
             }
         }
 
-        if !serde_contract.fields.is_empty() && version < AbiVersion::from_parts(2, 1) {
+        if !serde_contract.fields.is_empty() && version < ABI_VBERSION_2_1 {
             fail!(AbiError::InvalidData {msg: "Storage fields are supported since ABI v2.1".into()});
         }
 

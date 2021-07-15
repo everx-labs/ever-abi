@@ -21,7 +21,7 @@ use Function;
 use ton_types::BuilderData;
 use ton_types::IBitstring;
 
-use crate::contract::AbiVersion;
+use crate::contract::ABI_VBERSION_2_0;
 
 #[test]
 fn int_json_representation() {
@@ -54,7 +54,7 @@ fn int_json_representation() {
 #[test]
 fn test_encode_internal_output() {
     let func: Function = Function {
-        abi_version: AbiVersion::from_parts(2, 0),
+        abi_version: ABI_VBERSION_2_0,
         name: "func".to_string(),
         header: vec![],
         inputs: vec![],

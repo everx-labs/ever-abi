@@ -40,7 +40,7 @@ mod param_type_tests {
 
         let tuple_with_tuple = vec![
             Param {name: "a".to_owned(), kind: ParamType::Tuple(tuple_params.clone())},
-            Param {name: "b".to_owned(), kind: ParamType::Gram}
+            Param {name: "b".to_owned(), kind: ParamType::Token}
         ];
 
         assert_eq!(
@@ -74,7 +74,7 @@ mod deserialize_tests {
     fn param_type_deserialization() {
         let s = r#"["uint256", "int64", "bool", "bool[]", "int33[2]", "bool[][2]",
             "tuple", "tuple[]", "tuple[4]", "cell", "map(int3,bool)", "map(uint1023,tuple[][5])",
-            "address", "bytes", "fixedbytes32", "gram", "time", "expire", "pubkey", "string",
+            "address", "bytes", "fixedbytes32", "token", "time", "expire", "pubkey", "string",
             "varuint16", "varint32", "optional(bytes)"]"#;
         let deserialized: Vec<ParamType> = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized, vec![
@@ -98,7 +98,7 @@ mod deserialize_tests {
             ParamType::Address,
             ParamType::Bytes,
             ParamType::FixedBytes(32),
-            ParamType::Gram,
+            ParamType::Token,
             ParamType::Time,
             ParamType::Expire,
             ParamType::PublicKey,
