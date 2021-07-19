@@ -419,3 +419,32 @@ fn test_update_contract_data() {
 
     assert_eq!(owner_slice.get_bytestring(0), vec![0x22; 32]);
 }
+
+const ABI_WITH_FIELDS: &str = r#"{
+    "version": "2.1",
+    "functions": [],
+    "fields": [
+        {"name":"__pubkey","type":"uint256"},
+        {"name":"__timestamp","type":"uint64"},
+        {"name":"ok","type":"bool"},
+        {"name":"value","type":"uint32"}
+    ]
+}"#;
+
+#[test]
+fn test_decode_storage_fields() {
+    let mut storage = BuilderData::new();
+    storage.append_bitstring(&[vec![0x55; 32], vec![0x80]].join(&[][..])).unwrap();
+    storage.append_u64(123).unwrap();
+    storage.append_bit_one().unwrap();
+    storage.append_u32(456).unwrap();
+
+    let decoded = decode_storage_fields(ABI_WITH_FIELDS, storage.into()).unwrap();
+
+    assert_eq!(decoded, serde_json::json!({
+        "__pubkey": format!("0x{}", hex::encode([0x55; 32])),
+        "__timestamp":"123",
+        "ok": true,
+        "value": "456"
+    }).to_string());
+}

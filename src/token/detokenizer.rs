@@ -11,38 +11,25 @@
 * limitations under the License.
 */
 
-use crate::{
-    error::AbiError, param::Param, param_type::ParamType, token::{Token, TokenValue}
-};
+use crate::{ param_type::ParamType, token::{Token, TokenValue} };
 
 use num_bigint::{BigInt, BigUint};
 use serde::ser::{Serialize, Serializer, SerializeMap};
 use std::collections::{HashMap, BTreeMap};
-use ton_types::{Cell, error, fail, Result, serialize_tree_of_cells};
+use ton_types::{Cell, Result, serialize_tree_of_cells};
 
 pub struct Detokenizer;
 
 impl Detokenizer {
-    pub fn detokenize(params: &[Param], tokens: &[Token]) -> Result<String> {
+    pub fn detokenize(tokens: &[Token]) -> Result<String> {
         Ok(
             serde_json::to_string(
-                &Self::detokenize_to_json_value(params, tokens)?
+                &Self::detokenize_to_json_value(tokens)?
             )?
         )
     }
 
-    pub fn detokenize_to_json_value(params: &[Param], tokens: &[Token]) -> Result<serde_json::Value> {
-        if params.len() != tokens.len() {
-            fail!(AbiError::WrongParametersCount {
-                expected: params.len(),
-                provided: tokens.len()
-            });
-        }
-
-        if !Token::types_check(tokens, params) {
-             fail!(AbiError::WrongParameterType);
-        }
-
+    pub fn detokenize_to_json_value(tokens: &[Token]) -> Result<serde_json::Value> {
         Ok(serde_json::to_value(&FunctionParams{params: tokens})?)
     }
 
@@ -143,6 +130,17 @@ impl Token {
             serializer.serialize_str("")
         }
     }
+
+    pub fn detokenize_optional<S>(value: &Option<ed25519_dalek::PublicKey>, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(key) = value {
+            Self::detokenize_bytes(&key.to_bytes().to_vec(), serializer)
+        } else {
+            serializer.serialize_str("")
+        }
+    }
 }
 
 impl Serialize for TokenValue {
@@ -155,18 +153,24 @@ impl Serialize for TokenValue {
                 Token::detokenize_big_uint(&uint.number, uint.size, serializer)
             }
             TokenValue::Int(int) => Token::detokenize_big_int(&int.number, serializer),
+            TokenValue::VarUint(size, uint) => {
+                Token::detokenize_big_uint(&uint, (size - 1) * 8, serializer)
+            }
+            TokenValue::VarInt(_, int) => Token::detokenize_big_int(&int, serializer),
             TokenValue::Bool(b) => serializer.serialize_bool(b.clone()),
             TokenValue::Tuple(tokens) => {
                 FunctionParams {params: tokens}.serialize(serializer)
             },
-            TokenValue::Array(ref tokens) => tokens.serialize(serializer),
-            TokenValue::FixedArray(ref tokens) => tokens.serialize(serializer),
+            TokenValue::Array(_, ref tokens) => tokens.serialize(serializer),
+            TokenValue::FixedArray(_, ref tokens) => tokens.serialize(serializer),
             TokenValue::Cell(ref cell) => Token::detokenize_cell(cell, serializer),
-            TokenValue::Map(key_type, ref map) => Token::detokenize_hashmap(key_type, map, serializer),
+            TokenValue::Map(key_type, _, ref map) =>
+                Token::detokenize_hashmap(key_type, map, serializer),
             TokenValue::Address(ref address) => serializer.serialize_str(&address.to_string()),
             TokenValue::Bytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::FixedBytes(ref arr) => Token::detokenize_bytes(arr, serializer),
-            TokenValue::Gram(gram) => Token::detokenize_big_int(&gram.value(), serializer),
+            TokenValue::String(string) => serializer.serialize_str(string),
+            TokenValue::Token(gram) => Token::detokenize_big_int(&gram.value(), serializer),
             TokenValue::Time(time) => {
                 Token::detokenize_big_uint(&BigUint::from(*time), 64, serializer)
             }
@@ -174,6 +178,7 @@ impl Serialize for TokenValue {
                 Token::detokenize_big_uint(&BigUint::from(*expire), 32, serializer)
             }
             TokenValue::PublicKey(key) => Token::detokenize_public_key(&key, serializer),
+            TokenValue::Optional(_, value) => value.serialize(serializer),
         }
     }
 }

@@ -101,7 +101,7 @@ pub fn decode_function_response(
 
     let tokens = function.decode_output(response, internal)?;
 
-    Detokenizer::detokenize(&function.output_params(), &tokens)
+    Detokenizer::detokenize(&tokens)
 }
 
 pub struct DecodedMessage {
@@ -119,7 +119,7 @@ pub fn decode_unknown_function_response(
 
     let result = contract.decode_output(response, internal)?;
 
-    let output = Detokenizer::detokenize(&result.params, &result.tokens)?;
+    let output = Detokenizer::detokenize(&result.tokens)?;
 
     Ok(DecodedMessage {
         function_name: result.function_name,
@@ -137,7 +137,7 @@ pub fn decode_unknown_function_call(
 
     let result = contract.decode_input(response, internal)?;
 
-    let input = Detokenizer::detokenize(&result.params, &result.tokens)?;
+    let input = Detokenizer::detokenize(&result.tokens)?;
 
     Ok(DecodedMessage {
         function_name: result.function_name,
@@ -160,6 +160,15 @@ pub fn update_contract_data(abi: &str, parameters: &str, data: SliceData) -> Res
     let tokens = Tokenizer::tokenize_all_params(&params[..], &data_json)?;
 
     contract.update_data(data, &tokens)
+}
+
+/// Decode account storage fields
+pub fn decode_storage_fields(abi: &str, data: SliceData) -> Result<String> {
+    let contract = Contract::load(abi.as_bytes())?;
+
+    let decoded = contract.decode_storage_fields(data)?;
+
+    Detokenizer::detokenize(&decoded)
 }
 
 #[cfg(test)]

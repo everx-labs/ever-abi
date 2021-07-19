@@ -21,6 +21,7 @@ use std::fmt;
 use ton_block::{Grams, MsgAddress};
 use ton_types::{Result, Cell};
 use chrono::prelude::Utc;
+use num_bigint::{BigInt, BigUint};
 
 mod tokenizer;
 mod detokenizer;
@@ -70,6 +71,14 @@ pub enum TokenValue {
     ///
     /// Encoded as M bits of big-endian number representation put into cell data.
     Int(Int),
+    /// Variable length integer
+    ///
+    /// Encoded according to blockchain specification
+    VarInt(usize, BigInt),
+    /// Variable length unsigned integer
+    ///
+    /// Encoded according to blockchain specification
+    VarUint(usize, BigUint),
     /// bool: boolean value.
     ///
     /// Encoded as one bit put into cell data.
@@ -80,18 +89,18 @@ pub enum TokenValue {
     Tuple(Vec<Token>),
     /// T[]: dynamic array of elements of the type T.
     ///
-    /// Encoded as all array elements encodings put either to cell data or to separate cell.
-    Array(Vec<TokenValue>),
+    /// Encoded as all array elements encodings put to separate cell.
+    Array(ParamType, Vec<TokenValue>),
     /// T[k]: dynamic array of elements of the type T.
     ///
-    /// Encoded as all array elements encodings put either to cell data or to separate cell.
-    FixedArray(Vec<TokenValue>),
+    /// Encoded as all array elements encodings put to separate cell.
+    FixedArray(ParamType, Vec<TokenValue>),
     /// TVM Cell
     ///
     Cell(Cell),
     /// Dictionary of values
     ///
-    Map(ParamType, BTreeMap<String, TokenValue>),
+    Map(ParamType, ParamType, BTreeMap<String, TokenValue>),
     /// MsgAddress
     ///
     Address(MsgAddress),
@@ -103,15 +112,21 @@ pub enum TokenValue {
     /// 
     /// Encoded as separate cells chain
     FixedBytes(Vec<u8>),
+    /// UTF8 string
+    /// 
+    /// Encoded similar to `Bytes`
+    String(String),
     /// Nanograms
     /// 
-    Gram(Grams),
+    Token(Grams),
     /// Timestamp
     Time(u64),
     /// Message expiration time
     Expire(u32),
     /// Public key
-    PublicKey(Option<ed25519_dalek::PublicKey>)
+    PublicKey(Option<ed25519_dalek::PublicKey>),
+    /// Optional parameter
+    Optional(ParamType, Option<Box<TokenValue>>),
 }
 
 impl fmt::Display for TokenValue {
@@ -119,6 +134,8 @@ impl fmt::Display for TokenValue {
         match self {
             TokenValue::Uint(u) => write!(f, "{}", u.number),
             TokenValue::Int(u) => write!(f, "{}", u.number),
+            TokenValue::VarUint(_, u) => write!(f, "{}", u),
+            TokenValue::VarInt(_, u) => write!(f, "{}", u),
             TokenValue::Bool(b) => write!(f, "{}", b),
             TokenValue::Tuple(ref arr) => {
                 let s = arr
@@ -129,7 +146,7 @@ impl fmt::Display for TokenValue {
 
                 write!(f, "({})", s)
             }
-            TokenValue::Array(ref arr) | TokenValue::FixedArray(ref arr) => {
+            TokenValue::Array(_, ref arr) | TokenValue::FixedArray(_, ref arr) => {
                 let s = arr
                     .iter()
                     .map(|ref t| format!("{}", t))
@@ -139,7 +156,7 @@ impl fmt::Display for TokenValue {
                 write!(f, "[{}]", s)
             }
             TokenValue::Cell(c) => write!(f, "{:?}", c),
-            TokenValue::Map(_key_type, map) => {
+            TokenValue::Map(_key_type, _value_type, map) => {
                 let s = map
                     .iter()
                     .map(|ref t| format!("{}:{}", t.0, t.1))
@@ -150,11 +167,17 @@ impl fmt::Display for TokenValue {
             }
             TokenValue::Address(a) => write!(f, "{}", a),
             TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) => write!(f, "{:?}", arr),
-            TokenValue::Gram(g) => write!(f, "{}", g),
+            TokenValue::String(string) => write!(f, "{}", string),
+            TokenValue::Token(g) => write!(f, "{}", g),
             TokenValue::Time(time) => write!(f, "{}", time),
             TokenValue::Expire(expire) => write!(f, "{}", expire),
             TokenValue::PublicKey(key) => if let Some(key) = key {
                 write!(f, "{}", hex::encode(&key.to_bytes()))
+            } else {
+                write!(f, "None")
+            },
+            TokenValue::Optional(_, value) => if let Some(value) = value {
+                write!(f, "{}", value)
             } else {
                 write!(f, "None")
             }
@@ -171,6 +194,8 @@ impl TokenValue {
         match self {
             TokenValue::Uint(uint) => *param_type == ParamType::Uint(uint.size),
             TokenValue::Int(int) => *param_type == ParamType::Int(int.size),
+            TokenValue::VarUint(size, _) => *param_type == ParamType::VarUint(*size),
+            TokenValue::VarInt(size, _) => *param_type == ParamType::VarInt(*size),
             TokenValue::Bool(_) => *param_type == ParamType::Bool,
             TokenValue::Tuple(ref arr) => {
                 if let ParamType::Tuple(ref params) = *param_type {
@@ -179,25 +204,29 @@ impl TokenValue {
                     false
                 }
             }
-            TokenValue::Array(ref tokens) => {
+            TokenValue::Array(inner_type, ref tokens) => {
                 if let ParamType::Array(ref param_type) = *param_type {
-                    tokens.iter().all(|t| t.type_check(param_type))
+                    inner_type == param_type.as_ref()
+                    && tokens.iter().all(|t| t.type_check(param_type))
                 } else {
                     false
                 }
             }
-            TokenValue::FixedArray(ref tokens) => {
+            TokenValue::FixedArray(inner_type, ref tokens) => {
                 if let ParamType::FixedArray(ref param_type, size) = *param_type {
-                    size == tokens.len() && tokens.iter().all(|t| t.type_check(param_type))
+                    size == tokens.len()
+                    && inner_type == param_type.as_ref()
+                    && tokens.iter().all(|t| t.type_check(param_type))
                 } else {
                     false
                 }
             }
             TokenValue::Cell(_) => *param_type == ParamType::Cell,
-            TokenValue::Map(map_key_type, ref values) =>{
+            TokenValue::Map(map_key_type, map_value_type, ref values) =>{
                 if let ParamType::Map(ref key_type, ref value_type) = *param_type {
-                    let key_type: &ParamType = key_type;
-                    map_key_type == key_type && values.iter().all(|t| t.1.type_check(value_type))
+                    map_key_type == key_type.as_ref()
+                    && map_value_type == value_type.as_ref()
+                    && values.iter().all(|t| t.1.type_check(value_type))
                 } else {
                     false
                 }
@@ -205,39 +234,52 @@ impl TokenValue {
             TokenValue::Address(_) => *param_type == ParamType::Address,
             TokenValue::Bytes(_) => *param_type == ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => *param_type == ParamType::FixedBytes(arr.len()),
-            TokenValue::Gram(_) => *param_type == ParamType::Gram,
+            TokenValue::String(_) => *param_type == ParamType::String,
+            TokenValue::Token(_) => *param_type == ParamType::Token,
             TokenValue::Time(_) => *param_type == ParamType::Time,
             TokenValue::Expire(_) => *param_type == ParamType::Expire,
             TokenValue::PublicKey(_) => *param_type == ParamType::PublicKey,
+            TokenValue::Optional(opt_type, opt_value) => {
+                if let ParamType::Optional(ref param_type) = *param_type {
+                    param_type.as_ref() == opt_type &&
+                    opt_value.as_ref().map(|val| val.type_check(param_type)).unwrap_or(true)
+                } else {
+                    false
+                }
+            }
         }
     }
 
     /// Returns `ParamType` the token value represents
-    pub fn get_param_type(&self) -> ParamType {
+    #[cfg(test)]
+    pub(crate) fn get_param_type(&self) -> ParamType {
+
         match self {
             TokenValue::Uint(uint) => ParamType::Uint(uint.size),
             TokenValue::Int(int) => ParamType::Int(int.size),
+            TokenValue::VarUint(size, _) => ParamType::VarUint(*size),
+            TokenValue::VarInt(size, _) => ParamType::VarInt(*size),
             TokenValue::Bool(_) => ParamType::Bool,
             TokenValue::Tuple(ref arr) => {
                 ParamType::Tuple(arr.iter().map(|token| token.get_param()).collect())
             }
-            TokenValue::Array(ref tokens) => ParamType::Array(Box::new(tokens[0].get_param_type())),
-            TokenValue::FixedArray(ref tokens) => {
-                ParamType::FixedArray(Box::new(tokens[0].get_param_type()), tokens.len())
+            TokenValue::Array(param_type, _) => ParamType::Array(Box::new(param_type.clone())),
+            TokenValue::FixedArray(param_type, tokens) => {
+                ParamType::FixedArray(Box::new(param_type.clone()), tokens.len())
             }
             TokenValue::Cell(_) => ParamType::Cell,
-            TokenValue::Map(key_type, values) => ParamType::Map(Box::new(key_type.clone()), 
-                Box::new(match values.iter().next() {
-                    Some((_, value)) => value.get_param_type(),
-                    None => ParamType::Unknown
-            })),
+            TokenValue::Map(key_type, value_type, _) => 
+                ParamType::Map(Box::new(key_type.clone()), Box::new(value_type.clone())),
             TokenValue::Address(_) => ParamType::Address,
             TokenValue::Bytes(_) => ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => ParamType::FixedBytes(arr.len()),
-            TokenValue::Gram(_) => ParamType::Gram,
+            TokenValue::String(_) => ParamType::String,
+            TokenValue::Token(_) => ParamType::Token,
             TokenValue::Time(_) => ParamType::Time,
             TokenValue::Expire(_) => ParamType::Expire,
             TokenValue::PublicKey(_) => ParamType::PublicKey,
+            TokenValue::Optional(ref param_type, _) => 
+                ParamType::Optional(Box::new(param_type.clone()))
         }
     }
 
@@ -266,8 +308,9 @@ impl Token {
         }
     }
 
-    /// Rerturns `Param` the token represents
-    pub fn get_param(&self) -> Param {
+    /// Returns `Param` the token represents
+    #[cfg(test)]
+    pub(crate) fn get_param(&self) -> Param {
         Param {
             name: self.name.clone(),
             kind: self.value.get_param_type(),

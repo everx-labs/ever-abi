@@ -12,7 +12,7 @@
 */
 
 use {Function, Param, Token, TokenValue};
-use contract::SerdeEvent;
+use contract::{AbiVersion, SerdeEvent};
 use ton_types::{Result, SliceData};
 use crate::error::AbiError;
 
@@ -20,7 +20,7 @@ use crate::error::AbiError;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Event {
     /// ABI version
-    pub abi_version: u8,
+    pub abi_version: AbiVersion,
     /// Event name.
     pub name: String,
     /// Event input.
@@ -31,7 +31,7 @@ pub struct Event {
 
 impl Event {
     /// Creates `Function` struct from parsed JSON struct `SerdeFunction`
-    pub(crate) fn from_serde(abi_version: u8, serde_event: SerdeEvent) -> Self {
+    pub(crate) fn from_serde(abi_version: AbiVersion, serde_event: SerdeEvent) -> Self {
         let mut event = Event {
             abi_version,
             name: serde_event.name,
@@ -65,7 +65,7 @@ impl Event {
             .collect::<Vec<String>>()
             .join(",");
 
-        format!("{}({})v{}", self.name, input_types, self.abi_version)
+        format!("{}({})v{}", self.name, input_types, self.abi_version.major)
     }
 
     /// Computes function ID for contract function
@@ -86,7 +86,7 @@ impl Event {
 
         if id != self.get_id() { Err(AbiError::WrongId { id } )? }
 
-        TokenValue::decode_params(&self.input_params(), data, self.abi_version)
+        TokenValue::decode_params(&self.input_params(), data, self.abi_version.major)
     }
 
     /// Decodes function id from contract answer

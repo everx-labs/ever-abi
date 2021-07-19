@@ -21,22 +21,19 @@ use Function;
 use ton_types::BuilderData;
 use ton_types::IBitstring;
 
+use crate::contract::ABI_VBERSION_2_0;
+
 #[test]
 fn int_json_representation() {
     let value = Detokenizer::detokenize_to_json_value(
-        &[
-            Param::new("u8", ParamType::Uint(8)),
-            Param::new("i32", ParamType::Int(32)),
-            Param::new("u256", ParamType::Uint(256)),
-            Param::new("u128", ParamType::Uint(128)),
-            Param::new("i256", ParamType::Int(256)),
-        ],
         &[
             Token::new("u8", TokenValue::Uint(Uint::new(1, 8))),
             Token::new("i32", TokenValue::Int(Int::new(-1, 32))),
             Token::new("u256", TokenValue::Uint(Uint::new(1, 256))),
             Token::new("u128", TokenValue::Uint(Uint::new(1, 128))),
             Token::new("i256", TokenValue::Int(Int::new(-1, 256))),
+            Token::new("vi16", TokenValue::VarInt(16, (-1i32).into())),
+            Token::new("vu32", TokenValue::VarUint(32, 1u32.into())),
         ],
     )
     .unwrap();
@@ -48,6 +45,8 @@ fn int_json_representation() {
             "u256": "0x0000000000000000000000000000000000000000000000000000000000000001",
             "u128": "1",
             "i256": "-1",
+            "vi16": "-1",
+            "vu32": "1",
         })
     );
 }
@@ -55,7 +54,7 @@ fn int_json_representation() {
 #[test]
 fn test_encode_internal_output() {
     let func: Function = Function {
-        abi_version: 2,
+        abi_version: ABI_VBERSION_2_0,
         name: "func".to_string(),
         header: vec![],
         inputs: vec![],
@@ -235,4 +234,26 @@ fn test_empty_tuple_error() {
         "Tuple description should contain non empty `components` field",
         format!("{}", result)
     )
+}
+
+#[test]
+fn test_optional_tuple_param_deserialization() {
+    let s = r#"{
+        "name": "a",
+        "type": "optional(tuple)",
+        "components" : [
+            { "name" : "a", "type" : "int8" },
+            { "name" : "b", "type" : "int8" }
+        ]
+    }"#;
+
+    let deserialized: Param = serde_json::from_str(s).unwrap();
+
+    assert_eq!(deserialized, Param {
+        name: "a".to_owned(),
+        kind: ParamType::Optional(Box::new(ParamType::Tuple(vec![
+            Param { name: "a".to_owned(), kind: ParamType::Int(8) },
+            Param { name: "b".to_owned(), kind: ParamType::Int(8) },
+        ]))),
+    });
 }

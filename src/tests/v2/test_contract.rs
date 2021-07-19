@@ -14,9 +14,11 @@
 use {Contract, Function, Event, Param, ParamType, DataItem};
 use std::collections::HashMap;
 
+use crate::contract::ABI_VBERSION_2_1;
+
 const TEST_ABI: &str = r#"
 {
-    "ABI version": 2,
+    "version": "2.1",
     "header": [
         "time",
         "expire",
@@ -66,6 +68,10 @@ const TEST_ABI: &str = r#"
     }],
     "data": [
         {"key":100,"name":"a","type":"uint256"}
+    ],
+    "fields": [
+        { "name": "a", "type": "uint32" },
+        { "name": "b", "type": "int128" }
     ]
 }"#;
 
@@ -80,12 +86,12 @@ fn test_abi_parse() {
         Param { name: "pubkey".into(), kind: ParamType::PublicKey},
         Param { name: "a".into(), kind: ParamType::Uint(64)},
     ];
-    let abi_version = 2;
+    let abi_version = ABI_VBERSION_2_1;
 
     functions.insert(
         "input_and_output".to_owned(),
         Function {
-            abi_version,
+            abi_version: abi_version.clone(),
             name: "input_and_output".to_owned(),
             header: header.clone(),
             inputs: vec![
@@ -105,7 +111,7 @@ fn test_abi_parse() {
     functions.insert(
         "no_output".to_owned(),
         Function {
-            abi_version,
+            abi_version: abi_version.clone(),
             name: "no_output".to_owned(),
             header: header.clone(),
             inputs: vec![
@@ -119,7 +125,7 @@ fn test_abi_parse() {
     functions.insert(
         "no_input".to_owned(),
         Function {
-            abi_version,
+            abi_version: abi_version.clone(),
             name: "no_input".to_owned(),
             header: header.clone(),
             inputs: vec![],
@@ -133,7 +139,7 @@ fn test_abi_parse() {
     functions.insert(
         "constructor".to_owned(),
         Function {
-            abi_version,
+            abi_version: abi_version.clone(),
             name: "constructor".to_owned(),
             header: header.clone(),
             inputs: vec![],
@@ -145,7 +151,7 @@ fn test_abi_parse() {
     functions.insert(
         "has_id".to_owned(),
         Function {
-            abi_version,
+            abi_version: abi_version.clone(),
             name: "has_id".to_owned(),
             header: header.clone(),
             inputs: vec![],
@@ -159,7 +165,7 @@ fn test_abi_parse() {
     events.insert(
         "input".to_owned(),
         Event {
-            abi_version: 2,
+            abi_version: abi_version.clone(),
             name: "input".to_owned(),
             inputs: vec![
                 Param { name: "a".to_owned(), kind: ParamType::Uint(64) },
@@ -170,7 +176,7 @@ fn test_abi_parse() {
     events.insert(
         "no_input".to_owned(),
         Event {
-            abi_version: 2,
+            abi_version: abi_version.clone(),
             name: "no_input".to_owned(),
             inputs: vec![],
             id: Function::calc_function_id("no_input()v2") & 0x7FFFFFFF
@@ -179,7 +185,7 @@ fn test_abi_parse() {
     events.insert(
         "has_id".to_owned(),
         Event {
-            abi_version: 2,
+            abi_version: abi_version.clone(),
             name: "has_id".to_owned(),
             inputs: vec![],
             id: 0x89abcdef
@@ -197,7 +203,12 @@ fn test_abi_parse() {
             key: 100
         });
 
-    let expected_contract = Contract { abi_version: 2, header, functions, events, data };
+    let fields = vec![
+        Param { name: "a".into(), kind: ParamType::Uint(32)},
+        Param { name: "b".into(), kind:ParamType::Int(128)},
+    ];
+
+    let expected_contract = Contract { abi_version, header, functions, events, data, fields };
 
     assert_eq!(parsed_contract, expected_contract);
 }
