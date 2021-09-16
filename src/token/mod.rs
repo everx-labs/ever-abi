@@ -251,7 +251,6 @@ impl TokenValue {
     }
 
     /// Returns `ParamType` the token value represents
-    #[cfg(test)]
     pub(crate) fn get_param_type(&self) -> ParamType {
 
         match self {
@@ -309,7 +308,6 @@ impl Token {
     }
 
     /// Returns `Param` the token represents
-    #[cfg(test)]
     pub(crate) fn get_param(&self) -> Param {
         Param {
             name: self.name.clone(),

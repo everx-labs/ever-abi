@@ -13,7 +13,7 @@
 
 //! Contract function call builder.
 
-use crate::{error::AbiError, param::Param, token::{Token, TokenValue}};
+use crate::{error::AbiError, param::Param, token::{SerializedValue, Token, TokenValue}};
  
 use std::collections::HashMap;
 use sha2::{Digest, Sha256};
@@ -211,7 +211,7 @@ impl Function {
         input: &[Token]
     ) -> Result<BuilderData> {
         let mut vec = vec![];
-        vec.push(answer_id.write_to_new_cell()?);
+        vec.push(answer_id.write_to_new_cell()?.into());
         let builder = TokenValue::pack_values_into_chain(input, vec, self.abi_version.major)?;
         Ok(builder)
     }
@@ -221,7 +221,7 @@ impl Function {
         &self,
         header_tokens: &HashMap<String, TokenValue>,
         internal: bool
-    ) -> Result<Vec<BuilderData>> {
+    ) -> Result<Vec<SerializedValue>> {
         let mut vec = vec![];
         if !internal {
             for param in &self.header {
@@ -229,16 +229,16 @@ impl Function {
                     if !token.type_check(&param.kind) {
                         return Err(AbiError::WrongParameterType.into());
                     }
-                    vec.push(token.pack_into_chain(self.abi_version.major)?);
+                    vec.append(&mut token.write_to_cells(self.abi_version.major)?);
                 } else {
-                    vec.push(TokenValue::get_default_value_for_header(&param.kind)?.pack_into_chain(self.abi_version.major)?);
+                    vec.append(&mut TokenValue::get_default_value_for_header(&param.kind)?.write_to_cells(self.abi_version.major)?);
                 }
             }
         }
         if self.abi_version.major == 1 {
-            vec.insert(0, self.get_input_id().write_to_new_cell()?);
+            vec.insert(0, self.get_input_id().write_to_new_cell()?.into());
         } else {
-            vec.push(self.get_input_id().write_to_new_cell()?);
+            vec.push(self.get_input_id().write_to_new_cell()?.into());
         }
         Ok(vec)
     }
@@ -315,7 +315,11 @@ impl Function {
                     remove_bits = 1;
                 }
             }
-            cells.insert(0, sign_builder);
+            cells.insert(0, SerializedValue {
+                data: sign_builder,
+                max_bits: 1 + SIGNATURE_LENGTH * 8,
+                max_refs: 0
+            });
         }
 
         // encoding itself

@@ -62,7 +62,7 @@ fn test_parameters_set(
         prefix.append_u32(0).unwrap();
 
         // tree check
-        let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix], *version).unwrap();
+        let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix.into()], *version).unwrap();
 
         println!("{:#.2}", Cell::from(&test_tree));
         println!("{:#.2}", Cell::from(&params_tree));
@@ -154,6 +154,8 @@ fn test_with_address() {
     builder.append_u32(0).unwrap();
     builder.append_reference(BuilderData::new());
 
+    builder.append_reference(BuilderData::with_bitstring(vec![1, 2, 3, 0x80]).unwrap());
+
     let anycast = AnycastInfo::with_rewrite_pfx(SliceData::new(vec![0x77, 0x78, 0x79, 0x80])).unwrap();
     let addresses = vec![
         MsgAddress::AddrNone,
@@ -163,11 +165,17 @@ fn test_with_address() {
         MsgAddress::with_variant(Some(anycast.clone()), -128, SliceData::new(vec![0x66, 0x67, 0x68, 0x69, 0x80])).unwrap(),
         MsgAddress::with_standart(Some(anycast.clone()), -1, AccountId::from([0x11; 32])).unwrap(),
     ];
-    builder.append_reference(BuilderData::with_bitstring(vec![1, 2, 3, 0x80]).unwrap());
+    let mut builders: Vec<BuilderData> = addresses.iter().map(|address| address.write_to_new_cell().unwrap()).collect();
+    builders.reverse();
+    builder.append_builder(&builders.pop().unwrap()).unwrap();
+    builders.push(builder);
+    let builder = builders.into_iter().reduce(
+        |acc, mut cur| {
+            cur.append_reference(acc);
+            cur
+        }).unwrap();
+
     let mut values = vec![TokenValue::Cell(BuilderData::with_bitstring(vec![1, 2, 3, 0x80]).unwrap().into())];
-    // we don't know about serilization changes in MsgAddress if them don't fit in one cell - split to references
-    addresses.iter().take(5).for_each(|address| address.write_to(&mut builder).unwrap());
-    builder.append_reference(addresses.last().unwrap().write_to_new_cell().unwrap());
     addresses.iter().for_each(|address| {
         values.push(TokenValue::Address(address.clone()));
     });
@@ -842,10 +850,6 @@ fn test_map() {
     builder.append_builder(&bytes_map.write_to_new_cell().unwrap()).unwrap();
     builder.append_builder(&int_map.write_to_new_cell().unwrap()).unwrap();
 
-    let mut builder_v2 = builder.clone();
-    builder_v2.append_builder(&tuples_map.write_to_new_cell().unwrap()).unwrap();
-    builder_v2.append_bit_zero().unwrap();
-
     let mut second_builder = BuilderData::new();
     second_builder.append_builder(&tuples_map.write_to_new_cell().unwrap()).unwrap();
     second_builder.append_bit_zero().unwrap();
@@ -862,14 +866,7 @@ fn test_map() {
         &tokens_from_values(values.clone()),
         None,
         builder,
-        &[1],
-    );
-
-    test_parameters_set(
-        &tokens_from_values(values.clone()),
-        None,
-        builder_v2,
-        &[2],
+        &[1, 2],
     );
 }
 
