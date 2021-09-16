@@ -20,6 +20,8 @@ use ton_types::{AccountId, Result, BuilderData, Cell, IBitstring, SliceData};
 use ton_types::dictionary::{HashmapE, HashmapType};
 use ton_block::{AnycastInfo, Grams, MsgAddress, Serializable};
 
+use crate::contract::{ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_2, AbiVersion};
+
 use {Int, Param, ParamType, Token, TokenValue, Uint};
 
 fn put_array_into_map<T: Serializable>(array: &[T]) -> HashmapE {
@@ -54,7 +56,7 @@ fn test_parameters_set(
     inputs: &[Token],
     params: Option<&[Param]>,
     params_tree: BuilderData,
-    versions: &[u8],
+    versions: &[AbiVersion],
 ) {
     for version in versions {
         let mut prefix = BuilderData::new();
@@ -62,7 +64,7 @@ fn test_parameters_set(
         prefix.append_u32(0).unwrap();
 
         // tree check
-        let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix.into()], *version).unwrap();
+        let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix.into()], version).unwrap();
 
         println!("{:#.2}", Cell::from(&test_tree));
         println!("{:#.2}", Cell::from(&params_tree));
@@ -80,7 +82,7 @@ fn test_parameters_set(
         slice.checked_drain_reference().unwrap();
         slice.get_next_u32().unwrap();
 
-        let decoded_tokens = TokenValue::decode_params(&params, slice, *version).unwrap();
+        let decoded_tokens = TokenValue::decode_params(&params, slice, &version.clone().into()).unwrap();
         assert_eq!(decoded_tokens, inputs);
     }
 }
@@ -123,7 +125,7 @@ fn test_one_input_and_output() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -143,7 +145,7 @@ fn test_with_grams() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -165,15 +167,19 @@ fn test_with_address() {
         MsgAddress::with_variant(Some(anycast.clone()), -128, SliceData::new(vec![0x66, 0x67, 0x68, 0x69, 0x80])).unwrap(),
         MsgAddress::with_standart(Some(anycast.clone()), -1, AccountId::from([0x11; 32])).unwrap(),
     ];
+    let mut builder_v2_2 = builder.clone();
     let mut builders: Vec<BuilderData> = addresses.iter().map(|address| address.write_to_new_cell().unwrap()).collect();
     builders.reverse();
-    builder.append_builder(&builders.pop().unwrap()).unwrap();
-    builders.push(builder);
-    let builder = builders.into_iter().reduce(
+    builder_v2_2.append_builder(&builders.pop().unwrap()).unwrap();
+    builders.push(builder_v2_2);
+    let builder_v2_2 = builders.into_iter().reduce(
         |acc, mut cur| {
             cur.append_reference(acc);
             cur
         }).unwrap();
+
+    addresses.iter().take(5).for_each(|address| address.write_to(&mut builder).unwrap());
+    builder.append_reference(addresses.last().unwrap().write_to_new_cell().unwrap());
 
     let mut values = vec![TokenValue::Cell(BuilderData::with_bitstring(vec![1, 2, 3, 0x80]).unwrap().into())];
     addresses.iter().for_each(|address| {
@@ -181,10 +187,17 @@ fn test_with_address() {
     });
 
     test_parameters_set(
-        &tokens_from_values(values),
+        &tokens_from_values(values.clone()),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0],
+    );
+
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder_v2_2,
+        &[ABI_VERSION_2_2],
     );
 }
 
@@ -205,7 +218,7 @@ fn test_one_input_and_output_by_data() {
         &tokens_from_values(values),
         None,
         expected_tree,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -220,7 +233,7 @@ fn test_empty_params() {
         &[],
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -246,7 +259,7 @@ fn test_two_params() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -286,7 +299,7 @@ fn test_five_refs_v1() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1],
+        &[ABI_VERSION_1_0],
     );
 }
 
@@ -327,7 +340,7 @@ fn test_five_refs_v2() {
         &tokens_from_values(values),
         None,
         builder,
-        &[2],
+        &[ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -377,7 +390,7 @@ fn test_nested_tuples_with_all_simples() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -404,7 +417,7 @@ fn test_static_array_of_ints() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -428,7 +441,7 @@ fn test_empty_dynamic_array() {
         &tokens_from_values(values),
         Some(&params),
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -455,7 +468,7 @@ fn test_dynamic_array_of_ints() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -514,7 +527,7 @@ fn test_dynamic_array_of_tuples() {
         &tokens_from_values(values),
         None,
         expected_tree,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -623,14 +636,14 @@ fn test_tuples_with_combined_types() {
         &tokens_from_values(values.clone()),
         None,
         chain_builder,
-        &[1],
+        &[ABI_VERSION_1_0],
     );
 
     test_parameters_set(
         &tokens_from_values(values),
         None,
         chain_builder_v2,
-        &[2],
+        &[ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -673,7 +686,7 @@ fn test_four_refs_and_four_int256() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -711,14 +724,14 @@ fn test_four_refs_and_one_int256() {
         &tokens_from_values(values.clone()),
         None,
         builder,
-        &[1],
+        &[ABI_VERSION_1_0],
     );
 
     test_parameters_set(
         &tokens_from_values(values),
         None,
         builder_v2,
-        &[2],
+        &[ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -748,7 +761,7 @@ fn test_header_params() {
         &tokens_from_values(values),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
 }
 
@@ -850,6 +863,10 @@ fn test_map() {
     builder.append_builder(&bytes_map.write_to_new_cell().unwrap()).unwrap();
     builder.append_builder(&int_map.write_to_new_cell().unwrap()).unwrap();
 
+    let mut builder_v2 = builder.clone();
+    builder_v2.append_builder(&tuples_map.write_to_new_cell().unwrap()).unwrap();
+    builder_v2.append_bit_zero().unwrap();
+
     let mut second_builder = BuilderData::new();
     second_builder.append_builder(&tuples_map.write_to_new_cell().unwrap()).unwrap();
     second_builder.append_bit_zero().unwrap();
@@ -866,7 +883,14 @@ fn test_map() {
         &tokens_from_values(values.clone()),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_2],
+    );
+
+    test_parameters_set(
+        &tokens_from_values(values.clone()),
+        None,
+        builder_v2,
+        &[ABI_VERSION_2_0],
     );
 }
 
@@ -907,7 +931,7 @@ fn test_address_map_key() {
         &tokens_from_values(vec![value]),
         None,
         builder,
-        &[1, 2],
+        &[ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
  }
 
@@ -977,7 +1001,7 @@ fn test_address_map_key() {
         &tokens_from_values(vec![value_map, value_array]),
         None,
         builder,
-        &[2],
+        &[ABI_VERSION_2_0, ABI_VERSION_2_2],
     );
  }
 
@@ -1068,6 +1092,6 @@ fn test_abi_2_1_types() {
         &tokens_from_values(values),
         None,
         builder,
-        &[2],
+        &[ABI_VERSION_2_1, ABI_VERSION_2_2],
     );
  }

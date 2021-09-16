@@ -21,12 +21,13 @@ use ton_block::Serializable;
 use ton_types::{BuilderData, error, fail, HashmapE, Result, SliceData};
 
 
-const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VBERSION_1_0;
-const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VBERSION_2_1;
+const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_1_0;
+const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_2;
 
-pub const ABI_VBERSION_1_0: AbiVersion = AbiVersion::from_parts(1, 0);
-pub const ABI_VBERSION_2_0: AbiVersion = AbiVersion::from_parts(2, 0);
-pub const ABI_VBERSION_2_1: AbiVersion = AbiVersion::from_parts(2, 1);
+pub const ABI_VERSION_1_0: AbiVersion = AbiVersion::from_parts(1, 0);
+pub const ABI_VERSION_2_0: AbiVersion = AbiVersion::from_parts(2, 0);
+pub const ABI_VERSION_2_1: AbiVersion = AbiVersion::from_parts(2, 1);
+pub const ABI_VERSION_2_2: AbiVersion = AbiVersion::from_parts(2, 2);
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct AbiVersion {
@@ -225,7 +226,7 @@ impl Contract {
             }
         }
 
-        if !serde_contract.fields.is_empty() && version < ABI_VBERSION_2_1 {
+        if !serde_contract.fields.is_empty() && version < ABI_VERSION_2_1 {
             fail!(AbiError::InvalidData {msg: "Storage fields are supported since ABI v2.1".into()});
         }
 
@@ -359,7 +360,7 @@ impl Contract {
     pub fn decode_input(&self, data: SliceData, internal: bool) -> Result<DecodedMessage> {
         let original_data = data.clone();
         
-        let func_id = Function::decode_input_id(self.abi_version.major, data, &self.header, internal)?;
+        let func_id = Function::decode_input_id(&self.abi_version, data, &self.header, internal)?;
 
         let func = self.function_by_id(func_id, true)?;
 
@@ -381,7 +382,7 @@ impl Contract {
         );
 
         for token in tokens {
-            let builder = token.value.pack_into_chain(self.abi_version.major)?;
+            let builder = token.value.pack_into_chain(&self.abi_version)?;
             let key = self.data
                 .get(&token.name)
                 .ok_or_else(||
@@ -431,12 +432,12 @@ impl Contract {
         public_key: Option<&[u8]>,
         function_call: SliceData
     ) -> Result<BuilderData> {
-        Function::add_sign_to_encoded_input(self.abi_version.major, signature, public_key, function_call)
+        Function::add_sign_to_encoded_input(&self.abi_version, signature, public_key, function_call)
     }
 
     /// Decode account storage fields
     pub fn decode_storage_fields(&self, data: SliceData) -> Result<Vec<Token>> {
-        TokenValue::decode_params(&self.fields, data, self.abi_version.major)
+        TokenValue::decode_params(&self.fields, data, &self.abi_version)
     }
 }
 
