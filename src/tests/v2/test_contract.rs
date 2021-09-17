@@ -14,11 +14,11 @@
 use {Contract, Function, Event, Param, ParamType, DataItem};
 use std::collections::HashMap;
 
-use crate::contract::ABI_VBERSION_2_1;
+use crate::contract::ABI_VERSION_2_2;
 
 const TEST_ABI: &str = r#"
 {
-    "version": "2.1",
+    "version": "2.2",
     "header": [
         "time",
         "expire",
@@ -86,7 +86,7 @@ fn test_abi_parse() {
         Param { name: "pubkey".into(), kind: ParamType::PublicKey},
         Param { name: "a".into(), kind: ParamType::Uint(64)},
     ];
-    let abi_version = ABI_VBERSION_2_1;
+    let abi_version = ABI_VERSION_2_2;
 
     functions.insert(
         "input_and_output".to_owned(),
