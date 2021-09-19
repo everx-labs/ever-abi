@@ -205,7 +205,7 @@ impl ParamType {
             ParamType::Address => 591,
             ParamType::Bytes | ParamType::FixedBytes(_) => 0,
             ParamType::String => 0,
-            ParamType::Token => 128,
+            ParamType::Token => 124,
             ParamType::Time => 64,
             ParamType::Expire => 32,
             ParamType::PublicKey => 257,
