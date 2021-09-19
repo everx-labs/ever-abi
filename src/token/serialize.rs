@@ -57,26 +57,15 @@ impl TokenValue {
         while let Some(value) = values.pop() {
             let builder = packed_cells.last_mut().unwrap();
 
-            let remaining_bits = if abi_version >= &ABI_VERSION_2_2 {
-                BuilderData::bits_capacity() - builder.max_bits
+            let (remaining_bits, remaining_refs) = if abi_version >= &ABI_VERSION_2_2 {
+                (BuilderData::bits_capacity() - builder.max_bits, BuilderData::references_capacity() - builder.max_refs)
             } else {
-                builder.data.bits_free()
+                (builder.data.bits_free(), builder.data.references_free())
             };
-            let remaining_refs = if abi_version >= &ABI_VERSION_2_2 {
-                BuilderData::references_capacity() - builder.max_refs
+            let (value_bits, value_refs) = if abi_version >= &ABI_VERSION_2_2 {
+                (value.max_bits, value.max_refs)
             } else {
-                builder.data.references_free()
-            };
-
-            let value_bits = if abi_version >= &ABI_VERSION_2_2 {
-                value.max_bits
-            } else {
-                value.data.bits_used()
-            };
-            let value_refs = if abi_version >= &ABI_VERSION_2_2 {
-                value.max_refs
-            } else {
-                value.data.references_used()
+                (value.data.bits_used(), value.data.references_used())
             };
 
             if  remaining_bits < value_bits ||
