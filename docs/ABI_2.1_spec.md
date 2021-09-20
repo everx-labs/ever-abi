@@ -61,11 +61,10 @@ This section stays the same as in ABI 2.0
 This section stays the same as in ABI 2.0
 
 ## Fields
-This is a new section introduced in ABI 2.1. It contains the list of all contract data and how it is packed.
+This is a new section introduced in ABI 2.1. It describes internal structure of the smart contracts data.
 This section helps to decode contract data with TON-SDK function [decode_account_data](https://github.com/tonlabs/TON-SDK/blob/master/docs/mod_abi.md#decode_account_data)
 
 ## Types
-This section stays the same as in ABI 2.0
 
 ### `bool`
 
@@ -115,6 +114,8 @@ Processed like `int<N>`.
 
 ### `varint<N>`
 
+*New type introduced in 2.1 version.*
+
 Variable-length signed integer with bit length equal to `8 * N`, where `N`is equal to 16 or 32, e.g. `varint16`, `varint32`.
 
 Usage|Value|Examples
@@ -124,6 +125,8 @@ JSON|string with hex representation|`0x12`
 JSON (accepts)|number or string with decimal or hexadecimal representation|`12`, `0x10`, `"100"`
 
 ### `varuint<N>`
+
+*New type introduced in 2.1 version.*
 
 Variable-length unsigned integer with bit length equal to `8 * N`, where `N`is equal to 16 or 32 e.g., `varint16`, `varint32`.
 Processed like `varint<N>`.
@@ -176,6 +179,8 @@ Processed like `int<N>`.
 
 ### `string`
 
+New type introduced in 2.1 version.
+
 String data.
 
 Usage|Value|Examples
@@ -185,6 +190,8 @@ JSON|string data|`"hello"`
 JSON (accepts)|string data|`"hello"`
 
 ### `optional(innerType)`
+
+*New type introduced in 2.1 version.*
 
 Value of optional type `optional(innerType)` can store a value of `innerType` of be empty.
 Example: `optional(string)`.
