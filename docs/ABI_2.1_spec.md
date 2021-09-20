@@ -168,7 +168,7 @@ Processed like `int<N>`.
 
 *New type introduced in 2.1 version.*
 
-Variable-length signed integer with bit length equal to `8 * N`, where `N`is equal to 16 or 32, e.g. `varint16`, `varint32`.
+Variable-length signed integer. Bit length is between `log2(N)` and `8 * (N-1)`, where `N` is equal to 16 or 32, e.g. `varint16`, `varint32`.
 
 Usage|Value|Examples
 ---|---|---
