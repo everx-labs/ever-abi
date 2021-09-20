@@ -1,7 +1,7 @@
 # TON Smart Contracts ABI 2.2 Specification
 
 ABI 2.2 introduces the new fixed message body layout while sections and types stay the same as in [ABI 2.1](./ABI_2.1_spec.md). Read below. 
-
+ 
 - [TON Smart Contracts ABI 2.2 Specification](#ton-smart-contracts-abi-22-specification)
 	- [Fixed layout concepts](#fixed-layout-concepts)
 	- [Introduction](#introduction)
