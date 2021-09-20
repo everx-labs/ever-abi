@@ -70,7 +70,7 @@ maxHeader = 1 + 512 + // signature
 
 ### Encoding of function ID and its arguments
 
-Function ID and the function arguments are located in the chain of cells. The last reference of each cell (except for the last cell in the chain`) refers to the next cell. After adding the current parameter in the current cell we must presume an invariant (rule that stays true for the object) for our cell: number of unassigned references in the cell must be not less 1 because the last cell is used for storing the reference on the next cell. When we add a specific value of some function argument to the cell we assume that it takes the max bit and max ref size. Only if the current parameter (by max bit or max ref size) does not fit into the current cell then we create new cell and insert the parameter in the new cell. 
+Function ID and the function arguments are located in the chain of cells. The last reference of each cell (except for the last cell in the chain`) refers to the next cell. After adding the current parameter in the current cell we must presume an invariant (rule that stays true for the object) for our cell: number of unassigned references in the cell must be not less than 1 because the last cell is used for storing the reference on the next cell. When we add a specific value of some function argument to the cell we assume that it takes the max bit and max ref size. Only if the current parameter (by max bit or max ref size) does not fit into the current cell then we create new cell and insert the parameter in the new cell. 
 
 ***But*** If current argument and all the following arguments fit into the current cell by max size then we push the parameters in the cell
 
