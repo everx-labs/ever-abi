@@ -1,5 +1,27 @@
 # TON Smart Contracts ABI 2.1 Specification
 
+
+  - [ABI JSON](#abi-json)
+  - [Functions](#functions)
+  - [Events](#events)
+  - [Data](#data)
+  - [Fields](#fields)
+  - [Types](#types)
+    - [`bool`](#bool)
+    - [`tuple`](#tuple)
+    - [`int<N>`](#intn)
+    - [`uint<N>`](#uintn)
+    - [`varint<N>`](#varintn)
+    - [`varuint<N>`](#varuintn)
+    - [`map(<keyType>,<valueType>)`](#mapkeytypevaluetype)
+    - [`cell`](#cell)
+    - [`address`](#address)
+    - [`bytes`](#bytes)
+    - [`fixedbytes<N>`](#fixedbytesn)
+    - [`string`](#string)
+    - [`optional(innerType)`](#optionalinnertype)
+    - [`itemType[]`](#itemtype)
+
 ## ABI JSON
 
 This section describes schema of the smart contracts ABI represented in JSON format.
