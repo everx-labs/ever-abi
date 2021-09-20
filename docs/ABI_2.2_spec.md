@@ -7,8 +7,8 @@ ABI 2.2 introduces the new fixed message body layout while sections and types st
 	- [Introduction](#introduction)
 	- [Encoding the message](#encoding-the-message)
 	- [Encoding the body of the message](#encoding-the-body-of-the-message)
-		- [Encoding of function ID and its arguments](#encoding-of-function-id-and-its-arguments)
 		- [Encoding header for external messages](#encoding-header-for-external-messages)
+		- [Encoding of function ID and its arguments](#encoding-of-function-id-and-its-arguments)
 
 
 ## Fixed layout concepts
@@ -48,17 +48,31 @@ structure `B` is considered as a sequence of `uint24`, `uint8`, `uint16`, `uint3
 
 ## Encoding the message
 
-`Message X` contains the field `body`. If encoded `body` can be fitted in the cell, then let's insert the body in the cell (`Either X`). Otherwise, `body` is located in the reference (`Either ^X`). 
+`Message X` contains the field `body`. If encoded `body` fit in the cell, then let's insert the body in the cell (`Either X`). Otherwise, `body` is located in the reference (`Either ^X`). 
 
 ## Encoding the body of the message
 
 The body of the message is tree of cells that contains the function ID and encoded function arguments. External messages body is prefixed with function header parameters.
 
+### Encoding header for external messages
+
+Function header has up to 3 optional parameters and mandatory signature. Function ID and function parameters are put after header parameters
+
+Maximum header size is calculated as following. No references used.
+
+```jsx
+maxHeader = 1 + 512 + // signature
+    (hasPubkey? 1 + 256 : 0) +
+    (hasTime? 64 : 0) +
+    (hasExpire? 32 : 0);
+```
+
+
 ### Encoding of function ID and its arguments
 
-Function ID and the function arguments are located in the chain of cells. The last reference of each cell (except the last cell in the chain`) refers on the next cell. After adding the current parameter in the current cell we must respect an invariant: count of rest references in the cell must not less 1 because the last cell is used for storing the reference on next cell. When we add the current concrete value of some function arguments we assume that it takes the max bit and max ref size. Only if the current parameter (by max bit or max ref size) isn't fitted in the current cell then we create new cell and insert the parameter in the new cell. 
+Function ID and the function arguments are located in the chain of cells. The last reference of each cell (except for the last cell in the chain`) refers to the next cell. After adding the current parameter in the current cell we must presume an invariant (rule that stays true for the object) for our cell: number of unassigned references in the cell must be not less 1 because the last cell is used for storing the reference on the next cell. When we add a specific value of some function argument to the cell we assume that it takes the max bit and max ref size. Only if the current parameter (by max bit or max ref size) does not fit into the current cell then we create new cell and insert the parameter in the new cell. 
 
-***But*** If current argument and all following arguments are fitted in the current cell by max size then we push the parameters in the cell
+***But*** If current argument and all the following arguments fit into the current cell by max size then we push the parameters in the cell
 
 In the end we connect the created cells in the chain of cells.
 
@@ -68,7 +82,7 @@ For example:
 function f(address a, address b) public;
 ```
 
-There we create 2 cells. In the first there is function id and  `a`. There maybe be not more than 32+591=623 bits. It's not more than 1023. The next parameter `b` can't be fitted in the first cell. In the second cell there is only `b`.
+There we create 2 cells. In the first there is function id and  `a`. There maybe be not more than 32+591=623 bits. It's not more than 1023. The next parameter `b` can't fit into the first cell. In the second cell there is only `b`.
 
 ```jsx
 function f(mapping(uint=>uint) a, mapping(uint=>uint) b, mapping(uint=>uint) c, mapping(uint=>uint) d)
@@ -80,7 +94,7 @@ The first cell: function ID, `a`, `b` `c`, `d`.
 function f(string a, string b, string c, string d, uint32 e) public
 ```
 
-Function ID, `a`, `b`, `c` locate in the first cell. `d` and `e` can be fitted in the first cell by max size. That's we push all parameter in the fist cell.
+Function ID, `a`, `b`, `c` locate in the first cell. `d` and `e` fit in the first cell by max size. That's we push all parameter in the fist cell.
 
 ```jsx
 struct A {
@@ -101,15 +115,3 @@ function f(string a, string b, string c, string d, uint e, uint f, uint g, uint 
 
 We use 3 cells. In the first cell there are function Id, `a`, `b,` `c`. In the second - `d`, `e`, `f`, `g`. In the third - `h`.
 
-### Encoding header for external messages
-
-Function header has up to 3 optional parameters and mandatory signature. Function ID and function parameters are put after header parameters
-
-Maximum header size is calculated as following. No references used.
-
-```jsx
-maxHeader = 1 + 512 + // signature
-    (hasPubkey? 1 + 256 : 0) +
-    (hasTime? 64 : 0) +
-    (hasExpire? 32 : 0);
-```
