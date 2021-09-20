@@ -1,15 +1,13 @@
-<p style="text-align: center;">
-    <a href="https://docs.ton.dev" target="_blank">
-        <img src="https://github.com/tonlabs/TON-SDK/raw/master/assets/ton-sdk-blue.png" width="60" alt="Tonlabs SDK" />
-    </a>
-</p> 
+<p align="center"><a href="https://github.com/tonlabs/ton-labs-abi"><img src="https://github.com/tonlabs/TON-SDK/raw/master/assets/ton-sdk-blue.png" height="60"/></a></p> 
+<h1 align="center">ABI</h1>
+<p align="center">Application Binary Interface implementation</p>
+<p align="center">for Free TON blockchain</p>
 
-# ton-labs-abi
+## Specifications
 
-Rust ABI (Application Binary Interface) implementation for TON blockchain.
-See ABI specifications [here](./docs)
+[ABI specifications](./docs)
 
-### Usage
+## Usage
 Use in your Rust projects by adding git dependency into `Cargo.toml`
 ```
 ton_abi = { git = "https://github.com/tonlabs/ton-labs-abi.git" }
