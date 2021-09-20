@@ -1,5 +1,5 @@
-# TON Smart Contracts ABI 2.1 Specification
-- [TON Smart Contracts ABI 2.1 Specification](#ton-smart-contracts-abi-21-specification)
+# TON Smart Contracts ABI 2.0 Specification
+- [TON Smart Contracts ABI 2.0 Specification](#ton-smart-contracts-abi-20-specification)
   - [New in ABI v2.](#new-in-abi-v2)
 - [Motivation](#motivation)
 - [Specification](#specification)
