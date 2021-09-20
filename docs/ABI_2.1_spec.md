@@ -86,6 +86,36 @@ This section stays the same as in ABI 2.0
 This is a new section introduced in ABI 2.1. It describes internal structure of the smart contracts data.
 This section helps to decode contract data with TON-SDK function [decode_account_data](https://github.com/tonlabs/TON-SDK/blob/master/docs/mod_abi.md#decode_account_data)
 
+Structure of the smart contract data is described as a list of variables names with corresponding data types.
+It includes contract state variables and some internal contract specific hidden variables.
+They are listed in the order in which they are stored in the data field of the contract.
+Example for a Solidity contract [BankClient](https://github.com/tonlabs/samples/blob/master/solidity/5_BankClient.sol):
+
+Contract state variables:
+
+```Solidity
+contract BankClient {
+	uint public creditLimit = 0;    // allowed credit limit;
+	uint public totalDebt = 0;      // contract total debt;
+	uint public balance = 0;        // contract balance;
+	uint public value = 0;          // inbound message value.
+}
+```
+
+Fields section of the abi file:
+
+```TVMAbi
+"fields": [
+	{"name":"_pubkey","type":"uint256"},
+	{"name":"_timestamp","type":"uint64"},
+	{"name":"_constructorFlag","type":"bool"},
+	{"name":"creditLimit","type":"uint256"},
+	{"name":"totalDebt","type":"uint256"},
+	{"name":"balance","type":"uint256"},
+	{"name":"value","type":"uint256"}
+]
+```
+
 ## Types
 
 ### `bool`
