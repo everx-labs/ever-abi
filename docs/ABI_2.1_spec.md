@@ -1,4 +1,4 @@
-# TON Smart Contracts ABI
+# TON Smart Contracts ABI 2.1 Specification
 
 ## ABI JSON
 
@@ -52,14 +52,20 @@ Where:
 - `fields` describes internal structure of the smart contracts data.
 
 ## Functions
+This section stays the same as in ABI 2.0
 
 ## Events
+This section stays the same as in ABI 2.0
 
 ## Data
+This section stays the same as in ABI 2.0
 
 ## Fields
+This is a new section introduced in ABI 2.1. It contains the list of all contract data and how it is packed.
+This section helps to decode contract data with TON-SDK function [decode_account_data](https://github.com/tonlabs/TON-SDK/blob/master/docs/mod_abi.md#decode_account_data)
 
 ## Types
+This section stays the same as in ABI 2.0
 
 ### `bool`
 
