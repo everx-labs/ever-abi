@@ -1,6 +1,6 @@
 # TON Smart Contracts ABI 2.1 Specification
 
-
+- [TON Smart Contracts ABI 2.1 Specification](#ton-smart-contracts-abi-21-specification)
   - [ABI JSON](#abi-json)
   - [Functions](#functions)
   - [Events](#events)
