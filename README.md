@@ -7,7 +7,7 @@
 # ton-labs-abi
 
 Rust ABI (Application Binary Interface) implementation for TON blockchain.
-See ABI specification [here](ABI.md)
+See ABI specifications [here](./docs)
 
 ### Usage
 Use in your Rust projects by adding git dependency into `Cargo.toml`
