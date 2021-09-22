@@ -16,8 +16,8 @@
 use std::fmt;
 use Param;
 
-use crate::{AbiError, contract::ABI_VBERSION_2_0};
-use crate::contract::{ABI_VBERSION_1_0, ABI_VBERSION_2_1, AbiVersion};
+use crate::{AbiError, contract::ABI_VERSION_2_0};
+use crate::contract::{ABI_VERSION_1_0, ABI_VERSION_2_1, AbiVersion};
 
 use ton_types::{BuilderData, Result, error};
 
@@ -140,9 +140,9 @@ impl ParamType {
     /// Check if parameter type is supoorted in particular ABI version
     pub fn is_supported(&self, abi_version: &AbiVersion) -> bool {
         match self {
-            ParamType::Time | ParamType::Expire | ParamType::PublicKey => abi_version >= &ABI_VBERSION_2_0,
-            ParamType::String | ParamType::Optional(_)| ParamType::VarInt(_) | ParamType::VarUint(_) => abi_version >= &ABI_VBERSION_2_1,
-            _ => abi_version >= &ABI_VBERSION_1_0,
+            ParamType::Time | ParamType::Expire | ParamType::PublicKey => abi_version >= &ABI_VERSION_2_0,
+            ParamType::String | ParamType::Optional(_)| ParamType::VarInt(_) | ParamType::VarUint(_) => abi_version >= &ABI_VERSION_2_1,
+            _ => abi_version >= &ABI_VERSION_1_0,
         }
     }
 
@@ -205,7 +205,7 @@ impl ParamType {
             ParamType::Address => 591,
             ParamType::Bytes | ParamType::FixedBytes(_) => 0,
             ParamType::String => 0,
-            ParamType::Token => 128,
+            ParamType::Token => 124,
             ParamType::Time => 64,
             ParamType::Expire => 32,
             ParamType::PublicKey => 257,

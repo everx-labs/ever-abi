@@ -11,10 +11,7 @@
 * limitations under the License.
 */
 
-use crate::{
-    error::AbiError, int::{Int, Uint}, param::Param, param_type::ParamType,
-    token::{Token, TokenValue}
-};
+use crate::{contract::{ABI_VERSION_1_0, AbiVersion}, error::AbiError, int::{Int, Uint}, param::Param, param_type::ParamType, token::{Token, TokenValue}};
 
 use num_bigint::{BigInt, BigUint};
 use num_traits::ToPrimitive;
@@ -27,7 +24,7 @@ use ton_types::{
 
 impl TokenValue {
     /// Deserializes value from `SliceData` to `TokenValue`
-    pub fn read_from(param_type: &ParamType, mut cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
+    pub fn read_from(param_type: &ParamType, mut cursor: SliceData, last: bool, abi_version: &AbiVersion) -> Result<(Self, SliceData)> {
         match param_type {
             ParamType::Uint(size) => Self::read_uint(*size, cursor),
             ParamType::Int(size) => Self::read_int(*size, cursor),
@@ -101,7 +98,7 @@ impl TokenValue {
         Ok((TokenValue::VarInt(size, number), cursor))
     }
 
-    fn read_tuple(tuple_params: &[Param], cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
+    fn read_tuple(tuple_params: &[Param], cursor: SliceData, last: bool, abi_version: &AbiVersion) -> Result<(Self, SliceData)> {
         let mut tokens = Vec::new();
         let mut cursor = cursor;
         for param in tuple_params {
@@ -116,7 +113,7 @@ impl TokenValue {
         Ok((TokenValue::Tuple(tokens), cursor))
     }
 
-    fn read_array_from_map(item_type: &ParamType, mut cursor: SliceData, size: usize, abi_version: u8)
+    fn read_array_from_map(item_type: &ParamType, mut cursor: SliceData, size: usize, abi_version: &AbiVersion)
     -> Result<(Vec<Self>, SliceData)> {
         let original = cursor.clone();
         cursor = find_next_bits(cursor, 1)?;
@@ -140,7 +137,7 @@ impl TokenValue {
         Ok((result, cursor))
     }
 
-    fn read_array(item_type: &ParamType, mut cursor: SliceData, abi_version: u8) -> Result<(Self, SliceData)> {
+    fn read_array(item_type: &ParamType, mut cursor: SliceData, abi_version: &AbiVersion) -> Result<(Self, SliceData)> {
         cursor = find_next_bits(cursor, 32)?;
         let size = cursor.get_next_u32()?;
         let (result, cursor) = Self::read_array_from_map(item_type, cursor, size as usize, abi_version)?;
@@ -148,16 +145,16 @@ impl TokenValue {
         Ok((TokenValue::Array(item_type.clone(), result), cursor))
     }
 
-    fn read_fixed_array(item_type: &ParamType, size: usize, cursor: SliceData, abi_version: u8) -> Result<(Self, SliceData)> {
+    fn read_fixed_array(item_type: &ParamType, size: usize, cursor: SliceData, abi_version: &AbiVersion) -> Result<(Self, SliceData)> {
         let (result, cursor) = Self::read_array_from_map(item_type, cursor, size, abi_version)?;
 
         Ok((TokenValue::FixedArray(item_type.clone(), result), cursor))
     }
 
-    fn read_cell(mut cursor: SliceData, last: bool, abi_version: u8) -> Result<(Cell, SliceData)> {
+    fn read_cell(mut cursor: SliceData, last: bool, abi_version: &AbiVersion) -> Result<(Cell, SliceData)> {
         let cell = match cursor.remaining_references() {
-            1 if (abi_version == 1 && cursor.cell().references_count() == BuilderData::references_capacity())
-                || (abi_version != 1 && !last && cursor.remaining_bits() == 0) => {
+            1 if (abi_version == &ABI_VERSION_1_0 && cursor.cell().references_count() == BuilderData::references_capacity())
+                || (abi_version != &ABI_VERSION_1_0 && !last && cursor.remaining_bits() == 0) => {
                 cursor = SliceData::from(cursor.reference(0)?);
                 cursor.checked_drain_reference()?
             }
@@ -166,7 +163,7 @@ impl TokenValue {
         Ok((cell.clone(), cursor))
     }
 
-    fn read_hashmap(key_type: &ParamType, value_type: &ParamType, mut cursor: SliceData, abi_version: u8)
+    fn read_hashmap(key_type: &ParamType, value_type: &ParamType, mut cursor: SliceData, abi_version: &AbiVersion)
     -> Result<(Self, SliceData)> {
         cursor = find_next_bits(cursor, 1)?;
         let mut new_map = BTreeMap::new();
@@ -184,7 +181,7 @@ impl TokenValue {
         Ok((TokenValue::Map(key_type.clone(), value_type.clone(), new_map), cursor))
     }
 
-    fn read_bytes_from_chain(cursor: SliceData, last: bool, abi_version: u8) -> Result<(Vec<u8>, SliceData)> {
+    fn read_bytes_from_chain(cursor: SliceData, last: bool, abi_version: &AbiVersion) -> Result<(Vec<u8>, SliceData)> {
         let original = cursor.clone();
         let (mut cell, cursor) = Self::read_cell(cursor, last, abi_version)?;
 
@@ -207,7 +204,7 @@ impl TokenValue {
         Ok((data, cursor))
     }
 
-    fn read_bytes(size: Option<usize>, cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
+    fn read_bytes(size: Option<usize>, cursor: SliceData, last: bool, abi_version: &AbiVersion) -> Result<(Self, SliceData)> {
         let original = cursor.clone();
         let (data, cursor) = Self::read_bytes_from_chain(cursor, last, abi_version)?;
 
@@ -221,7 +218,7 @@ impl TokenValue {
         }
     }
 
-    fn read_string(cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
+    fn read_string(cursor: SliceData, last: bool, abi_version: &AbiVersion) -> Result<(Self, SliceData)> {
         let (data, cursor) = Self::read_bytes_from_chain(cursor, last, abi_version)?;
 
         let string = String::from_utf8(data)
@@ -251,7 +248,7 @@ impl TokenValue {
         }
     }
 
-    fn read_optional(inner_type: &ParamType, cursor: SliceData, last: bool, abi_version: u8) -> Result<(Self, SliceData)> {
+    fn read_optional(inner_type: &ParamType, cursor: SliceData, last: bool, abi_version: &AbiVersion) -> Result<(Self, SliceData)> {
         let original = cursor.clone();
         let mut cursor = find_next_bits(cursor, 1)?;
         if cursor.get_next_bit()? {
@@ -272,7 +269,7 @@ impl TokenValue {
     }
 
     /// Decodes provided params from SliceData
-    pub fn decode_params(params: &Vec<Param>, mut cursor: SliceData, abi_version: u8) -> Result<Vec<Token>> {
+    pub fn decode_params(params: &Vec<Param>, mut cursor: SliceData, abi_version: &AbiVersion) -> Result<Vec<Token>> {
         let mut tokens = vec![];
 
         for param in params {
