@@ -398,6 +398,25 @@ impl Contract {
         Ok(map.write_to_new_cell()?.into())
     }
 
+    /// Decode initial values of public contract variables
+    pub fn decode_data(&self, data: SliceData) -> Result<Vec<Token>> {
+        let map = HashmapE::with_hashmap(
+            Self::DATA_MAP_KEYLEN, 
+            data.reference_opt(0),
+        );
+
+        let mut tokens = vec![];
+        for (_, item) in &self.data {
+            if let Some(value) = map.get(item.key.write_to_new_cell().unwrap().into())? {
+                tokens.append(
+                    &mut TokenValue::decode_params(&vec![item.value.clone()], value, &self.abi_version)?
+                );
+            }
+        }
+
+        Ok(tokens)
+    }
+
     // Gets public key from contract data
     pub fn get_pubkey(data: &SliceData) -> Result<Option<Vec<u8>>> {
         let map = HashmapE::with_hashmap(
