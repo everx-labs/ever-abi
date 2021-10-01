@@ -162,6 +162,13 @@ pub fn update_contract_data(abi: &str, parameters: &str, data: SliceData) -> Res
     contract.update_data(data, &tokens)
 }
 
+/// Decode initial values of public contract variables
+pub fn decode_contract_data(abi: &str, data: SliceData) -> Result<String> {
+    let contract = Contract::load(abi.as_bytes())?;
+
+    Detokenizer::detokenize(&contract.decode_data(data)?)
+}
+
 /// Decode account storage fields
 pub fn decode_storage_fields(abi: &str, data: SliceData) -> Result<String> {
     let contract = Contract::load(abi.as_bytes())?;

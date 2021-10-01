@@ -373,7 +373,7 @@ fn test_store_pubkey() {
 }
 
 #[test]
-fn test_update_contract_data() {
+fn test_update_decode_contract_data() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
     test_map.set_builder(
         0u64.write_to_new_cell().unwrap().into(),
@@ -418,6 +418,12 @@ fn test_update_contract_data() {
     .unwrap();
 
     assert_eq!(owner_slice.get_bytestring(0), vec![0x22; 32]);
+
+    let decoded = decode_contract_data(WALLET_ABI, new_data).unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(params).unwrap(),
+        serde_json::from_str::<Value>(&decoded).unwrap()
+    );
 }
 
 const ABI_WITH_FIELDS: &str = r#"{
