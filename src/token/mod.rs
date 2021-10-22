@@ -127,6 +127,8 @@ pub enum TokenValue {
     PublicKey(Option<ed25519_dalek::PublicKey>),
     /// Optional parameter
     Optional(ParamType, Option<Box<TokenValue>>),
+    /// Parameter stored in reference
+    Ref(Box<TokenValue>),
 }
 
 impl fmt::Display for TokenValue {
@@ -171,6 +173,7 @@ impl fmt::Display for TokenValue {
             TokenValue::Token(g) => write!(f, "{}", g),
             TokenValue::Time(time) => write!(f, "{}", time),
             TokenValue::Expire(expire) => write!(f, "{}", expire),
+            TokenValue::Ref(value) => write!(f, "{}", value),
             TokenValue::PublicKey(key) => if let Some(key) = key {
                 write!(f, "{}", hex::encode(&key.to_bytes()))
             } else {
@@ -246,6 +249,13 @@ impl TokenValue {
                 } else {
                     false
                 }
+            },
+            TokenValue::Ref(value) => {
+                if let ParamType::Ref(ref param_type) = *param_type {
+                    value.type_check(param_type)
+                } else {
+                    false
+                }
             }
         }
     }
@@ -278,7 +288,9 @@ impl TokenValue {
             TokenValue::Expire(_) => ParamType::Expire,
             TokenValue::PublicKey(_) => ParamType::PublicKey,
             TokenValue::Optional(ref param_type, _) => 
-                ParamType::Optional(Box::new(param_type.clone()))
+                ParamType::Optional(Box::new(param_type.clone())),
+            TokenValue::Ref(value) => 
+                ParamType::Ref(Box::new(value.get_param_type())),
         }
     }
 

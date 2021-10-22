@@ -21,8 +21,8 @@ use ton_block::Serializable;
 use ton_types::{BuilderData, error, fail, HashmapE, Result, SliceData};
 
 
-const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_1_0;
-const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_2;
+pub const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_1_0;
+pub const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_2;
 
 pub const ABI_VERSION_1_0: AbiVersion = AbiVersion::from_parts(1, 0);
 pub const ABI_VERSION_2_0: AbiVersion = AbiVersion::from_parts(2, 0);
@@ -409,7 +409,7 @@ impl Contract {
         for (_, item) in &self.data {
             if let Some(value) = map.get(item.key.write_to_new_cell().unwrap().into())? {
                 tokens.append(
-                    &mut TokenValue::decode_params(&vec![item.value.clone()], value, &self.abi_version)?
+                    &mut TokenValue::decode_params(&vec![item.value.clone()], value, &self.abi_version, false)?
                 );
             }
         }
@@ -456,7 +456,7 @@ impl Contract {
 
     /// Decode account storage fields
     pub fn decode_storage_fields(&self, data: SliceData) -> Result<Vec<Token>> {
-        TokenValue::decode_params(&self.fields, data, &self.abi_version)
+        TokenValue::decode_params(&self.fields, data, &self.abi_version, false)
     }
 }
 

@@ -20,7 +20,7 @@ use ton_types::{AccountId, Result, BuilderData, Cell, IBitstring, SliceData};
 use ton_types::dictionary::{HashmapE, HashmapType};
 use ton_block::{AnycastInfo, Grams, MsgAddress, Serializable};
 
-use crate::contract::{ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_2, AbiVersion};
+use crate::contract::{ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_2, AbiVersion, MAX_SUPPORTED_VERSION};
 
 use {Int, Param, ParamType, Token, TokenValue, Uint};
 
@@ -82,7 +82,9 @@ fn test_parameters_set(
         slice.checked_drain_reference().unwrap();
         slice.get_next_u32().unwrap();
 
-        let decoded_tokens = TokenValue::decode_params(&params, slice, &version.clone().into()).unwrap();
+        let decoded_tokens = TokenValue::decode_params(
+            &params, slice, &version.clone().into(), false
+        ).unwrap();
         assert_eq!(decoded_tokens, inputs);
     }
 }
@@ -1095,3 +1097,65 @@ fn test_abi_2_1_types() {
         &[ABI_VERSION_2_1, ABI_VERSION_2_2],
     );
  }
+
+ #[test]
+fn test_ref_type() {
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+
+    let mut ref_builder = BuilderData::new();
+    ref_builder.append_bit_one().unwrap();
+    ref_builder.append_reference(BuilderData::new());
+
+    builder.append_reference(123u64.write_to_new_cell().unwrap());
+    builder.append_reference(ref_builder.clone());
+
+    let values = vec![
+        TokenValue::Ref(Box::new(TokenValue::Int(Int::new(123, 64)))),
+        TokenValue::Ref(Box::new(TokenValue::Tuple(tokens_from_values(vec![
+            TokenValue::Bool(true),
+            TokenValue::Cell(Cell::default()),
+        ])))),
+    ];
+
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder,
+        &[MAX_SUPPORTED_VERSION],
+    );
+}
+
+#[test]
+fn test_partial_decoding() {
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(123u64.write_to_new_cell().unwrap());
+    builder.append_bit_one().unwrap();
+
+    let params = vec![
+        Param::new("a", ParamType::Uint(32)),
+        Param::new("b", ParamType::Ref(Box::new(ParamType::Int(32)))),
+        Param::new("c", ParamType::Bool),
+    ];
+
+    assert!(TokenValue::decode_params(&params, builder.clone().into(), &MAX_SUPPORTED_VERSION, false).is_err());
+
+    let params = vec![
+        Param::new("a", ParamType::Uint(32)),
+        Param::new("b", ParamType::Ref(Box::new(ParamType::Int(64)))),
+    ];
+
+    assert!(TokenValue::decode_params(&params, builder.clone().into(), &MAX_SUPPORTED_VERSION, false).is_err());
+
+    assert_eq!(
+        TokenValue::decode_params(&params, builder.into(), &MAX_SUPPORTED_VERSION, true).unwrap(),
+        tokens_from_values(vec![
+            TokenValue::Uint(Uint::new(0, 32)),
+            TokenValue::Ref(Box::new(TokenValue::Int(Int::new(123, 64)))),
+        ])
+    );
+}

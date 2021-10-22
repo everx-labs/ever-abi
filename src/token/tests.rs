@@ -899,6 +899,54 @@ mod tokenize_tests {
     }
 
     #[test]
+    fn test_tokenize_ref() {
+        let input = r#"{
+            "a": 123,
+            "b": {
+                "c": true,
+                "d": "some string"
+            }
+        }"#;
+
+        let params = vec![
+            Param::new("a", ParamType::Ref(Box::new(ParamType::VarUint(32)))),
+            Param::new("b", ParamType::Ref(
+                Box::new(ParamType::Tuple(vec![
+                    Param::new("c", ParamType::Bool),
+                    Param::new("d", ParamType::String),
+                ]))
+            )),
+        ];
+
+        let expected_tokens = vec![
+            Token {
+                name: "a".to_owned(),
+                value: TokenValue::Ref(Box::new(TokenValue::VarUint(32, 123u32.into()))),
+            },
+            Token {
+                name: "b".to_owned(),
+                value: TokenValue::Ref(
+                    Box::new(TokenValue::Tuple(vec![
+                        Token {
+                            name: "c".to_owned(),
+                            value: TokenValue::Bool(true),
+                        },
+                        Token {
+                            name: "d".to_owned(),
+                            value: TokenValue::String("some string".to_owned()),
+                        },
+                    ]))
+                )
+            },
+        ];
+
+        assert_eq!(
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).unwrap(),
+            expected_tokens
+        );
+    }
+
+    #[test]
     fn test_unknown_param() {
         let input = r#"{
             "a": 123,
@@ -1034,6 +1082,18 @@ mod types_check_tests {
                 name: "t".to_owned(),
                 value: TokenValue::String("123".to_owned())
             },
+            Token {
+                name: "u".to_owned(),
+                value: TokenValue::Optional(ParamType::Int(256), None),
+            },
+            Token {
+                name: "v".to_owned(),
+                value: TokenValue::Optional(ParamType::Bool, Some(Box::new(TokenValue::Bool(true)))),
+            },
+            Token {
+                name: "w".to_owned(),
+                value: TokenValue::Ref(Box::new(TokenValue::String("123".to_owned()))),
+            },
         ];
 
         let tuple_params = vec![
@@ -1123,6 +1183,18 @@ mod types_check_tests {
             Param {
                 name: "t".to_owned(),
                 kind: ParamType::String,
+            },
+            Param {
+                name: "u".to_owned(),
+                kind: ParamType::Optional(Box::new(ParamType::Int(256))),
+            },
+            Param {
+                name: "v".to_owned(),
+                kind: ParamType::Optional(Box::new(ParamType::Bool)),
+            },
+            Param {
+                name: "w".to_owned(),
+                kind: ParamType::Ref(Box::new(ParamType::String)),
             },
         ];
 
