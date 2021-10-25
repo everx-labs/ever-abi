@@ -1130,7 +1130,6 @@ fn test_ref_type() {
 
 #[test]
 fn test_partial_decoding() {
-    // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
     builder.append_reference(123u64.write_to_new_cell().unwrap());
