@@ -57,6 +57,7 @@ impl Tokenizer {
             ParamType::Expire => Self::tokenize_expire(value),
             ParamType::PublicKey => Self::tokenize_public_key(value),
             ParamType::Optional(param_type) => Self::tokenize_optional(param_type, value),
+            ParamType::Ref(param_type) => Self::tokenize_ref(param_type, value),
         }
     }
 
@@ -377,5 +378,9 @@ impl Tokenizer {
                 Some(Box::new(Self::tokenize_parameter(inner_type, value)?))
             ))
         }
+    }
+
+    fn tokenize_ref(inner_type: &ParamType, value: &Value) -> Result<TokenValue> {
+        Ok(TokenValue::Ref(Box::new(Self::tokenize_parameter(inner_type, value)?)))
     }
 }

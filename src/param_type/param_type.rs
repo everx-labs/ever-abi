@@ -62,6 +62,8 @@ pub enum ParamType {
     PublicKey,
     /// Optional parameter
     Optional(Box<ParamType>),
+    /// Parameter stored in reference
+    Ref(Box<ParamType>),
 }
 
 impl fmt::Display for ParamType {
@@ -103,6 +105,7 @@ impl ParamType {
             ParamType::Expire => format!("expire"),
             ParamType::PublicKey => format!("pubkey"),
             ParamType::Optional(ref param_type) => format!("optional({})", param_type.type_signature()),
+            ParamType::Ref(ref param_type) => format!("ref({})", param_type.type_signature()),
         }
     }
 
@@ -127,6 +130,9 @@ impl ParamType {
             ParamType::Optional(inner_type) => {
                 inner_type.set_components(components)
             }
+            ParamType::Ref(inner_type) => {
+                inner_type.set_components(components)
+            }
             _ => { 
                 if components.len() != 0 {
                     Err(error!(AbiError::UnusedComponents))
@@ -142,6 +148,7 @@ impl ParamType {
         match self {
             ParamType::Time | ParamType::Expire | ParamType::PublicKey => abi_version >= &ABI_VERSION_2_0,
             ParamType::String | ParamType::Optional(_)| ParamType::VarInt(_) | ParamType::VarUint(_) => abi_version >= &ABI_VERSION_2_1,
+            ParamType::Ref(_) => false,
             _ => abi_version >= &ABI_VERSION_1_0,
         }
     }
@@ -173,7 +180,8 @@ impl ParamType {
             | ParamType::Expire |ParamType::PublicKey => 0,
             // reference serialized types
             ParamType::Array(_) | ParamType::FixedArray(_, _) | ParamType::Cell | ParamType::String
-            | ParamType::Map(_, _) | ParamType::Bytes | ParamType::FixedBytes(_) => 1,
+            | ParamType::Map(_, _) | ParamType::Bytes | ParamType::FixedBytes(_)
+            | ParamType::Ref(_) => 1,
             // tuple refs is sum of inner types refs
             ParamType::Tuple(params) => {
                 params
@@ -187,7 +195,7 @@ impl ParamType {
                 } else {
                     0
                 }
-            }
+            },
         }
     }
 
@@ -209,6 +217,7 @@ impl ParamType {
             ParamType::Time => 64,
             ParamType::Expire => 32,
             ParamType::PublicKey => 257,
+            ParamType::Ref(_) => 0,
             ParamType::Tuple(params) => {
                 params
                     .iter()

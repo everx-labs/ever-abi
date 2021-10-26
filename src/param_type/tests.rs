@@ -63,6 +63,13 @@ mod param_type_tests {
 
         assert_eq!(ParamType::VarUint(16).type_signature(), "varuint16".to_owned());
         assert_eq!(ParamType::VarInt(32).type_signature(), "varint32".to_owned());
+
+        assert_eq!(
+            ParamType::Optional(Box::new(ParamType::Int(123))).type_signature(),
+            "optional(int123)".to_owned());
+        assert_eq!(
+            ParamType::Ref(Box::new(ParamType::Uint(123))).type_signature(),
+            "ref(uint123)".to_owned());
     }
 }
 
@@ -75,7 +82,7 @@ mod deserialize_tests {
         let s = r#"["uint256", "int64", "bool", "bool[]", "int33[2]", "bool[][2]",
             "tuple", "tuple[]", "tuple[4]", "cell", "map(int3,bool)", "map(uint1023,tuple[][5])",
             "address", "bytes", "fixedbytes32", "token", "time", "expire", "pubkey", "string",
-            "varuint16", "varint32", "optional(bytes)"]"#;
+            "varuint16", "varint32", "optional(bytes)", "ref(bool)"]"#;
         let deserialized: Vec<ParamType> = serde_json::from_str(s).unwrap();
         assert_eq!(deserialized, vec![
             ParamType::Uint(256),
@@ -106,6 +113,7 @@ mod deserialize_tests {
             ParamType::VarUint(16),
             ParamType::VarInt(32),
             ParamType::Optional(Box::new(ParamType::Bytes)),
+            ParamType::Ref(Box::new(ParamType::Bool)),
         ]);
     }
 }
