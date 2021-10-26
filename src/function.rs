@@ -21,7 +21,7 @@ use contract::{AbiVersion, SerdeFunction};
 use ed25519::signature::Signer;
 use ed25519_dalek::{Keypair, SIGNATURE_LENGTH};
 use ton_block::Serializable;
-use ton_types::{BuilderData, Cell, error, fail, IBitstring, Result, SliceData};
+use ton_types::{BuilderData, error, fail, IBitstring, Result, SliceData};
 
 /// Contract function specification.
 #[derive(Debug, Clone, PartialEq)]
@@ -327,7 +327,7 @@ impl Function {
 
         if !internal {
             // delete reserved sign before hash
-            let mut slice = SliceData::from(builder);
+            let mut slice = SliceData::from(builder.into_cell()?);
             if remove_ref {
                 slice.checked_drain_reference()?;
             }
@@ -337,7 +337,7 @@ impl Function {
             builder = BuilderData::from_slice(&slice);
         }
 
-        let hash = Cell::from(&builder).repr_hash().as_slice().to_vec();
+        let hash = builder.clone().into_cell()?.repr_hash().into_vec();
 
         Ok((builder, hash))
     }
@@ -362,7 +362,7 @@ impl Function {
                 }
         
                 let len = signature.len() * 8;
-                builder.prepend_reference(BuilderData::with_raw(signature, len).unwrap());
+                builder.prepend_reference(BuilderData::with_raw(signature, len)?);
             } else {
                 builder.prepend_reference(BuilderData::new());
             }

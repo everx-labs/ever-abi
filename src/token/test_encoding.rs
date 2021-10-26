@@ -16,7 +16,7 @@ use std::iter::FromIterator;
 use std::str::FromStr;
 use num_bigint::{BigInt, BigUint};
 
-use ton_types::{AccountId, Result, BuilderData, Cell, IBitstring, SliceData};
+use ton_types::{AccountId, BuilderData, Cell, IBitstring, Result, SliceData};
 use ton_types::dictionary::{HashmapE, HashmapType};
 use ton_block::{AnycastInfo, Grams, MsgAddress, Serializable};
 
@@ -28,7 +28,7 @@ fn put_array_into_map<T: Serializable>(array: &[T]) -> HashmapE {
     let mut map = HashmapE::with_bit_len(32);
 
     for i in 0..array.len() {
-        let index = (i as u32).write_to_new_cell().unwrap();
+        let index = (i as u32).serialize().unwrap();
         let data = array[i].write_to_new_cell().unwrap();
         map.set_builder(index.into(), &data).unwrap();
     }
@@ -66,8 +66,8 @@ fn test_parameters_set(
         // tree check
         let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix.into()], version).unwrap();
 
-        println!("{:#.2}", Cell::from(&test_tree));
-        println!("{:#.2}", Cell::from(&params_tree));
+        println!("{:#.2}", test_tree.clone().into_cell().unwrap());
+        println!("{:#.2}", params_tree.clone().into_cell().unwrap());
         assert_eq!(test_tree, params_tree);
 
         // check decoding
@@ -78,7 +78,7 @@ fn test_parameters_set(
             params_from_tokens(inputs)
         };
 
-        let mut slice = SliceData::from(test_tree);
+        let mut slice = SliceData::from(test_tree.into_cell().unwrap());
         slice.checked_drain_reference().unwrap();
         slice.get_next_u32().unwrap();
 
@@ -183,7 +183,7 @@ fn test_with_address() {
     addresses.iter().take(5).for_each(|address| address.write_to(&mut builder).unwrap());
     builder.append_reference(addresses.last().unwrap().write_to_new_cell().unwrap());
 
-    let mut values = vec![TokenValue::Cell(BuilderData::with_bitstring(vec![1, 2, 3, 0x80]).unwrap().into())];
+    let mut values = vec![TokenValue::Cell(BuilderData::with_bitstring(vec![1, 2, 3, 0x80]).unwrap().into_cell().unwrap())];
     addresses.iter().for_each(|address| {
         values.push(TokenValue::Address(address.clone()));
     });
@@ -568,14 +568,10 @@ fn test_tuples_with_combined_types() {
     let mut map = HashmapE::with_bit_len(32);
 
     // [Vec<i64>; 5]
-    for i in 0..5 {
+    for i in 0..5u32 {
         let mut builder = BuilderData::new();
         add_array_as_map(&mut builder, &input_array2, false);
-
-        let mut index = BuilderData::new();
-        index.append_u32(i).unwrap();
-
-        map.set_builder(index.into(), &builder).unwrap();
+        map.set_builder(i.serialize().unwrap().into(), &builder).unwrap();
     }
 
     let mut chain_builder_v2 = chain_builder.clone();
@@ -675,9 +671,9 @@ fn test_four_refs_and_four_int256() {
     builder.append_reference(second_builder);
 
     let values = vec![
-        TokenValue::Cell(bytes_builder.clone().into()),
+        TokenValue::Cell(bytes_builder.clone().into_cell().unwrap()),
         TokenValue::Bytes(bytes.clone()),
-        TokenValue::Cell(bytes_builder.into()),
+        TokenValue::Cell(bytes_builder.into_cell().unwrap()),
         TokenValue::Uint(Uint{ number: BigUint::from_bytes_be(&bytes), size: 256 }),
         TokenValue::Uint(Uint{ number: BigUint::from_bytes_be(&bytes), size: 256 }),
         TokenValue::Uint(Uint{ number: BigUint::from_bytes_be(&bytes), size: 256 }),
@@ -716,9 +712,9 @@ fn test_four_refs_and_one_int256() {
     builder.append_reference(second_builder);
 
     let values = vec![
-        TokenValue::Cell(bytes_builder.clone().into()),
+        TokenValue::Cell(bytes_builder.clone().into_cell().unwrap()),
         TokenValue::Bytes(bytes.clone()),
-        TokenValue::Cell(bytes_builder.into()),
+        TokenValue::Cell(bytes_builder.into_cell().unwrap()),
         TokenValue::Uint(Uint{ number: BigUint::from_bytes_be(&bytes), size: 256 }),
     ];
 
@@ -771,7 +767,7 @@ fn vec_to_map<K: Serializable>(vec: &[(K, BuilderData)], size: usize) -> Hashmap
     let mut map = HashmapE::with_bit_len(size);
 
     for (key, value) in vec {
-        let key = key.write_to_new_cell().unwrap();
+        let key = key.serialize().unwrap();
         map.set_builder(key.into(), &value).unwrap();
     }
 
@@ -959,12 +955,12 @@ fn test_address_map_key() {
     map_key.append_u128(0).unwrap();
     map_key.append_u128(123).unwrap();
 
-    map.setref(map_key.into(), &map_value.clone().into_cell().unwrap()).unwrap();
+    map.setref(map_key.into_cell().unwrap().into(), &map_value.clone().into_cell().unwrap()).unwrap();
 
     let mut array_key = BuilderData::new();
     array_key.append_u32(0).unwrap();
 
-    array.setref(array_key.into(), &map_value.into_cell().unwrap()).unwrap();
+    array.setref(array_key.into_cell().unwrap().into(), &map_value.into_cell().unwrap()).unwrap();
 
     let tuple_tokens = tokens_from_values(vec![
         TokenValue::Uint(Uint::new(1, 256)),
@@ -1141,17 +1137,17 @@ fn test_partial_decoding() {
         Param::new("c", ParamType::Bool),
     ];
 
-    assert!(TokenValue::decode_params(&params, builder.clone().into(), &MAX_SUPPORTED_VERSION, false).is_err());
+    assert!(TokenValue::decode_params(&params, builder.clone().into_cell().unwrap().into(), &MAX_SUPPORTED_VERSION, false).is_err());
 
     let params = vec![
         Param::new("a", ParamType::Uint(32)),
         Param::new("b", ParamType::Ref(Box::new(ParamType::Int(64)))),
     ];
 
-    assert!(TokenValue::decode_params(&params, builder.clone().into(), &MAX_SUPPORTED_VERSION, false).is_err());
+    assert!(TokenValue::decode_params(&params, builder.clone().into_cell().unwrap().into(), &MAX_SUPPORTED_VERSION, false).is_err());
 
     assert_eq!(
-        TokenValue::decode_params(&params, builder.into(), &MAX_SUPPORTED_VERSION, true).unwrap(),
+        TokenValue::decode_params(&params, builder.into_cell().unwrap().into(), &MAX_SUPPORTED_VERSION, true).unwrap(),
         tokens_from_values(vec![
             TokenValue::Uint(Uint::new(0, 32)),
             TokenValue::Ref(Box::new(TokenValue::Int(Int::new(123, 64)))),

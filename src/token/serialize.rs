@@ -243,7 +243,7 @@ impl TokenValue {
         let value_in_ref = Self::map_value_in_ref(32, param_type.max_bit_size());
 
         for i in 0..array.len() {
-            let index = (i as u32).write_to_new_cell()?;
+            let index = (i as u32).serialize()?;
 
             let data = Self::pack_cells_into_chain(array[i].write_to_cells(abi_version)?, abi_version)?;
 
@@ -327,7 +327,7 @@ impl TokenValue {
 
             let data = Self::pack_cells_into_chain(value.write_to_cells(abi_version)?, abi_version)?;
 
-            let slice_key = key_vec.pop().unwrap().data.into();
+            let slice_key = key_vec.pop().unwrap().data.into_cell()?.into();
             if value_in_ref {
                 hashmap.set_builder(slice_key, &data)?;
             } else {
@@ -396,8 +396,8 @@ fn test_pack_cells() {
     ];
     
     let builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
-    let builder = BuilderData::with_raw_and_refs(vec![0x55; 127], 127 * 8, vec![builder.into()]).unwrap();
-    let builder = BuilderData::with_raw_and_refs(vec![0x55; 100], 100 * 8, vec![builder.into()]).unwrap();
+    let builder = BuilderData::with_raw_and_refs(vec![0x55; 127], 127 * 8, vec![builder.into_cell().unwrap()]).unwrap();
+    let builder = BuilderData::with_raw_and_refs(vec![0x55; 100], 100 * 8, vec![builder.into_cell().unwrap()]).unwrap();
     let tree = TokenValue::pack_cells_into_chain(cells, &ABI_VERSION_1_0).unwrap();
     assert_eq!(tree, builder);
 }

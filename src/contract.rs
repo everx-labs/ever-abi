@@ -390,12 +390,12 @@ impl Contract {
                 )?.key;
 
                 map.set_builder(
-                    key.write_to_new_cell().unwrap().into(), 
+                    key.serialize()?.into(),
                     &builder, 
                 )?;
         }
 
-        Ok(map.write_to_new_cell()?.into())
+        Ok(map.serialize()?.into())
     }
 
     /// Decode initial values of public contract variables
@@ -407,7 +407,7 @@ impl Contract {
 
         let mut tokens = vec![];
         for (_, item) in &self.data {
-            if let Some(value) = map.get(item.key.write_to_new_cell().unwrap().into())? {
+            if let Some(value) = map.get(item.key.serialize()?.into())? {
                 tokens.append(
                     &mut TokenValue::decode_params(&vec![item.value.clone()], value, &self.abi_version, false)?
                 );
@@ -423,7 +423,7 @@ impl Contract {
             Self::DATA_MAP_KEYLEN,
             data.reference_opt(0),
         );
-        map.get(0u64.write_to_new_cell()?.into())
+        map.get(0u64.serialize()?.into())
             .map(|opt| opt.map(|slice| slice.get_bytestring(0)))
     }
 
@@ -431,17 +431,17 @@ impl Contract {
     pub fn insert_pubkey(data: SliceData, pubkey: &[u8]) -> Result<SliceData> {
         let pubkey_vec = pubkey.to_vec();
         let pubkey_len = pubkey_vec.len() * 8;
-        let value = BuilderData::with_raw(pubkey_vec, pubkey_len).unwrap_or_default();
+        let value = BuilderData::with_raw(pubkey_vec, pubkey_len)?;
 
         let mut map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN, 
             data.reference_opt(0)
         );
         map.set_builder(
-            0u64.write_to_new_cell().unwrap().into(), 
+            0u64.serialize()?.into(),
             &value, 
         )?;
-        Ok(map.write_to_new_cell()?.into())
+        Ok(map.serialize()?.into())
     }
 
     /// Add sign to messsage body returned by `prepare_input_for_sign` function

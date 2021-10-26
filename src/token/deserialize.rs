@@ -140,7 +140,7 @@ impl TokenValue {
         for i in 0..size {
             let mut index = BuilderData::new();
             index.append_u32(i as u32)?;
-            match map.get(index.into()) {
+            match map.get(index.into_cell()?.into()) {
                 Ok(Some(item_slice)) => {
                     let (token, item_slice) = Self::read_from(
                         item_type, item_slice, true, abi_version, allow_partial
