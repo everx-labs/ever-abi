@@ -16,7 +16,7 @@ use std::iter::FromIterator;
 use std::str::FromStr;
 use num_bigint::{BigInt, BigUint};
 
-use ton_types::{AccountId, Cell, Result, BuilderData, IBitstring, SliceData};
+use ton_types::{AccountId, BuilderData, Cell, IBitstring, Result, SliceData};
 use ton_types::dictionary::{HashmapE, HashmapType};
 use ton_block::{AnycastInfo, Grams, MsgAddress, Serializable};
 
@@ -1137,17 +1137,17 @@ fn test_partial_decoding() {
         Param::new("c", ParamType::Bool),
     ];
 
-    assert!(TokenValue::decode_params(&params, builder.clone().into(), &MAX_SUPPORTED_VERSION, false).is_err());
+    assert!(TokenValue::decode_params(&params, builder.clone().into_cell().unwrap().into(), &MAX_SUPPORTED_VERSION, false).is_err());
 
     let params = vec![
         Param::new("a", ParamType::Uint(32)),
         Param::new("b", ParamType::Ref(Box::new(ParamType::Int(64)))),
     ];
 
-    assert!(TokenValue::decode_params(&params, builder.clone().into(), &MAX_SUPPORTED_VERSION, false).is_err());
+    assert!(TokenValue::decode_params(&params, builder.clone().into_cell().unwrap().into(), &MAX_SUPPORTED_VERSION, false).is_err());
 
     assert_eq!(
-        TokenValue::decode_params(&params, builder.into(), &MAX_SUPPORTED_VERSION, true).unwrap(),
+        TokenValue::decode_params(&params, builder.into_cell().unwrap().into(), &MAX_SUPPORTED_VERSION, true).unwrap(),
         tokens_from_values(vec![
             TokenValue::Uint(Uint::new(0, 32)),
             TokenValue::Ref(Box::new(TokenValue::Int(Int::new(123, 64)))),
