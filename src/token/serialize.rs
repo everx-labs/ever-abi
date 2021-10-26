@@ -149,6 +149,8 @@ impl TokenValue {
             TokenValue::PublicKey(key) => Self::write_public_key(key),
             TokenValue::Optional(param_type, value) => 
                 Self::write_optional(param_type, value.as_ref().map(|val| val.as_ref()), abi_version),
+            TokenValue::Ref(value) => 
+                Self::write_ref(value, abi_version),
         }?;
 
         let param_type = self.get_param_type();
@@ -368,7 +370,13 @@ impl TokenValue {
         } else {
             Ok(BuilderData::with_raw(vec![0x00], 1)?)
         }
+    }
 
+    fn write_ref(value: &TokenValue, abi_version: &AbiVersion) -> Result<BuilderData> {
+        let value = value.pack_into_chain(abi_version)?;
+        let mut builder = BuilderData::new();
+        builder.checked_append_reference(value.into_cell()?)?;
+        Ok(builder)
     }
 }
 

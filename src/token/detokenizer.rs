@@ -179,6 +179,7 @@ impl Serialize for TokenValue {
             }
             TokenValue::PublicKey(key) => Token::detokenize_public_key(&key, serializer),
             TokenValue::Optional(_, value) => value.serialize(serializer),
+            TokenValue::Ref(value) => value.serialize(serializer),
         }
     }
 }

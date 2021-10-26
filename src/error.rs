@@ -62,10 +62,8 @@ pub enum AbiError {
         val: serde_json::Value
     },
 
-    #[fail(display = "Incomplete deserialization error: {}", cursor)]
-    IncompleteDeserializationError {
-        cursor: ton_types::SliceData
-    },
+    #[fail(display = "Incomplete deserialization error")]
+    IncompleteDeserializationError,
 
     #[fail(display = "Invalid input data: {}", msg)]
     InvalidInputData {

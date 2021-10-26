@@ -149,7 +149,7 @@ impl Function {
     pub fn decode_output(&self, mut data: SliceData, _internal: bool) -> Result<Vec<Token>> {
         let id = data.get_next_u32()?;
         if id != self.get_output_id() { Err(AbiError::WrongId { id } )? }
-        TokenValue::decode_params(self.output_params(), data, &self.abi_version)
+        TokenValue::decode_params(self.output_params(), data, &self.abi_version, false)
     }
 
     /// Parses the ABI function call to list of tokens.
@@ -158,7 +158,7 @@ impl Function {
 
         if id != self.get_input_id() { Err(AbiError::WrongId { id } )? }
 
-        TokenValue::decode_params(self.input_params(), cursor, &self.abi_version)
+        TokenValue::decode_params(self.input_params(), cursor, &self.abi_version, false)
     }
 
     /// Decodes function id from contract answer
@@ -266,7 +266,7 @@ impl Function {
             }
 
             for param in header {
-                let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor, false, abi_version)?;
+                let (token_value, new_cursor) = TokenValue::read_from(&param.kind, cursor, false, abi_version, false)?;
     
                 cursor = new_cursor;
                 tokens.push(Token { name: param.name.clone(), value: token_value });
