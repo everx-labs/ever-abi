@@ -16,7 +16,7 @@ use std::iter::FromIterator;
 use std::str::FromStr;
 use num_bigint::{BigInt, BigUint};
 
-use ton_types::{AccountId, Result, BuilderData, IBitstring, SliceData};
+use ton_types::{AccountId, Cell, Result, BuilderData, IBitstring, SliceData};
 use ton_types::dictionary::{HashmapE, HashmapType};
 use ton_block::{AnycastInfo, Grams, MsgAddress, Serializable};
 
