@@ -205,15 +205,15 @@ impl Tokenizer {
         // have to explicitly check such situation by comparing bits sizes of given number 
         // and increased number
         if number.sign() == Sign::Minus && number.bits() != (number + BigInt::from(1)).bits() {
-            number.bits() <= size
+            (number.bits() as usize) <= size
         } else {
-            number.bits() < size
+            (number.bits() as usize) < size
         }
     }
 
     /// Checks if given number can be fit into given bits count
     fn check_uint_size(number: &BigUint, size: usize) -> bool {
-        number.bits() < size
+        (number.bits() as usize) < size
     }
 
     /// Tries to parse a value as grams.
