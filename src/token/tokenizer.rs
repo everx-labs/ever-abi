@@ -197,6 +197,18 @@ impl Tokenizer {
         }
     }
 
+    /// Tries to read integer number from `Value`
+    fn read_grams(value: &Value) -> Result<Grams> {
+        if let Some(number) = value.as_u64() {
+            Ok(Grams::from(number))
+        } else if let Some(string) = value.as_str() {
+            Grams::from_str(string)
+                .map_err(|_| error!(AbiError::InvalidParameterValue { val: value.clone() } ))
+        } else {
+            fail!(AbiError::WrongDataFormat { val: value.clone() } )
+        }
+    }
+
     /// Checks if given number can be fit into given bits count
     fn check_int_size(number: &BigInt, size: usize) -> bool {
         // `BigInt::bits` returns fewest bits necessary to express the number, not including
@@ -218,13 +230,8 @@ impl Tokenizer {
 
     /// Tries to parse a value as grams.
     fn tokenize_gram(value: &Value) -> Result<TokenValue> {
-        let number = Self::read_uint(value)?;
-
-        if !Self::check_uint_size(&number, 120) {
-            fail!(AbiError::InvalidParameterValue { val: value.clone() } )
-        } else {
-            Ok(TokenValue::Token(Grams::from(number)))
-        }
+        let number = Self::read_grams(value)?;
+        Ok(TokenValue::Token(number))
     }
 
     /// Tries to parse a value as unsigned integer.
