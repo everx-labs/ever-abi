@@ -146,19 +146,19 @@ impl Function {
     }
 
     /// Parses the ABI function output to list of tokens.
-    pub fn decode_output(&self, mut data: SliceData, _internal: bool) -> Result<Vec<Token>> {
+    pub fn decode_output(&self, mut data: SliceData, _internal: bool, allow_partial: bool) -> Result<Vec<Token>> {
         let id = data.get_next_u32()?;
         if id != self.get_output_id() { Err(AbiError::WrongId { id } )? }
-        TokenValue::decode_params(self.output_params(), data, &self.abi_version, false)
+        TokenValue::decode_params(self.output_params(), data, &self.abi_version, allow_partial)
     }
 
     /// Parses the ABI function call to list of tokens.
-    pub fn decode_input(&self, data: SliceData, internal: bool) -> Result<Vec<Token>> {
+    pub fn decode_input(&self, data: SliceData, internal: bool, allow_partial: bool) -> Result<Vec<Token>> {
         let (_, id, cursor) = Self::decode_header(&self.abi_version, data, &self.header, internal)?;
 
         if id != self.get_input_id() { Err(AbiError::WrongId { id } )? }
 
-        TokenValue::decode_params(self.input_params(), cursor, &self.abi_version, false)
+        TokenValue::decode_params(self.input_params(), cursor, &self.abi_version, allow_partial)
     }
 
     /// Decodes function id from contract answer
