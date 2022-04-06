@@ -19,7 +19,7 @@ use crate::{
 use std::collections::BTreeMap;
 use std::fmt;
 use ton_block::{Grams, MsgAddress};
-use ton_types::{Result, Cell, UInt256};
+use ton_types::{Result, Cell};
 use chrono::prelude::Utc;
 use num_bigint::{BigInt, BigUint};
 use num_traits::ToPrimitive;
@@ -310,9 +310,16 @@ impl TokenValue {
 
     pub fn as_u64(&self) -> Option<u64> {
         match self {
-            TokenValue::VarUint(size, value) => {
-                if size < &64 {
-                    value.to_u64()
+            TokenValue::Uint(Uint {number, size}) => {
+                if size <= &64 {
+                    number.to_u64()
+                } else {
+                    None
+                }
+            }
+            TokenValue::VarUint(size, number) => {
+                if size <= &64 {
+                    number.to_u64()
                 } else {
                     None
                 }
@@ -323,7 +330,7 @@ impl TokenValue {
     pub fn as_u32(&self) -> Option<u32> {
         match self {
             TokenValue::VarUint(size, value) => {
-                if size < &32 {
+                if size <= &32 {
                     value.to_u32()
                 } else {
                     None
@@ -334,9 +341,16 @@ impl TokenValue {
     }
     pub fn as_u8(&self) -> Option<u8> {
         match self {
-            TokenValue::VarUint(size, value) => {
-                if size < &8 {
-                    value.to_u8()
+            TokenValue::Uint(Uint {number, size}) => {
+                if size <= &8 {
+                    number.to_u8()
+                } else {
+                    None
+                }
+            }
+            TokenValue::VarUint(size, number) => {
+                if size <= &8 {
+                    number.to_u8()
                 } else {
                     None
                 }
@@ -344,11 +358,21 @@ impl TokenValue {
             _ => None
         }
     }
-    pub fn as_u256(&self) -> Option<UInt256> {
+    pub fn as_u256(&self) -> Option<Vec<u8>> {
         match self {
-            TokenValue::String(value) => {
-                UInt256::from_str(&value).ok()
+            TokenValue::Uint(Uint {number, size}) => {
+                if size == &256 {
+                    Some(number.to_bytes_be())
+                } else {
+                    None
+                }
             }
+            _ => None
+        }
+    }
+    pub fn as_addr(&self) -> Option<MsgAddress> {
+        match self {
+            TokenValue::Address(addr) => Some(addr.to_owned()),
             _ => None
         }
     }
