@@ -11,7 +11,7 @@
 * limitations under the License.
 */
 
-use token::Detokenizer;
+use token::{Detokenizer, DetokenizeWhat};
 use Int;
 
 use Token;
@@ -26,6 +26,7 @@ use crate::contract::ABI_VERSION_2_0;
 #[test]
 fn int_json_representation() {
     let value = Detokenizer::detokenize_to_json_value(
+        DetokenizeWhat::Test,
         &[
             Token::new("u8", TokenValue::Uint(Uint::new(1, 8))),
             Token::new("i32", TokenValue::Int(Int::new(-1, 32))),

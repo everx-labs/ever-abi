@@ -62,8 +62,22 @@ impl Tokenizer {
     }
 
     /// Tries to parse parameters from JSON values to tokens.
-    pub fn tokenize_all_params(params: &[Param], values: &Value) -> Result<Vec<Token>> {
+    pub fn tokenize_all_params(function_name: &str, params: &[Param], values: &Value) -> Result<Vec<Token>> {
         if let Value::Object(map) = values {
+            if !(params.len() == map.len()
+                && params.iter().all(|param| map.contains_key(&param.name)))
+            {
+                let expected: Vec<String> = params.iter().map(|param| param.name.to_owned()).collect();
+                let provided: Vec<String> = map.keys().into_iter().cloned().collect();
+                fail!(AbiError::IncorrectParametersProvided {
+                    for_what: format!("function `{}`", function_name),
+                    expected_count: expected.len(),
+                    expected,
+                    provided_count: provided.len(),
+                    provided,
+                })
+            }
+
             let mut tokens = Vec::new();
             for param in params {
                 let value = map
@@ -332,7 +346,7 @@ impl Tokenizer {
 
     /// Tries to parse a value as tuple.
     fn tokenize_tuple(params: &Vec<Param>, value: &Value) -> Result<TokenValue> {
-        let tokens = Self::tokenize_all_params(params, value)?;
+        let tokens = Self::tokenize_all_params("tuple", params, value)?;
 
         Ok(TokenValue::Tuple(tokens))
     }
