@@ -81,12 +81,12 @@ impl Event {
     }
 
     /// Parses the ABI function call to list of tokens.
-    pub fn decode_input(&self, mut data: SliceData) -> Result<Vec<Token>> {
+    pub fn decode_input(&self, mut data: SliceData, allow_partial: bool) -> Result<Vec<Token>> {
         let id = data.get_next_u32()?;
 
         if id != self.get_id() { Err(AbiError::WrongId { id } )? }
 
-        TokenValue::decode_params(&self.input_params(), data, &self.abi_version, false)
+        TokenValue::decode_params(&self.input_params(), data, &self.abi_version, allow_partial)
     }
 
     /// Decodes function id from contract answer
