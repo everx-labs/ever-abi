@@ -333,13 +333,13 @@ impl Contract {
     }
 
     /// Decodes contract answer and returns name of the function called
-    pub fn decode_output(&self, data: SliceData, internal: bool) -> Result<DecodedMessage> {
+    pub fn decode_output(&self, data: SliceData, internal: bool, allow_partial: bool) -> Result<DecodedMessage> {
         let original_data = data.clone();
         
         let func_id = Function::decode_output_id(data)?;
 
         if let Ok(func) = self.function_by_id(func_id, false){
-            let tokens = func.decode_output(original_data, internal)?;
+            let tokens = func.decode_output(original_data, internal, allow_partial)?;
 
             Ok( DecodedMessage {
                 function_name: func.name.clone(),
@@ -347,7 +347,7 @@ impl Contract {
             })
         } else {
             let event = self.event_by_id(func_id)?;
-            let tokens = event.decode_input(original_data)?;
+            let tokens = event.decode_input(original_data, allow_partial)?;
 
             Ok( DecodedMessage {
                 function_name: event.name.clone(),
@@ -357,14 +357,14 @@ impl Contract {
     }
 
     /// Decodes contract answer and returns name of the function called
-    pub fn decode_input(&self, data: SliceData, internal: bool) -> Result<DecodedMessage> {
+    pub fn decode_input(&self, data: SliceData, internal: bool, allow_partial: bool) -> Result<DecodedMessage> {
         let original_data = data.clone();
         
         let func_id = Function::decode_input_id(&self.abi_version, data, &self.header, internal)?;
 
         let func = self.function_by_id(func_id, true)?;
 
-        let tokens = func.decode_input(original_data, internal)?;
+        let tokens = func.decode_input(original_data, internal, allow_partial)?;
 
         Ok( DecodedMessage {
             function_name: func.name.clone(),
@@ -399,7 +399,7 @@ impl Contract {
     }
 
     /// Decode initial values of public contract variables
-    pub fn decode_data(&self, data: SliceData) -> Result<Vec<Token>> {
+    pub fn decode_data(&self, data: SliceData, allow_partial: bool) -> Result<Vec<Token>> {
         let map = HashmapE::with_hashmap(
             Self::DATA_MAP_KEYLEN, 
             data.reference_opt(0),
@@ -409,7 +409,7 @@ impl Contract {
         for (_, item) in &self.data {
             if let Some(value) = map.get(item.key.serialize()?.into())? {
                 tokens.append(
-                    &mut TokenValue::decode_params(&vec![item.value.clone()], value, &self.abi_version, false)?
+                    &mut TokenValue::decode_params(&vec![item.value.clone()], value, &self.abi_version, allow_partial)?
                 );
             }
         }
@@ -455,8 +455,8 @@ impl Contract {
     }
 
     /// Decode account storage fields
-    pub fn decode_storage_fields(&self, data: SliceData) -> Result<Vec<Token>> {
-        TokenValue::decode_params(&self.fields, data, &self.abi_version, false)
+    pub fn decode_storage_fields(&self, data: SliceData, allow_partial: bool) -> Result<Vec<Token>> {
+        TokenValue::decode_params(&self.fields, data, &self.abi_version, allow_partial)
     }
 }
 

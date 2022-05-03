@@ -94,12 +94,13 @@ pub fn decode_function_response(
     function: String,
     response: SliceData,
     internal: bool,
+    allow_partial: bool,
 ) -> Result<String> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let function = contract.function(&function)?;
 
-    let tokens = function.decode_output(response, internal)?;
+    let tokens = function.decode_output(response, internal, allow_partial)?;
 
     Detokenizer::detokenize(&tokens)
 }
@@ -114,10 +115,11 @@ pub fn decode_unknown_function_response(
     abi: String,
     response: SliceData,
     internal: bool,
+    allow_partial: bool,
 ) -> Result<DecodedMessage> {
     let contract = Contract::load(abi.as_bytes())?;
 
-    let result = contract.decode_output(response, internal)?;
+    let result = contract.decode_output(response, internal, allow_partial)?;
 
     let output = Detokenizer::detokenize(&result.tokens)?;
 
@@ -132,10 +134,11 @@ pub fn decode_unknown_function_call(
     abi: String,
     response: SliceData,
     internal: bool,
+    allow_partial: bool,
 ) -> Result<DecodedMessage> {
     let contract = Contract::load(abi.as_bytes())?;
 
-    let result = contract.decode_input(response, internal)?;
+    let result = contract.decode_input(response, internal, allow_partial)?;
 
     let input = Detokenizer::detokenize(&result.tokens)?;
 
@@ -163,17 +166,17 @@ pub fn update_contract_data(abi: &str, parameters: &str, data: SliceData) -> Res
 }
 
 /// Decode initial values of public contract variables
-pub fn decode_contract_data(abi: &str, data: SliceData) -> Result<String> {
+pub fn decode_contract_data(abi: &str, data: SliceData, allow_partial: bool) -> Result<String> {
     let contract = Contract::load(abi.as_bytes())?;
 
-    Detokenizer::detokenize(&contract.decode_data(data)?)
+    Detokenizer::detokenize(&contract.decode_data(data, allow_partial)?)
 }
 
 /// Decode account storage fields
-pub fn decode_storage_fields(abi: &str, data: SliceData) -> Result<String> {
+pub fn decode_storage_fields(abi: &str, data: SliceData, allow_partial: bool) -> Result<String> {
     let contract = Contract::load(abi.as_bytes())?;
 
-    let decoded = contract.decode_storage_fields(data)?;
+    let decoded = contract.decode_storage_fields(data, allow_partial)?;
 
     Detokenizer::detokenize(&decoded)
 }
