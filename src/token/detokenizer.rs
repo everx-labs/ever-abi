@@ -73,11 +73,11 @@ impl Token {
         serializer.serialize_str(&number.to_str_radix(10))
     }
 
-    pub fn detokenize_grams<S>(number: &Grams, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    pub fn detokenize_grams<S>(number: impl ToString, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serializer.serialize_str(&number.as_u128().to_string())
+        serializer.serialize_str(&number.to_string())
     }
 
     pub fn detokenize_big_uint<S>(
