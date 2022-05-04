@@ -221,7 +221,6 @@ impl TokenValue {
                 });
             }
             data.extend_from_slice(cell.data());
-            data.pop();
             cell = match cell.reference(0) {
                 Ok(cell) => cell.clone(),
                 Err(_) => break
