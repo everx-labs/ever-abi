@@ -183,8 +183,8 @@ impl Tokenizer {
         if let Some(number) = value.as_u64() {
             Ok(BigUint::from(number))
         } else if let Some(string) = value.as_str() {
-            let result = if string.starts_with("0x") {
-                BigUint::parse_bytes(&string.as_bytes()[2..], 16)
+            let result = if let Some(stripped) = string.strip_prefix("0x") {
+                BigUint::parse_bytes(stripped, 16)
             } else {
                 BigUint::parse_bytes(string.as_bytes(), 10)
             };
@@ -197,7 +197,7 @@ impl Tokenizer {
         }
     }
 
-    /// Tries to read integer number from `Value`
+    /// Tries to read grams from `Value`
     fn read_grams(value: &Value) -> Result<Grams> {
         if let Some(number) = value.as_u64() {
             Ok(Grams::from(number))
