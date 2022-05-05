@@ -184,7 +184,7 @@ impl Tokenizer {
             Ok(BigUint::from(number))
         } else if let Some(string) = value.as_str() {
             let result = if let Some(stripped) = string.strip_prefix("0x") {
-                BigUint::parse_bytes(stripped, 16)
+                BigUint::parse_bytes(stripped.as_bytes(), 16)
             } else {
                 BigUint::parse_bytes(string.as_bytes(), 10)
             };
