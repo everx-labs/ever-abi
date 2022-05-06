@@ -183,8 +183,8 @@ impl Tokenizer {
         if let Some(number) = value.as_u64() {
             Ok(BigUint::from(number))
         } else if let Some(string) = value.as_str() {
-            let result = if string.starts_with("0x") {
-                BigUint::parse_bytes(&string.as_bytes()[2..], 16)
+            let result = if let Some(stripped) = string.strip_prefix("0x") {
+                BigUint::parse_bytes(stripped.as_bytes(), 16)
             } else {
                 BigUint::parse_bytes(string.as_bytes(), 10)
             };
@@ -192,6 +192,18 @@ impl Tokenizer {
                 Some(number) => Ok(number),
                 None => fail!(AbiError::InvalidParameterValue { val: value.clone() } )
             }
+        } else {
+            fail!(AbiError::WrongDataFormat { val: value.clone() } )
+        }
+    }
+
+    /// Tries to read grams from `Value`
+    fn read_grams(value: &Value) -> Result<Grams> {
+        if let Some(number) = value.as_u64() {
+            Ok(Grams::from(number))
+        } else if let Some(string) = value.as_str() {
+            Grams::from_str(string)
+                .map_err(|_| error!(AbiError::InvalidParameterValue { val: value.clone() } ))
         } else {
             fail!(AbiError::WrongDataFormat { val: value.clone() } )
         }
@@ -218,13 +230,8 @@ impl Tokenizer {
 
     /// Tries to parse a value as grams.
     fn tokenize_gram(value: &Value) -> Result<TokenValue> {
-        let number = Self::read_uint(value)?;
-
-        if !Self::check_uint_size(&number, 120) {
-            fail!(AbiError::InvalidParameterValue { val: value.clone() } )
-        } else {
-            Ok(TokenValue::Token(Grams::from(number)))
-        }
+        let number = Self::read_grams(value)?;
+        Ok(TokenValue::Token(number))
     }
 
     /// Tries to parse a value as unsigned integer.

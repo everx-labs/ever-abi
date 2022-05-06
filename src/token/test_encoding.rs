@@ -576,11 +576,11 @@ fn test_tuples_with_combined_types() {
 
     let mut chain_builder_v2 = chain_builder.clone();
     chain_builder_v2.append_bit_one().unwrap();
-    chain_builder_v2.append_reference(BuilderData::from(map.data().unwrap()));
+    chain_builder_v2.append_reference(BuilderData::from(map.data().unwrap().clone()));
 
     let mut second_builder = BuilderData::new();
     second_builder.append_bit_one().unwrap();
-    second_builder.append_reference(BuilderData::from(map.data().unwrap()));
+    second_builder.append_reference(BuilderData::from(map.data().unwrap().clone()));
 
     chain_builder.append_reference(second_builder);
 
