@@ -27,7 +27,7 @@ Each type has max bit and max ref size:
 - `bytes/cell/string` - 0 bit, 1 ref
 - `array` - 33 bit, 1 ref
 - `mapping` - 1 bit, 1 ref
-- `optional(T)` - (1 bit, 1 ref) if `optional` is [large](https://www.notion.so/ABI-2-1-9712716444854ebe90300c5a0b268b45). Otherwise, (1 bit + maxBitQty(`T`), maxRefQty(`T`))
+- `optional(T)` - (1 bit, 1 ref) if `optional` is [large](ABI_2.1_spec.md#optionalinnertype). Otherwise, (1 bit + maxBitQty(`T`), maxRefQty(`T`))
 
 `structure (aka tuple)` type is considered as a sequence of its types when we encode the function parameters. That's why `tuple` type doesn't have max bit or max ref size. Nested `tuple` 's also are considered as a sequence of its types. For example:
 
