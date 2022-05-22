@@ -1,6 +1,6 @@
 [package]
 name = 'ton_abi'
-version = '2.2.1'
+version = '2.2.3'
 
 [dependencies]
 base64 = '0.10.0'
