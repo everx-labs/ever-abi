@@ -221,7 +221,6 @@ impl TokenValue {
                 });
             }
             data.extend_from_slice(cell.data());
-            data.pop();
             cell = match cell.reference(0) {
                 Ok(cell) => cell.clone(),
                 Err(_) => break
@@ -349,7 +348,7 @@ fn find_next_bits(mut cursor: SliceData, bits: usize) -> Result<SliceData> {
     match cursor.remaining_bits() >= bits  {
         true => Ok(cursor),
         false => fail!(AbiError::DeserializationError { 
-            msg: "Not enought remaining bits in the cell", 
+            msg: "Not enough remaining bits in the cell", 
             cursor: original
         })
     }
