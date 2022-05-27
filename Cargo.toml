@@ -1,6 +1,6 @@
 [package]
 name = 'ton_abi'
-version = '2.2.5'
+version = '2.2.6'
 
 [dependencies]
 base64 = '0.10.0'
@@ -16,8 +16,8 @@ serde = '1.0.91'
 serde_derive = '1.0.91'
 serde_json = '1.0.41'
 sha2 = '0.8'
-ton_block = { git = 'https://github.com/tonlabs/ton-labs-block.git', tag = '1.7.47' }
-ton_types = { git = 'https://github.com/tonlabs/ton-labs-types.git', tag = '1.11.0' }
+ton_block = { git = 'https://github.com/tonlabs/ton-labs-block.git', tag = '1.7.49' }
+ton_types = { git = 'https://github.com/tonlabs/ton-labs-types.git', tag = '1.11.1' }
 
 [dev-dependencies]
 pretty_assertions = '1.0'
