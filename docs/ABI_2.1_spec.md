@@ -200,8 +200,8 @@ TVM Cell type.
 Usage|Value|Examples
 ---|---|---
 Cell|stored in a ref|
-JSON|binary hex data in base64|`"te6ccgEBAQEAEgAAH/////////////////////g="`
-JSON (accepts)|binary hex data in base64|`"te6ccgEBAQEAAgAAAA=="`
+JSON|binary data in base64|`"te6ccgEBAQEAEgAAH/////////////////////g="`
+JSON (accepts)|binary data in base64|`"te6ccgEBAQEAAgAAAA=="`
 
 ### `address`
 
