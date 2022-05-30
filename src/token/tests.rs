@@ -16,7 +16,7 @@ mod tokenize_tests {
     // use serde::Serialize;
     use std::collections::{BTreeMap, HashMap};
     use token::{Detokenizer, Tokenizer};
-    use ton_block::MsgAddress;
+    use ton_block::{Grams, MsgAddress};
     use ton_types::{AccountId, BuilderData, Cell, SliceData};
 
     #[test]
@@ -89,7 +89,7 @@ mod tokenize_tests {
                 name: "f".to_owned(),
                 value: TokenValue::Int(Int::new(-12345678900987654321i128, 128)),
             },
-            Token::new("g", TokenValue::Token(max_gram.into())),
+            Token::new("g", TokenValue::Token(Grams::new(max_gram).unwrap())),
             Token {
                 name: "h".to_owned(),
                 value: TokenValue::VarInt(16, (-1000i32).into()),
@@ -1003,7 +1003,7 @@ mod types_check_tests {
             },
             Token {
                 name: "d".to_owned(),
-                value: TokenValue::VarInt(16, 1000.into()),
+                value: TokenValue::VarInt(16, 1000u32.into()),
             },
             Token {
                 name: "e".to_owned(),
@@ -1064,7 +1064,7 @@ mod types_check_tests {
             },
             Token {
                 name: "p".to_owned(),
-                value: TokenValue::Token(17u32.into())
+                value: TokenValue::Token(17u64.into())
             },
             Token {
                 name: "q".to_owned(),
