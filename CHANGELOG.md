@@ -1,8 +1,6 @@
 # Release Notes
 
 All notable changes to this project will be documented in this file.
-## []
-support other projects changes
 
 ## [2.2] - 2021-07-19
 
