@@ -152,7 +152,8 @@ impl Tokenizer {
             true => Ok(TokenValue::FixedArray(item_type.clone(), vec)),
             false => fail!(AbiError::InvalidParameterLength {
                 val: value.clone(),
-                name: name.to_string()
+                name: name.to_string(),
+                expected: format!("array of {} elements", size),
             }),
         }
     }
@@ -416,7 +417,8 @@ impl Tokenizer {
                 } else {
                     fail!(AbiError::InvalidParameterLength {
                         val: value.clone(),
-                        name: name.to_string()
+                        name: name.to_string(),
+                        expected: format!("{} bytes", size),
                     })
                 }
             }
@@ -457,7 +459,7 @@ impl Tokenizer {
 
         let time = number.to_u64().ok_or_else(|| {
             error!(AbiError::InvalidInputData {
-                msg: "`time` value should fit into u64".into()
+                msg: format!("`{}` value {} should fit into u64", name, number)
             })
         })?;
 
@@ -470,7 +472,7 @@ impl Tokenizer {
 
         let expire = number.to_u32().ok_or_else(|| {
             error!(AbiError::InvalidInputData {
-                msg: "`expire` value should fit into u32".into()
+                msg: format!("`{}` value {} should fit into u32", name, number)
             })
         })?;
 
@@ -495,7 +497,8 @@ impl Tokenizer {
             if data.len() != ed25519_dalek::PUBLIC_KEY_LENGTH {
                 fail!(AbiError::InvalidParameterLength {
                     val: value.clone(),
-                    name: name.to_string()
+                    name: name.to_string(),
+                    expected: format!("{} bytes", ed25519_dalek::PUBLIC_KEY_LENGTH),
                 })
             };
             Ok(TokenValue::PublicKey(Some(

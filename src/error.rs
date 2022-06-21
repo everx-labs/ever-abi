@@ -44,7 +44,7 @@ pub enum AbiError {
         provided: usize
     },
 
-    #[fail(display = "Token types do not match corresponding function parameter types")]
+    #[fail(display = "Token types do not match expected function parameter types")]
     WrongParameterType,
 
     #[fail(display = "Wrong data format in `{}` parameter:\n{}\n{} expected", name, val, expected)]
@@ -54,10 +54,11 @@ pub enum AbiError {
         expected: String,
     },
 
-    #[fail(display = "Invalid parameter `{}` length:\n{}", name, val)]
+    #[fail(display = "Invalid parameter `{}` length, expected {}:\n{}", name, expected, val)]
     InvalidParameterLength {
         name: String,
-        val: serde_json::Value
+        val: serde_json::Value,
+        expected: String,
     },
 
     #[fail(display = "Invalid parameter `{}` value:\n{}\n{}", name, val, err)]
