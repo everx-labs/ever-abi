@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version: 2.2.9
+
+### New
+ - Automatic update project. #none
+
+
 ## [2.2] - 2021-07-19
 
 ### New
