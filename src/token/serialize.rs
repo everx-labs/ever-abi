@@ -313,7 +313,7 @@ impl TokenValue {
         let mut hashmap = HashmapE::with_bit_len(key_len);
 
         for (key, value) in value.iter() {
-            let key = Tokenizer::tokenize_parameter(key_type, &key.as_str().into())?;
+            let key = Tokenizer::tokenize_parameter(key_type, &key.as_str().into(), "map key")?;
 
             let mut key_vec = key.write_to_cells(abi_version)?;
             if key_vec.len() != 1 {
