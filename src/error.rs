@@ -44,28 +44,22 @@ pub enum AbiError {
         provided: usize
     },
 
-    #[fail(display = "Token types do not match expected function parameter types")]
+    #[fail(display = "Wrong parameter type")]
     WrongParameterType,
 
-    #[fail(display = "Wrong data format in `{}` parameter:\n{}\n{} expected", name, val, expected)]
+    #[fail(display = "Wrong data format:\n{}", val)]
     WrongDataFormat {
-        val: serde_json::Value,
-        name: String,
-        expected: String,
+        val: serde_json::Value
     },
 
-    #[fail(display = "Invalid parameter `{}` length, expected {}:\n{}", name, expected, val)]
+    #[fail(display = "Invalid parameter length:\n{}", val)]
     InvalidParameterLength {
-        name: String,
-        val: serde_json::Value,
-        expected: String,
+        val: serde_json::Value
     },
 
-    #[fail(display = "Invalid parameter `{}` value:\n{}\n{}", name, val, err)]
+    #[fail(display = "Invalid parameter value:\n{}", val)]
     InvalidParameterValue {
-        name: String,
-        val: serde_json::Value,
-        err: String,
+        val: serde_json::Value
     },
 
     #[fail(display = "Incomplete deserialization error")]
@@ -84,9 +78,19 @@ pub enum AbiError {
         id: u32
     },
 
+    #[fail(display = "IO error: {}", err)]
+    Io { 
+        err: std::io::Error
+    },
+
     #[fail(display = "Serde json error: {}", err)]
     SerdeError {
         err: serde_json::Error
+    },
+
+    #[fail(display = "Try from int error: {}", err)]
+    TryFromIntError {
+        err: std::num::TryFromIntError
     },
 
     #[fail(display = "Tuple description should contain non empty `components` field")]
