@@ -2,6 +2,7 @@
 
 ABI 2.2 introduces the new method to calculate external inbound message body signature. It is aimed to fix the following problem in ABI v2.2
 
+## Problem
 External messages may have a signature. Signatures respect only message body (without signature flag and signature itself). Signatures don’t respect `dest` address and it may cause a problem. Let's consider situation:  
 
 1. User have 2 contracts that contain same public key and public function with same signature
@@ -10,7 +11,7 @@ External messages may have a signature. Signatures respect only message body (wi
 
 To solve the problem signature must respect destination address.
 
-### Modified Signing Algorithm
+## Modified Signing Algorithm
 
 1. ABI serialization generates bag of cells containing header parameters, function ID and function parameters.
 591 free bits are reserved in the root cell for destination address (the maximum size of internal address)
