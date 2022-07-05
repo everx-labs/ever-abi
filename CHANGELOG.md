@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version: 2.2.10
+
+### New
+ - Update num crate
+ - Removed unneeded cell tag cleaning (there is no more tag)
+ - Move big int2 (#103)
+
 ## [2.2] - 2021-07-19
 
 ### New
