@@ -22,12 +22,13 @@ use ton_types::{BuilderData, error, fail, HashmapE, Result, SliceData};
 
 
 pub const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_1_0;
-pub const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_2;
+pub const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_3;
 
 pub const ABI_VERSION_1_0: AbiVersion = AbiVersion::from_parts(1, 0);
 pub const ABI_VERSION_2_0: AbiVersion = AbiVersion::from_parts(2, 0);
 pub const ABI_VERSION_2_1: AbiVersion = AbiVersion::from_parts(2, 1);
 pub const ABI_VERSION_2_2: AbiVersion = AbiVersion::from_parts(2, 2);
+pub const ABI_VERSION_2_3: AbiVersion = AbiVersion::from_parts(2, 3);
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct AbiVersion {
