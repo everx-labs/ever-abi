@@ -1154,3 +1154,60 @@ fn test_partial_decoding() {
         ])
     );
 }
+
+#[test]
+fn test_four_optional_strings() {
+    let string = "Some string";
+    let string_builder = BuilderData::with_raw(
+        string.as_bytes().to_vec(), string.as_bytes().len() * 8
+    ).unwrap();
+    let string_some_value = TokenValue::Optional(ParamType::String, Some(Box::new(TokenValue::String(string.into()))));
+    let string_none_value = TokenValue::Optional(ParamType::String, None);
+
+    let values = vec![
+        string_none_value.clone(),
+        string_some_value.clone(),
+        string_none_value,
+        string_some_value
+    ];
+
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+
+    builder.append_bits(1, 2).unwrap();
+    builder.checked_append_reference(string_builder.clone().into_cell().unwrap()).unwrap();
+
+    let second_builder = BuilderData::with_raw_and_refs(
+        vec![0x40],
+        2,
+        vec![
+            string_builder.clone().into_cell().unwrap(),
+        ]
+    ).unwrap();
+
+    builder.checked_append_reference(second_builder.into_cell().unwrap()).unwrap();
+
+    test_parameters_set(
+        &tokens_from_values(values.clone()),
+        None,
+        builder,
+        &[ABI_VERSION_2_2],
+    );
+
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.append_reference(BuilderData::new());
+
+    builder.append_bits(5, 4).unwrap();
+    builder.checked_append_reference(string_builder.clone().into_cell().unwrap()).unwrap();
+    builder.checked_append_reference(string_builder.clone().into_cell().unwrap()).unwrap();
+
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder,
+        &[ABI_VERSION_2_1],
+    );
+ }
