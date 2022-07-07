@@ -1,6 +1,6 @@
 # Everscale Smart Contracts ABI 2.3 Specification
 
-ABI 2.2 introduces the new method to calculate external inbound message body signature. It is aimed to fix the following problem in ABI v2.2
+ABI 2.3 introduces the new method to calculate external inbound message body signature. It is aimed to fix the following problem in ABI v2.2
 
 ## Problem
 External messages may have a signature. Signatures respect only message body (without signature flag and signature itself). Signatures don’t respect `dest` address and it may cause a problem. Let's consider situation:  

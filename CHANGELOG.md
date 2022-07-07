@@ -5,13 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [2.3] - 2022-07-07
 
 ### New
- - Change detokenizer
- - Fix conversion
- - Improve tokenization errors
- - Move big int2 (#103)
- - Removed unneeded cell&#x27;s tag cleaning (there is no more tag)
- - Update num crate
- - Update tests.rs
+
+[ABI 2.3](docs/ABI_2.3_spec.md) introduces new signature calculation method for external inbound messages
 
 
 ## [2.2] - 2021-07-19
