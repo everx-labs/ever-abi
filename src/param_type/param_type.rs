@@ -193,7 +193,7 @@ impl ParamType {
                 if param_type.is_large_optional() {
                     1
                 } else {
-                    0
+                    param_type.max_refs_count()
                 }
             },
         }
