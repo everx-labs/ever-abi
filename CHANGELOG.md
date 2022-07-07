@@ -2,12 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## Version: 2.2.10
+## [2.3] - 2022-07-07
 
 ### New
- - Update num crate
- - Removed unneeded cell tag cleaning (there is no more tag)
+ - Change detokenizer
+ - Fix conversion
+ - Improve tokenization errors
  - Move big int2 (#103)
+ - Removed unneeded cell&#x27;s tag cleaning (there is no more tag)
+ - Update num crate
+ - Update tests.rs
+
 
 ## [2.2] - 2021-07-19
 
