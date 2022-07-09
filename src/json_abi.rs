@@ -17,7 +17,8 @@ use crate::{
 
 use ed25519_dalek::Keypair;
 use serde_json::Value;
-use std::collections::HashMap;
+use ton_block::MsgAddressInt;
+use std::{collections::HashMap, str::FromStr};
 use ton_types::{Result, BuilderData, SliceData};
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
@@ -29,6 +30,7 @@ pub fn encode_function_call(
     parameters: String,
     internal: bool,
     pair: Option<&Keypair>,
+    address: Option<String>,
 ) -> Result<BuilderData> {
     let contract = Contract::load(abi.as_bytes())?;
 
@@ -48,7 +50,9 @@ pub fn encode_function_call(
     let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err } )?;
     let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
 
-    function.encode_input(&header_tokens, &input_tokens, internal, pair)
+    let address = address.map(|string| MsgAddressInt::from_str(&string)).transpose()?;
+
+    function.encode_input(&header_tokens, &input_tokens, internal, pair, address)
 }
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
@@ -59,6 +63,7 @@ pub fn prepare_function_call_for_sign(
     function: String,
     header: Option<String>,
     parameters: String,
+    address: Option<String>,
 ) -> Result<(BuilderData, Vec<u8>)> {
     let contract = Contract::load(abi.as_bytes())?;
 
@@ -74,7 +79,9 @@ pub fn prepare_function_call_for_sign(
     let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err } )?;
     let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
 
-    function.create_unsigned_call(&header_tokens, &input_tokens, false, true)
+    let address = address.map(|string| MsgAddressInt::from_str(&string)).transpose()?;
+
+    function.create_unsigned_call(&header_tokens, &input_tokens, false, true, address)
 }
 
 /// Add sign to messsage body returned by `prepare_function_call_for_sign` function

@@ -94,5 +94,8 @@ pub enum AbiError {
 
     #[fail(display = "Type description contains non empty `components` field but it is not a tuple")]
     UnusedComponents,
+
+    #[fail(display = "Message destination address is required to encode signed external inbound message body since ABI version 2.3")]
+    AddressRequired,
 }
 

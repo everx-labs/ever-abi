@@ -136,6 +136,36 @@ const WALLET_ABI: &str = r#"{
 }
 "#;
 
+const WALLET_ABI_V23: &str = r#"{
+    "version": "2.3",
+    "header": [
+        "expire",
+        "pubkey"
+    ],
+    "functions": [
+        {
+            "name": "createArbitraryLimit",
+            "inputs": [
+                {"name":"value","type":"uint128"},
+                {"name":"period","type":"uint32"}
+            ],
+            "outputs": [
+                {"name":"value0","type":"uint64"}
+            ]
+        },
+        {
+            "name": "getLimit",
+            "inputs": [
+                {"name":"limitId","type":"uint64"}
+            ],
+            "outputs": [
+                {"components":[{"name":"value","type":"uint256"},{"name":"period","type":"uint32"},{"name":"ltype","type":"uint8"},{"name":"spent","type":"uint256"},{"name":"start","type":"uint32"}],"name":"value0","type":"tuple"}
+            ]
+        }
+    ]
+}
+"#;
+
 #[test]
 fn test_constructor_call() {
     let params = r#"{}"#;
@@ -146,6 +176,7 @@ fn test_constructor_call() {
         None,
         params.to_owned(),
         false,
+        None,
         None,
     ).unwrap();
 
@@ -215,6 +246,7 @@ fn test_signed_call() {
         params.to_owned(),
         false,
         Some(&pair),
+        None,
     )
     .unwrap();
 
@@ -299,6 +331,7 @@ fn test_not_signed_call() {
         params.to_owned(),
         false,
         None,
+        None,
     )
     .unwrap();
 
@@ -313,6 +346,18 @@ fn test_not_signed_call() {
     expected_tree.append_u64(2).unwrap();            // limitId
 
     assert_eq!(test_tree, expected_tree);
+
+    let test_tree_v23 = encode_function_call(
+        WALLET_ABI_V23.to_owned(),
+        "getLimit".to_owned(),
+        Some(header.to_owned()),
+        params.to_owned(),
+        false,
+        None,
+        None,
+    )
+    .unwrap();
+    assert_eq!(test_tree_v23, expected_tree);
 }
 
 #[test]
@@ -324,7 +369,8 @@ fn test_add_signature_full() {
         WALLET_ABI.to_owned(),
         "getLimit".to_owned(),
         Some(header.to_owned()),
-        params.to_owned()
+        params.to_owned(),
+        None,
     )
     .unwrap();
 
@@ -463,4 +509,130 @@ fn test_decode_storage_fields() {
         "ok": true,
         "value": "456"
     }).to_string());
+}
+
+#[test]
+fn test_add_signature_full_v23() {
+    let params = r#"{"limitId":"2"}"#;
+    let header = "{}";
+
+    let (msg, data_to_sign) = prepare_function_call_for_sign(
+        WALLET_ABI_V23.to_owned(),
+        "getLimit".to_owned(),
+        Some(header.to_owned()),
+        params.to_owned(),
+        Some("0:5555555555555555555555555555555555555555555555555555555555555555".to_owned()),
+    )
+    .unwrap();
+
+    let pair = Keypair::generate(&mut rand::thread_rng());
+    let signature = pair.sign(&data_to_sign).to_bytes().to_vec();
+
+    let msg = add_sign_to_function_call(
+        WALLET_ABI_V23.to_owned(),
+        &signature,
+        Some(&pair.public.to_bytes()),
+        msg.into_cell().unwrap().into()).unwrap();
+
+    let decoded = decode_unknown_function_call(
+        WALLET_ABI_V23.to_owned(), msg.into_cell().unwrap().into(), false, false,
+    ).unwrap();
+
+    assert_eq!(decoded.params, params);
+}
+
+
+#[test]
+fn test_signed_call_v23() {
+    let params = r#"
+    {
+        "value": 12,
+        "period": 30
+    }"#;
+
+    let expected_params = r#"{"value":"12","period":"30"}"#;
+
+    let pair = Keypair::generate(&mut rand::thread_rng());
+    let address = "0:5555555555555555555555555555555555555555555555555555555555555555";
+
+    let test_tree = encode_function_call(
+        WALLET_ABI_V23.to_owned(),
+        "createArbitraryLimit".to_owned(),
+        None,
+        params.to_owned(),
+        false,
+        Some(&pair),
+        Some(address.to_owned()),
+    )
+    .unwrap();
+
+    let mut test_tree = SliceData::from(test_tree.into_cell().unwrap());
+
+    let response = decode_unknown_function_call(
+        WALLET_ABI_V23.to_owned(),
+        test_tree.clone(),
+        false,
+        false,
+    )
+    .unwrap();
+
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&response.params).unwrap(),
+        serde_json::from_str::<serde_json::Value>(&expected_params).unwrap());
+    assert_eq!(response.function_name, "createArbitraryLimit");
+
+    let mut expected_tree = BuilderData::new();
+    expected_tree.append_u32(0xffffffff).unwrap();          // expire
+    expected_tree.append_bit_one().unwrap();                // Some for public key
+    expected_tree.append_raw(&pair.public.to_bytes(), ed25519_dalek::PUBLIC_KEY_LENGTH * 8).unwrap();
+    expected_tree.append_u32(0x2238B58A).unwrap();          // function id
+
+    let mut expected_tree_child = BuilderData::new();
+    expected_tree_child.append_raw(&[0; 15], 15 * 8).unwrap();    // value
+    expected_tree_child.append_u8(12).unwrap();                   // value
+    expected_tree_child.append_u32(30).unwrap();                  // period
+
+    expected_tree.append_reference(expected_tree_child);
+
+    assert!(test_tree.get_next_bit().unwrap());
+    let sign = &test_tree.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH).unwrap();
+    let sign = Signature::from_bytes(sign).unwrap();
+
+    assert_eq!(test_tree, SliceData::from(expected_tree.into_cell().unwrap()));
+
+    let mut signed_tree = MsgAddressInt::from_str(address).unwrap().write_to_new_cell().unwrap();
+    signed_tree.append_builder(&BuilderData::from_slice(&test_tree)).unwrap();
+
+    let hash = signed_tree.into_cell().unwrap().repr_hash();
+    pair.verify(hash.as_slice(), &sign).unwrap();
+
+    let expected_response = r#"{"value0":"0"}"#;
+
+    let response_tree = SliceData::from(
+        BuilderData::with_bitstring(
+            vec![0xA2, 0x38, 0xB5, 0x8A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80])
+        .unwrap().into_cell().unwrap());
+
+    let response = decode_function_response(
+        WALLET_ABI_V23.to_owned(),
+        "createArbitraryLimit".to_owned(),
+        response_tree.clone(),
+        false,
+        false,
+    )
+    .unwrap();
+
+    assert_eq!(response, expected_response);
+
+
+    let response = decode_unknown_function_response(
+        WALLET_ABI_V23.to_owned(),
+        response_tree,
+        false,
+        false,
+    )
+    .unwrap();
+
+    assert_eq!(response.params, expected_response);
+    assert_eq!(response.function_name, "createArbitraryLimit");
 }
