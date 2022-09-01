@@ -13,7 +13,7 @@ ABI 2.2 introduces the new fixed message body layout while sections and types st
 
 ## Fixed layout concepts
 
-Since ABI v2.2 fixed message body layout is used in order to reduce gas consumption while parameters parsing. This document describes fixed layout concepts.
+Since ABI v2.2 fixed message body layout is used in order to reduce gas consumption while parsing parameters. This document describes fixed layout concepts.
 
 ## Introduction
 
@@ -48,17 +48,17 @@ structure `B` is considered as a sequence of `uint24`, `uint8`, `uint16`, `uint3
 
 ## Encoding the message
 
-`Message X` contains the field `body`. If encoded `body` fit in the cell, then let's insert the body in the cell (`Either X`). Otherwise, `body` is located in the reference (`Either ^X`). 
+`Message X` contains the field `body`. If encoded `body` fits in the cell, then the body is inserted in the cell (`Either X`). Otherwise, `body` is located in the reference (`Either ^X`). 
 
 ## Encoding the body of the message
 
-The body of the message is tree of cells that contains the function ID and encoded function arguments. External messages body is prefixed with function header parameters.
+The body of the message is a tree of cells that contains the function ID and encoded function arguments. External messages body is prefixed with function header parameters.
 
 ### Encoding header for external messages
 
-Function header has up to 3 optional parameters and mandatory signature. Function ID and function parameters are put after header parameters
+Function header has up to 3 optional parameters and mandatory signature. Function ID and function parameters are put after header parameters.
 
-Maximum header size is calculated as following. No references used.
+Maximum header size is calculated as follows (no references used).
 
 ```jsx
 maxHeader = 1 + 512 + // signature
@@ -70,9 +70,9 @@ maxHeader = 1 + 512 + // signature
 
 ### Encoding of function ID and its arguments
 
-Function ID and the function arguments are located in the chain of cells. The last reference of each cell (except for the last cell in the chain`) refers to the next cell. After adding the current parameter in the current cell we must presume an invariant (rule that stays true for the object) for our cell: number of unassigned references in the cell must be not less than 1 because the last cell is used for storing the reference on the next cell. When we add a specific value of some function argument to the cell we assume that it takes the max bit and max ref size. Only if the current parameter (by max bit or max ref size) does not fit into the current cell then we create new cell and insert the parameter in the new cell. 
+Function ID and the function arguments are located in the chain of cells. The last reference of each cell (except for the last cell in the chain) refers to the next cell. After adding the current parameter in the current cell we must presume an invariant (rule that stays true for the object) for our cell: number of unassigned references in the cell must be not less than 1 because the last cell is used for storing the reference on the next cell. When we add a specific value of some function argument to the cell we assume that it takes the max bit and max ref size. Only if the current parameter (by max bit or max ref size) does not fit into the current cell then we create new cell and insert the parameter in the new cell. 
 
-***But*** If current argument and all the following arguments fit into the current cell by max size then we push the parameters in the cell
+***But*** If current argument and all the following arguments fit into the current cell by max size then we push the parameters in the cell.
 
 In the end we connect the created cells in the chain of cells.
 
@@ -82,7 +82,7 @@ For example:
 function f(address a, address b) public;
 ```
 
-There we create 2 cells. In the first there is function id and  `a`. There maybe be not more than 32+591=623 bits. It's not more than 1023. The next parameter `b` can't fit into the first cell. In the second cell there is only `b`.
+Here we create 2 cells. In the first there is function id and  `a`. There may be not more than 32+591=623 bits. It's not more than 1023. The next parameter `b` can't fit into the first cell. In the second cell there is only `b`.
 
 ```jsx
 function f(mapping(uint=>uint) a, mapping(uint=>uint) b, mapping(uint=>uint) c, mapping(uint=>uint) d)
@@ -94,7 +94,7 @@ The first cell: function ID, `a`, `b` `c`, `d`.
 function f(string a, string b, string c, string d, uint32 e) public
 ```
 
-Function ID, `a`, `b`, `c` locate in the first cell. `d` and `e` fit in the first cell by max size. That's we push all parameter in the fist cell.
+Function ID, `a`, `b`, `c` are located in the first cell. `d` and `e` fit in the first cell by max size. That's why we push all parameter in the fist cell.
 
 ```jsx
 struct A {
@@ -107,7 +107,7 @@ struct A {
 function f(A a, uint32 e) public;
 ```
 
-Same as previous example. Only one cell.
+Same as previous example, only one cell.
 
 ```jsx
 function f(string a, string b, string c, string d, uint e, uint f, uint g, uint h) public
