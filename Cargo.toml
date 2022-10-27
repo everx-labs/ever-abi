@@ -1,6 +1,6 @@
 [package]
 name = 'ton_abi'
-version = '2.3.16'
+version = '2.3.17'
 
 [dependencies]
 base64 = '0.10.0'
@@ -25,4 +25,3 @@ rand = '0.7'
 
 [features]
 ci_run = [  ]
-
