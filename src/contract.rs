@@ -369,7 +369,7 @@ impl Contract {
 
         Ok( DecodedMessage {
             function_name: func.name.clone(),
-            tokens: tokens,
+            tokens,
         })
     }
 

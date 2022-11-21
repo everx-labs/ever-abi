@@ -464,7 +464,7 @@ fn test_update_decode_contract_data() {
 
     assert_eq!(
         subscription_slice,
-        MsgAddressInt::with_standart(None, 0, vec![0x11; 32].into()).unwrap().serialize().unwrap().into());
+        MsgAddressInt::with_standart(None, 0, [0x11; 32].into()).unwrap().serialize().unwrap().into());
 
 
     let owner_slice = new_map.get(
