@@ -2,15 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## Version: 2.3.18
+## Version: 2.3.26
 
 ### New
-
-
-## Version: 2.3.6
-
-### New
-
+ - Fix for support internal crates
+ - Bump versions of external crates
 
 ## Version: 2.3.2
 

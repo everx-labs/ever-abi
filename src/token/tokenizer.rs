@@ -353,7 +353,7 @@ impl Tokenizer {
             expected: "base64-encoded cell BOC".to_string(),
         })?;
 
-        if string.len() == 0 {
+        if string.is_empty() {
             return Ok(TokenValue::Cell(Cell::default()));
         }
 
