@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -16,7 +16,7 @@ use crate::{contract::{ABI_VERSION_1_0, ABI_VERSION_2_2, AbiVersion}, error::Abi
 use num_bigint::{BigInt, BigUint, Sign};
 use std::collections::BTreeMap;
 use ton_block::Serializable;
-use ton_types::{BuilderData, Cell, error, fail, HashmapE, IBitstring, Result};
+use ton_types::{BuilderData, Cell, SliceData, error, fail, HashmapE, IBitstring, Result};
 
 pub struct SerializedValue {
     pub data: BuilderData,
@@ -243,14 +243,14 @@ impl TokenValue {
         let value_in_ref = Self::map_value_in_ref(32, param_type.max_bit_size());
 
         for i in 0..array.len() {
-            let index = (i as u32).serialize()?;
+            let index = SliceData::load_builder((i as u32).write_to_new_cell()?)?;
 
             let data = Self::pack_cells_into_chain(array[i].write_to_cells(abi_version)?, abi_version)?;
 
             if value_in_ref {
-                map.set_builder(index.into(), &data)?;
+                map.set_builder(index, &data)?;
             } else {
-                map.setref(index.into(), &data.into_cell()?)?;
+                map.setref(index, &data.into_cell()?)?;
             }
         }
 
@@ -327,7 +327,7 @@ impl TokenValue {
 
             let data = Self::pack_cells_into_chain(value.write_to_cells(abi_version)?, abi_version)?;
 
-            let slice_key = key_vec.pop().unwrap().data.into_cell()?.into();
+            let slice_key = SliceData::load_builder(key_vec.pop().unwrap().data)?;
             if value_in_ref {
                 hashmap.set_builder(slice_key, &data)?;
             } else {

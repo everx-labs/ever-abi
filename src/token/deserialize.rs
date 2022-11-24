@@ -140,7 +140,7 @@ impl TokenValue {
         for i in 0..size {
             let mut index = BuilderData::new();
             index.append_u32(i as u32)?;
-            match map.get(index.into_cell()?.into()) {
+            match map.get(SliceData::load_builder(index)?) {
                 Ok(Some(item_slice)) => {
                     let (token, item_slice) = Self::read_from(
                         item_type, item_slice, true, abi_version, allow_partial
@@ -181,7 +181,7 @@ impl TokenValue {
         let cell = match cursor.remaining_references() {
             1 if (abi_version == &ABI_VERSION_1_0 && cursor.cell().references_count() == BuilderData::references_capacity())
                 || (abi_version != &ABI_VERSION_1_0 && !last && cursor.remaining_bits() == 0) => {
-                cursor = SliceData::from(cursor.reference(0)?);
+                cursor = SliceData::load_cell(cursor.reference(0)?)?;
                 cursor.checked_drain_reference()?
             }
             _ => cursor.checked_drain_reference()?
@@ -282,7 +282,7 @@ impl TokenValue {
             if inner_type.is_large_optional() {
                 let (cell, cursor) = Self::read_cell(cursor, last, abi_version)?;
                 let (result, remaining) = Self::read_from(
-                    inner_type, cell.into(), true, abi_version, allow_partial
+                    inner_type, SliceData::load_cell(cell)?, true, abi_version, allow_partial
                 )?;
                 Self::check_full_decode(allow_partial, &remaining)?;
                 Ok((TokenValue::Optional(inner_type.clone(), Some(Box::new(result))), cursor))
@@ -302,7 +302,7 @@ impl TokenValue {
     ) -> Result<(Self, SliceData)> {
         let (cell, cursor) = Self::read_cell(cursor, last, abi_version)?;
         let (result, remaining) = Self::read_from(
-            inner_type, cell.into(), true, abi_version, allow_partial
+            inner_type, SliceData::load_cell(cell)?, true, abi_version, allow_partial
         )?;
         Self::check_full_decode(allow_partial, &remaining)?;
         Ok((TokenValue::Ref(Box::new(result)), cursor))
@@ -343,7 +343,7 @@ fn find_next_bits(mut cursor: SliceData, bits: usize) -> Result<SliceData> {
         if cursor.reference(1).is_ok() {
             fail!(AbiError::IncompleteDeserializationError)
         }
-        cursor = cursor.reference(0)?.into();
+        cursor = SliceData::load_cell(cursor.reference(0)?)?;
     }
     match cursor.remaining_bits() >= bits  {
         true => Ok(cursor),

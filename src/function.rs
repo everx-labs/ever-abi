@@ -330,7 +330,7 @@ impl Function {
 
         if !internal {
             // delete reserved sign before hash
-            let mut slice = SliceData::from(builder.into_cell()?);
+            let mut slice = SliceData::load_builder(builder)?;
             if remove_ref {
                 slice.checked_drain_reference()?;
             }
