@@ -1,6 +1,6 @@
 [package]
 name = 'ton_abi'
-version = '2.3.31'
+version = '2.3.32'
 
 [dependencies]
 base64 = '0.10.0'
@@ -22,4 +22,3 @@ ton_types = { git = 'https://github.com/tonlabs/ton-labs-types.git', tag = '1.11
 [dev-dependencies]
 pretty_assertions = '1.0'
 rand = '0.7'
-
