@@ -28,9 +28,9 @@ fn put_array_into_map<T: Serializable>(array: &[T]) -> HashmapE {
     let mut map = HashmapE::with_bit_len(32);
 
     for i in 0..array.len() {
-        let index = (i as u32).serialize().unwrap();
+        let index = (i as u32).write_to_new_cell().unwrap();
         let data = array[i].write_to_new_cell().unwrap();
-        map.set_builder(index.into(), &data).unwrap();
+        map.set_builder(SliceData::load_builder(index).unwrap(), &data).unwrap();
     }
 
     map
@@ -78,7 +78,7 @@ fn test_parameters_set(
             params_from_tokens(inputs)
         };
 
-        let mut slice = SliceData::from(test_tree.into_cell().unwrap());
+        let mut slice = SliceData::load_builder(test_tree).unwrap();
         slice.checked_drain_reference().unwrap();
         slice.get_next_u32().unwrap();
 
@@ -571,7 +571,8 @@ fn test_tuples_with_combined_types() {
     for i in 0..5u32 {
         let mut builder = BuilderData::new();
         add_array_as_map(&mut builder, &input_array2, false);
-        map.set_builder(i.serialize().unwrap().into(), &builder).unwrap();
+        let key = SliceData::load_builder(i.write_to_new_cell().unwrap()).unwrap();
+        map.set_builder(key, &builder).unwrap();
     }
 
     let mut chain_builder_v2 = chain_builder.clone();
@@ -767,8 +768,8 @@ fn vec_to_map<K: Serializable>(vec: &[(K, BuilderData)], size: usize) -> Hashmap
     let mut map = HashmapE::with_bit_len(size);
 
     for (key, value) in vec {
-        let key = key.serialize().unwrap();
-        map.set_builder(key.into(), &value).unwrap();
+        let key = SliceData::load_builder(key.write_to_new_cell().unwrap()).unwrap();
+        map.set_builder(key, &value).unwrap();
     }
 
     map
@@ -955,12 +956,14 @@ fn test_address_map_key() {
     map_key.append_u128(0).unwrap();
     map_key.append_u128(123).unwrap();
 
-    map.setref(map_key.into_cell().unwrap().into(), &map_value.clone().into_cell().unwrap()).unwrap();
+    let map_key = SliceData::load_builder(map_key).unwrap();
+    map.setref(map_key, &map_value.clone().into_cell().unwrap()).unwrap();
 
     let mut array_key = BuilderData::new();
     array_key.append_u32(0).unwrap();
+    let array_key = SliceData::load_builder(array_key).unwrap();
 
-    array.setref(array_key.into_cell().unwrap().into(), &map_value.into_cell().unwrap()).unwrap();
+    array.setref(array_key, &map_value.into_cell().unwrap()).unwrap();
 
     let tuple_tokens = tokens_from_values(vec![
         TokenValue::Uint(Uint::new(1, 256)),
@@ -1130,6 +1133,7 @@ fn test_partial_decoding() {
     builder.append_u32(0).unwrap();
     builder.append_reference(123u64.write_to_new_cell().unwrap());
     builder.append_bit_one().unwrap();
+    let slice = SliceData::load_builder(builder).unwrap();
 
     let params = vec![
         Param::new("a", ParamType::Uint(32)),
@@ -1137,17 +1141,17 @@ fn test_partial_decoding() {
         Param::new("c", ParamType::Bool),
     ];
 
-    assert!(TokenValue::decode_params(&params, builder.clone().into_cell().unwrap().into(), &MAX_SUPPORTED_VERSION, false).is_err());
+    assert!(TokenValue::decode_params(&params, slice.clone(), &MAX_SUPPORTED_VERSION, false).is_err());
 
     let params = vec![
         Param::new("a", ParamType::Uint(32)),
         Param::new("b", ParamType::Ref(Box::new(ParamType::Int(64)))),
     ];
 
-    assert!(TokenValue::decode_params(&params, builder.clone().into_cell().unwrap().into(), &MAX_SUPPORTED_VERSION, false).is_err());
+    assert!(TokenValue::decode_params(&params, slice.clone(), &MAX_SUPPORTED_VERSION, false).is_err());
 
     assert_eq!(
-        TokenValue::decode_params(&params, builder.into_cell().unwrap().into(), &MAX_SUPPORTED_VERSION, true).unwrap(),
+        TokenValue::decode_params(&params, slice, &MAX_SUPPORTED_VERSION, true).unwrap(),
         tokens_from_values(vec![
             TokenValue::Uint(Uint::new(0, 32)),
             TokenValue::Ref(Box::new(TokenValue::Int(Int::new(123, 64)))),
