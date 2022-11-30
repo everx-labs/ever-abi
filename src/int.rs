@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -13,28 +13,32 @@
 
 use num_bigint::{BigInt, BigUint};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Int {
     pub number: BigInt,
     pub size: usize,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Uint {
     pub number: BigUint,
     pub size: usize,
 }
 
-
 impl Int {
     pub fn new(number: i128, size: usize) -> Self {
-        Self { number: BigInt::from(number), size }
+        Self {
+            number: BigInt::from(number),
+            size,
+        }
     }
 }
 
-
 impl Uint {
     pub fn new(number: u128, size: usize) -> Self {
-        Self { number: BigUint::from(number), size }
+        Self {
+            number: BigUint::from(number),
+            size,
+        }
     }
 }

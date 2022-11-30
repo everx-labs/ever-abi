@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -28,7 +28,7 @@ use std::{
     io::Cursor,
     str::FromStr,
 };
-use ton_block::{Grams, MsgAddress};
+use ton_block::Grams;
 use ton_types::{deserialize_tree_of_cells, error, fail, Cell, Result};
 
 /// This struct should be used to parse string values as tokens.
@@ -44,9 +44,9 @@ impl Tokenizer {
             ParamType::VarInt(size) => Self::tokenize_varint(*size, value, name),
             ParamType::Bool => Self::tokenize_bool(value, name),
             ParamType::Tuple(tuple_params) => Self::tokenize_tuple(tuple_params, value, name),
-            ParamType::Array(param_type) => Self::tokenize_array(&param_type, value, name),
+            ParamType::Array(param_type) => Self::tokenize_array(param_type, value, name),
             ParamType::FixedArray(param_type, size) => {
-                Self::tokenize_fixed_array(&param_type, *size, value, name)
+                Self::tokenize_fixed_array(param_type, *size, value, name)
             }
             ParamType::Cell => Self::tokenize_cell(value, name),
             ParamType::Map(key_type, value_type) => {
@@ -439,7 +439,7 @@ impl Tokenizer {
     }
 
     /// Tries to parse a value as tuple.
-    fn tokenize_tuple(params: &Vec<Param>, value: &Value, name: &str) -> Result<TokenValue> {
+    fn tokenize_tuple(params: &[Param], value: &Value, name: &str) -> Result<TokenValue> {
         if !value.is_object() {
             fail!(AbiError::WrongDataFormat {
                 val: value.clone(),
@@ -447,7 +447,7 @@ impl Tokenizer {
                 expected: "JSON object".to_string()
             })
         }
-        
+
         let tokens = Self::tokenize_all_params(params, value)?;
 
         Ok(TokenValue::Tuple(tokens))
@@ -486,7 +486,7 @@ impl Tokenizer {
             expected: "hex-encoded string".to_string(),
         })?;
 
-        if string.len() == 0 {
+        if string.is_empty() {
             Ok(TokenValue::PublicKey(None))
         } else {
             let data = hex::decode(string).map_err(|err| AbiError::InvalidParameterValue {
@@ -525,12 +525,14 @@ impl Tokenizer {
     }
 
     fn tokenize_address(value: &Value, name: &str) -> Result<TokenValue> {
-        let address =
-            MsgAddress::from_str(&value.as_str().ok_or_else(|| AbiError::WrongDataFormat {
+        let address = value
+            .as_str()
+            .ok_or_else(|| AbiError::WrongDataFormat {
                 val: value.clone(),
                 name: name.to_string(),
                 expected: "address string".to_string(),
-            })?)
+            })?
+            .parse()
             .map_err(|err| AbiError::InvalidParameterValue {
                 val: value.clone(),
                 name: name.to_string(),

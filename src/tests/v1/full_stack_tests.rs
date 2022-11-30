@@ -11,13 +11,12 @@
 * limitations under the License.
 */
 
+use crate::*;
 use ed25519::signature::{Signature, Signer};
-
-use ton_types::{BuilderData, SliceData};
-use ton_types::dictionary::HashmapE;
+use ed25519_dalek::Keypair;
+use serde_json::Value;
 use ton_block::{MsgAddressInt, Serializable};
-
-use json_abi::*;
+use ton_types::{BuilderData, HashmapE, SliceData};
 
 const WALLET_ABI: &str = r#"{
     "ABI version": 1,
@@ -145,39 +144,31 @@ fn test_constructor_call() {
         false,
         None,
         None,
-    ).unwrap();
+    )
+    .unwrap();
 
-    let mut expected_tree = BuilderData::with_bitstring(vec![0x54, 0xc1, 0xf4, 0x0f, 0x80]).unwrap();
+    let mut expected_tree =
+        BuilderData::with_bitstring(vec![0x54, 0xc1, 0xf4, 0x0f, 0x80]).unwrap();
     expected_tree.prepend_reference(BuilderData::new());
 
     let test_tree = SliceData::load_builder(test_tree).unwrap();
     let expected_tree = SliceData::load_builder(expected_tree).unwrap();
     assert_eq!(test_tree, expected_tree);
 
-    let response = decode_unknown_function_call(
-        WALLET_ABI.to_owned(),
-        test_tree.clone(),
-        false,
-        false,
-    ).unwrap();
+    let response =
+        decode_unknown_function_call(WALLET_ABI.to_owned(), test_tree, false, false).unwrap();
 
     assert_eq!(response.params, params);
     assert_eq!(response.function_name, "constructor");
-
 
     let test_tree = SliceData::from_raw(vec![0xd4, 0xc1, 0xf4, 0x0f, 0x80], 32);
 
-    let response = decode_unknown_function_response(
-        WALLET_ABI.to_owned(),
-        test_tree.clone(),
-        false,
-        false,
-    )
-    .unwrap();
+    let response =
+        decode_unknown_function_response(WALLET_ABI.to_owned(), test_tree.clone(), false, false)
+            .unwrap();
 
     assert_eq!(response.params, params);
     assert_eq!(response.function_name, "constructor");
-
 
     let response = decode_function_response(
         WALLET_ABI.to_owned(),
@@ -217,17 +208,14 @@ fn test_signed_call() {
 
     let mut test_tree = SliceData::load_builder(test_tree).unwrap();
 
-    let response = decode_unknown_function_call(
-        WALLET_ABI.to_owned(),
-        test_tree.clone(),
-        false,
-        false,
-    )
-    .unwrap();
+    let response =
+        decode_unknown_function_call(WALLET_ABI.to_owned(), test_tree.clone(), false, false)
+            .unwrap();
 
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&response.params).unwrap(),
-        serde_json::from_str::<serde_json::Value>(&expected_params).unwrap());
+        serde_json::from_str::<serde_json::Value>(expected_params).unwrap()
+    );
     assert_eq!(response.function_name, "createArbitraryLimit");
 
     let mut vec = vec![0x3C, 0x0B, 0xB9, 0xBC];
@@ -247,10 +235,12 @@ fn test_signed_call() {
     let expected_response = r#"{"value0":"0"}"#;
 
     let response_tree = SliceData::load_builder(
-        BuilderData::with_bitstring(
-            vec![0xBC, 0x0B, 0xB9, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]
-        ).unwrap()
-    ).unwrap();
+        BuilderData::with_bitstring(vec![
+            0xBC, 0x0B, 0xB9, 0xBC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80,
+        ])
+        .unwrap(),
+    )
+    .unwrap();
 
     let response = decode_function_response(
         WALLET_ABI.to_owned(),
@@ -263,14 +253,9 @@ fn test_signed_call() {
 
     assert_eq!(response, expected_response);
 
-
-    let response = decode_unknown_function_response(
-        WALLET_ABI.to_owned(),
-        response_tree,
-        false,
-        false,
-    )
-    .unwrap();
+    let response =
+        decode_unknown_function_response(WALLET_ABI.to_owned(), response_tree, false, false)
+            .unwrap();
 
     assert_eq!(response.params, expected_response);
     assert_eq!(response.function_name, "createArbitraryLimit");
@@ -295,8 +280,9 @@ fn test_not_signed_call() {
     .unwrap();
 
     let mut expected_tree = BuilderData::with_bitstring(vec![
-            0x23, 0xF3, 0x3E, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x80
-        ]).unwrap();
+        0x23, 0xF3, 0x3E, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x80,
+    ])
+    .unwrap();
     expected_tree.prepend_reference(BuilderData::new());
 
     assert_eq!(test_tree, expected_tree);
@@ -324,12 +310,12 @@ fn test_add_signature_full() {
         WALLET_ABI.to_owned(),
         &signature,
         Some(&pair.public.to_bytes()),
-        msg).unwrap();
+        msg,
+    )
+    .unwrap();
 
-        let msg = SliceData::load_builder(msg).unwrap();
-        let decoded = decode_unknown_function_call(
-        WALLET_ABI.to_owned(), msg, false, false,
-    ).unwrap();
+    let msg = SliceData::load_builder(msg).unwrap();
+    let decoded = decode_unknown_function_call(WALLET_ABI.to_owned(), msg, false, false).unwrap();
 
     assert_eq!(decoded.params, params);
 }
@@ -337,14 +323,12 @@ fn test_add_signature_full() {
 #[test]
 fn test_find_event() {
     let event_tree = SliceData::load_builder(
-        BuilderData::with_bitstring(
-            vec![0x13, 0x47, 0xD7, 0x9D, 0xFF, 0x80]
-        ).unwrap()
-    ).unwrap();
+        BuilderData::with_bitstring(vec![0x13, 0x47, 0xD7, 0x9D, 0xFF, 0x80]).unwrap(),
+    )
+    .unwrap();
 
-    let decoded = decode_unknown_function_response(
-        WALLET_ABI.to_owned(), event_tree, false, false,
-    ).unwrap();
+    let decoded =
+        decode_unknown_function_response(WALLET_ABI.to_owned(), event_tree, false, false).unwrap();
 
     assert_eq!(decoded.function_name, "event");
     assert_eq!(decoded.params, r#"{"param":"255"}"#);
@@ -354,21 +338,22 @@ fn test_find_event() {
 fn test_store_pubkey() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
     let test_pubkey = vec![11u8; 32];
-    test_map.set_builder(
-        SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap(),
-        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
-    ).unwrap();
+    test_map
+        .set_builder(
+            SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap(),
+            &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
+        )
+        .unwrap();
 
     let data = SliceData::load_builder(test_map.write_to_new_cell().unwrap()).unwrap();
 
     let new_data = Contract::insert_pubkey(data, &test_pubkey).unwrap();
 
     let new_map = HashmapE::with_hashmap(Contract::DATA_MAP_KEYLEN, new_data.reference_opt(0));
-    let key_slice = new_map.get(
-        SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap(),
-    )
-    .unwrap()
-    .unwrap();
+    let key_slice = new_map
+        .get(SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap())
+        .unwrap()
+        .unwrap();
 
     assert_eq!(key_slice.get_bytestring(0), test_pubkey);
 }
@@ -376,10 +361,12 @@ fn test_store_pubkey() {
 #[test]
 fn test_update_decode_contract_data() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
-    test_map.set_builder(
-        SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap(),
-        &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
-    ).unwrap();
+    test_map
+        .set_builder(
+            SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap(),
+            &BuilderData::with_raw(vec![0u8; 32], 256).unwrap(),
+        )
+        .unwrap();
 
     let params = r#"{
         "subscription": "0:1111111111111111111111111111111111111111111111111111111111111111",
@@ -391,32 +378,30 @@ fn test_update_decode_contract_data() {
     let new_data = update_contract_data(WALLET_ABI, params, data).unwrap();
     let new_map = HashmapE::with_hashmap(Contract::DATA_MAP_KEYLEN, new_data.reference_opt(0));
 
-
-    let key_slice = new_map.get(
-        SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap(),
-    )
-    .unwrap()
-    .unwrap();
+    let key_slice = new_map
+        .get(SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap())
+        .unwrap()
+        .unwrap();
 
     assert_eq!(key_slice.get_bytestring(0), vec![0u8; 32]);
 
-
-    let subscription_slice = new_map.get(
-        SliceData::load_builder(101u64.write_to_new_cell().unwrap()).unwrap(),
-    )
-    .unwrap()
-    .unwrap();
+    let subscription_slice = new_map
+        .get(SliceData::load_builder(101u64.write_to_new_cell().unwrap()).unwrap())
+        .unwrap()
+        .unwrap();
 
     assert_eq!(
         subscription_slice.into_cell(),
-        MsgAddressInt::with_standart(None, 0, [0x11; 32].into()).unwrap().serialize().unwrap());
+        MsgAddressInt::with_standart(None, 0, [0x11; 32].into())
+            .unwrap()
+            .serialize()
+            .unwrap()
+    );
 
-
-    let owner_slice = new_map.get(
-        SliceData::load_builder(100u64.write_to_new_cell().unwrap()).unwrap(),
-    )
-    .unwrap()
-    .unwrap();
+    let owner_slice = new_map
+        .get(SliceData::load_builder(100u64.write_to_new_cell().unwrap()).unwrap())
+        .unwrap()
+        .unwrap();
 
     assert_eq!(owner_slice.get_bytestring(0), vec![0x22; 32]);
 

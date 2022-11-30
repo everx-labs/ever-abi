@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -11,13 +11,15 @@
 * limitations under the License.
 */
 
-use {Function, Param, Token, TokenValue};
-use contract::{AbiVersion, SerdeEvent};
+use crate::{
+    contract::{AbiVersion, SerdeEvent},
+    error::AbiError,
+    Function, Param, Token, TokenValue,
+};
 use ton_types::{Result, SliceData};
-use crate::error::AbiError;
 
 /// Contract event specification.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Event {
     /// ABI version
     pub abi_version: AbiVersion,
@@ -26,7 +28,7 @@ pub struct Event {
     /// Event input.
     pub inputs: Vec<Param>,
     /// Event ID
-    pub id: u32
+    pub id: u32,
 }
 
 impl Event {
@@ -36,7 +38,7 @@ impl Event {
             abi_version,
             name: serde_event.name,
             inputs: serde_event.inputs,
-            id: 0
+            id: 0,
         };
         event.id = if let Some(id) = serde_event.id {
             id
@@ -48,19 +50,19 @@ impl Event {
 
     /// Returns all input params of given function.
     pub fn input_params(&self) -> Vec<Param> {
-        self.inputs.iter()
-            .map(|p| p.clone())
-            .collect()
+        self.inputs.clone()
     }
 
     /// Returns true if function has input parameters, false in not
     pub fn has_input(&self) -> bool {
-        self.inputs.len() != 0
+        !self.inputs.is_empty()
     }
 
     /// Retruns ABI function signature
     pub fn get_function_signature(&self) -> String {
-        let input_types = self.inputs.iter()
+        let input_types = self
+            .inputs
+            .iter()
             .map(|param| param.kind.type_signature())
             .collect::<Vec<String>>()
             .join(",");
@@ -84,14 +86,16 @@ impl Event {
     pub fn decode_input(&self, mut data: SliceData, allow_partial: bool) -> Result<Vec<Token>> {
         let id = data.get_next_u32()?;
 
-        if id != self.get_id() { Err(AbiError::WrongId { id } )? }
+        if id != self.get_id() {
+            Err(AbiError::WrongId { id })?
+        }
 
         TokenValue::decode_params(&self.input_params(), data, &self.abi_version, allow_partial)
     }
 
     /// Decodes function id from contract answer
     pub fn decode_id(mut data: SliceData) -> Result<u32> {
-        Ok(data.get_next_u32()?)
+        data.get_next_u32()
     }
 
     /// Check if message body is related to this event
