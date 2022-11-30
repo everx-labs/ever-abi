@@ -1,6 +1,8 @@
 [package]
+build = 'common/build/build.rs'
+edition = '2021'
 name = 'ton_abi'
-version = '2.3.37'
+version = '2.3.38'
 
 [dependencies]
 base64 = '0.10.0'

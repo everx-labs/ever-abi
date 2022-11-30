@@ -53,3 +53,5 @@ pub use error::*;
 #[cfg(test)]
 extern crate rand;
 extern crate byteorder;
+
+include!("../common/src/info.rs");
