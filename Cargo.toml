@@ -1,6 +1,7 @@
 [package]
+build = 'common/build/build.rs'
 name = 'ton_abi'
-version = '2.3.39'
+version = '2.3.40'
 
 [dependencies]
 base64 = '0.10.0'
