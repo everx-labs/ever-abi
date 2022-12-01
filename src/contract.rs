@@ -293,7 +293,7 @@ impl Contract {
     }
 
     /// Returns `Event` struct with provided function name.
-    pub fn event(&self, name: &str) -> Result<&Function> {
+    pub fn event(&self, name: &str) -> Result<&Event> {
         self.events.get(name).ok_or_else(|| AbiError::InvalidName { name: name.to_owned() }.into())
     }
 
