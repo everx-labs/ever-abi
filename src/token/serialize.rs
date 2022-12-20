@@ -99,7 +99,7 @@ impl TokenValue {
         }
         Ok(packed_cells.into_iter().rev().reduce(
             |acc, mut cur| {
-                cur.data.append_reference(acc.data);
+                cur.data.checked_append_reference(acc.data.into_cell().unwrap()).unwrap();
                 cur
             })
             .unwrap()
@@ -231,7 +231,7 @@ impl TokenValue {
 
     fn write_cell(cell: &Cell) -> Result<BuilderData> {
         let mut builder = BuilderData::new();
-        builder.append_reference_cell(cell.clone());
+        builder.checked_append_reference(cell.clone())?;
         Ok(builder)
     }
 
@@ -290,13 +290,13 @@ impl TokenValue {
             len -= cell_capacity;
             builder.append_raw(&data[len..len + cell_capacity], cell_capacity * 8)?;
             let mut new_builder = BuilderData::new();
-            new_builder.append_reference(builder);
+            new_builder.checked_append_reference(builder.into_cell()?)?;
             builder = new_builder;
             cell_capacity = std::cmp::min(cell_len, len);
         }
         // if bytes are empty then we need builder with ref to empty cell
         if builder.references_used() == 0 {
-            builder.append_reference(BuilderData::new());
+            builder.checked_append_reference(Cell::default())?;
         }
         Ok(builder)
     }

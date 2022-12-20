@@ -148,7 +148,7 @@ fn test_constructor_call() {
     ).unwrap();
 
     let mut expected_tree = BuilderData::with_bitstring(vec![0x54, 0xc1, 0xf4, 0x0f, 0x80]).unwrap();
-    expected_tree.prepend_reference(BuilderData::new());
+    expected_tree.checked_prepend_reference(Default::default()).unwrap();
 
     let test_tree = SliceData::load_builder(test_tree).unwrap();
     let expected_tree = SliceData::load_builder(expected_tree).unwrap();
@@ -295,9 +295,9 @@ fn test_not_signed_call() {
     .unwrap();
 
     let mut expected_tree = BuilderData::with_bitstring(vec![
-            0x23, 0xF3, 0x3E, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x80
-        ]).unwrap();
-    expected_tree.prepend_reference(BuilderData::new());
+        0x23, 0xF3, 0x3E, 0x2F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x80
+    ]).unwrap();
+    expected_tree.checked_prepend_reference(Default::default()).unwrap();
 
     assert_eq!(test_tree, expected_tree);
 }

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -599,7 +599,7 @@ fn test_signed_call_v23() {
     expected_tree_child.append_u8(12).unwrap();                   // value
     expected_tree_child.append_u32(30).unwrap();                  // period
 
-    expected_tree.append_reference(expected_tree_child);
+    expected_tree.checked_append_reference(expected_tree_child.into_cell().unwrap()).unwrap();
 
     assert!(test_tree.get_next_bit().unwrap());
     let sign = &test_tree.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH).unwrap();

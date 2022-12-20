@@ -478,8 +478,8 @@ mod tokenize_tests {
 
         let mut expected_tokens = vec![];
         let mut builder = BuilderData::with_bitstring(vec![1, 2, 3, 4, 5, 6, 7, 8, 0x80]).unwrap();
-        builder.append_reference(BuilderData::with_bitstring(vec![11, 12, 13, 14, 15, 16, 17, 18, 0x80]).unwrap());
-        builder.append_reference(BuilderData::with_bitstring(vec![21, 22, 23, 24, 25, 26, 27, 28, 0x80]).unwrap());
+        builder.checked_append_reference(BuilderData::with_bitstring(vec![11, 12, 13, 14, 15, 16, 17, 18, 0x80]).unwrap().into_cell().unwrap()).unwrap();
+        builder.checked_append_reference(BuilderData::with_bitstring(vec![21, 22, 23, 24, 25, 26, 27, 28, 0x80]).unwrap().into_cell().unwrap()).unwrap();
         expected_tokens.push(Token::new("a", TokenValue::Cell(builder.into_cell().unwrap())));
         expected_tokens.push(Token::new("b", TokenValue::Cell(Cell::default())));
 

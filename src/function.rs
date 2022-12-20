@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -21,7 +21,7 @@ use contract::{AbiVersion, SerdeFunction};
 use ed25519::signature::Signer;
 use ed25519_dalek::{Keypair, SIGNATURE_LENGTH};
 use ton_block::{Serializable, MsgAddressInt};
-use ton_types::{BuilderData, error, fail, IBitstring, Result, SliceData, MAX_DATA_BYTES};
+use ton_types::{BuilderData, error, fail, IBitstring, Result, SliceData, MAX_DATA_BYTES, Cell};
 
 /// Contract function specification.
 #[derive(Debug, Clone, PartialEq)]
@@ -300,7 +300,7 @@ impl Function {
             let mut sign_builder = BuilderData::new();
             if self.abi_version.major == 1 {
                 // reserve reference for sign
-                sign_builder.append_reference(BuilderData::new());
+                sign_builder.checked_append_reference(Cell::default())?;
                 remove_ref = true;
             } else {
                 // reserve in-cell data
@@ -365,17 +365,18 @@ impl Function {
             if builder.references_free() == 0 {
                 fail!(AbiError::InvalidInputData { msg: "No free reference for signature".to_owned() } );
             }
-            if let Some(signature) = signature {
+            let cell = if let Some(signature) = signature {
                 let mut signature = signature.to_vec();
                 if let Some(public_key) = public_key {
                     signature.extend_from_slice(public_key);
                 }
         
                 let len = signature.len() * 8;
-                builder.prepend_reference(BuilderData::with_raw(signature, len)?);
+                BuilderData::with_raw(signature, len)?.into_cell()?
             } else {
-                builder.prepend_reference(BuilderData::new());
-            }
+                Cell::default()
+            };
+            builder.checked_prepend_reference(cell)?;
         } else {
             // sign in cell body
             let mut sign_builder = BuilderData::new();
