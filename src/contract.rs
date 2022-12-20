@@ -346,6 +346,11 @@ impl Contract {
         Err(AbiError::InvalidFunctionId { id }.into())
     }
 
+    /// Returns `Event` struct with provided function name.
+    pub fn event(&self, name: &str) -> Result<&Event> {
+        self.events.get(name).ok_or_else(|| AbiError::InvalidName { name: name.to_owned() }.into())
+    }
+
     /// Returns `Event` struct with provided function id.
     pub fn event_by_id(&self, id: u32) -> Result<&Event> {
         for event in self.events.values() {
