@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -42,14 +42,7 @@ fn add_array_as_map<T: Serializable>(builder: &mut BuilderData, array: &[T], fix
     }
 
     let map = put_array_into_map(array);
-
-    match map.data() {
-        Some(cell) => {
-            builder.append_bit_one().unwrap();
-            builder.append_reference_cell(cell.clone());
-        }
-        None => { builder.append_bit_zero().unwrap(); }
-    }
+    map.write_hashmap_data(builder).unwrap()
 }
 
 fn test_parameters_set(
@@ -60,7 +53,7 @@ fn test_parameters_set(
 ) {
     for version in versions {
         let mut prefix = BuilderData::new();
-        prefix.append_reference(BuilderData::new());
+        prefix.checked_append_reference(Cell::default()).unwrap();
         prefix.append_u32(0).unwrap();
 
         // tree check
@@ -114,7 +107,7 @@ fn test_one_input_and_output() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_u128(1123).unwrap();
 
@@ -136,7 +129,7 @@ fn test_with_grams() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     let grams = Grams::from(173742);
     grams.write_to(&mut builder).unwrap();
@@ -156,9 +149,9 @@ fn test_with_address() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
-    builder.append_reference(BuilderData::with_bitstring(vec![1, 2, 3, 0x80]).unwrap());
+    builder.checked_append_reference(BuilderData::with_bitstring(vec![1, 2, 3, 0x80]).unwrap().into_cell().unwrap()).unwrap();
 
     let anycast = AnycastInfo::with_rewrite_pfx(SliceData::new(vec![0x77, 0x78, 0x79, 0x80])).unwrap();
     let addresses = vec![
@@ -176,12 +169,12 @@ fn test_with_address() {
     builders.push(builder_v2_2);
     let builder_v2_2 = builders.into_iter().reduce(
         |acc, mut cur| {
-            cur.append_reference(acc);
+            cur.checked_append_reference(acc.into_cell().unwrap()).unwrap();
             cur
         }).unwrap();
 
     addresses.iter().take(5).for_each(|address| address.write_to(&mut builder).unwrap());
-    builder.append_reference(addresses.last().unwrap().write_to_new_cell().unwrap());
+    builder.checked_append_reference(addresses.last().unwrap().serialize().unwrap()).unwrap();
 
     let mut values = vec![TokenValue::Cell(BuilderData::with_bitstring(vec![1, 2, 3, 0x80]).unwrap().into_cell().unwrap())];
     addresses.iter().for_each(|address| {
@@ -209,7 +202,7 @@ fn test_one_input_and_output_by_data() {
     let mut expected_tree = BuilderData::with_bitstring(vec![
         0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x75, 0x0C, 0xE4, 0x7B, 0xAC, 0x80,
     ]).unwrap();
-    expected_tree.append_reference(BuilderData::new());
+    expected_tree.checked_append_reference(Cell::default()).unwrap();
 
     let values = vec![TokenValue::Int(Int {
         number: BigInt::from(-596784153684i64),
@@ -229,7 +222,7 @@ fn test_empty_params() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     test_parameters_set(
         &[],
@@ -244,7 +237,7 @@ fn test_two_params() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_bit_one().unwrap();
     builder.append_i32(9434567).unwrap();
@@ -269,24 +262,24 @@ fn test_two_params() {
 fn test_five_refs_v1() {
     let bytes = vec![0x55; 300]; // 300 = 127 + 127 + 46
     let mut builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
-    builder.append_reference(BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap());
+    builder.checked_append_reference(BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap().into_cell().unwrap()).unwrap();
     let mut bytes_builder = BuilderData::with_raw(vec![0x55; 46], 46 * 8).unwrap();
-    bytes_builder.append_reference(builder);
+    bytes_builder.checked_append_reference(builder.into_cell().unwrap()).unwrap();
 
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_bit_one().unwrap();
-    builder.append_reference(bytes_builder.clone());
-    builder.append_reference(bytes_builder.clone());
+    builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
+    builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
 
     let mut new_builder = BuilderData::new();
     new_builder.append_i32(9434567).unwrap();
-    new_builder.append_reference(BuilderData::new());
-    new_builder.append_reference(bytes_builder.clone());
-    builder.append_reference(new_builder);
+    new_builder.checked_append_reference(Cell::default()).unwrap();
+    new_builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
+    builder.checked_append_reference(new_builder.into_cell().unwrap()).unwrap();
 
     let values = vec![
         TokenValue::Bool(true),
@@ -310,24 +303,24 @@ fn test_five_refs_v1() {
 fn test_five_refs_v2() {
     let bytes = vec![0x55; 300]; // 300 = 127 + 127 + 46
     let mut builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
-    builder.append_reference(BuilderData::with_raw(vec![0x55; 46], 46 * 8).unwrap());
+    builder.checked_append_reference(BuilderData::with_raw(vec![0x55; 46], 46 * 8).unwrap().into_cell().unwrap()).unwrap();
     let mut bytes_builder = BuilderData::with_raw(vec![0x55; 127], 127 * 8).unwrap();
-    bytes_builder.append_reference(builder);
+    bytes_builder.checked_append_reference(builder.into_cell().unwrap()).unwrap();
 
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_bit_one().unwrap();
-    builder.append_reference(bytes_builder.clone());
-    builder.append_reference(bytes_builder.clone());
+    builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
+    builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
 
     let mut new_builder = BuilderData::new();
     new_builder.append_i32(9434567).unwrap();
-    new_builder.append_reference(BuilderData::new());
-    new_builder.append_reference(bytes_builder.clone());
-    builder.append_reference(new_builder);
+    new_builder.checked_append_reference(Cell::default()).unwrap();
+    new_builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
+    builder.checked_append_reference(new_builder.into_cell().unwrap()).unwrap();
 
     let values = vec![
         TokenValue::Bool(true),
@@ -351,7 +344,7 @@ fn test_nested_tuples_with_all_simples() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
 
     builder.append_bit_zero().unwrap();
@@ -403,7 +396,7 @@ fn test_static_array_of_ints() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     add_array_as_map(&mut builder, &input_array, true);
 
@@ -428,7 +421,7 @@ fn test_empty_dynamic_array() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     add_array_as_map(&mut builder, &Vec::<u16>::new(), false);
 
@@ -454,7 +447,7 @@ fn test_dynamic_array_of_ints() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     add_array_as_map(&mut builder, &input_array, false);
 
@@ -498,7 +491,7 @@ fn test_dynamic_array_of_tuples() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     let bitstring_array: Vec<TupleDwordBool> = input_array
         .iter()
@@ -550,7 +543,7 @@ fn test_tuples_with_combined_types() {
     // test prefix with one ref and u32
     let mut chain_builder = BuilderData::new();
     chain_builder.append_u32(0).unwrap();
-    chain_builder.append_reference(BuilderData::new());
+    chain_builder.checked_append_reference(Cell::default()).unwrap();
 
     // u8
     chain_builder.append_u8(18).unwrap();
@@ -577,13 +570,13 @@ fn test_tuples_with_combined_types() {
 
     let mut chain_builder_v2 = chain_builder.clone();
     chain_builder_v2.append_bit_one().unwrap();
-    chain_builder_v2.append_reference(BuilderData::from(map.data().unwrap().clone()));
+    chain_builder_v2.checked_append_reference(map.data().unwrap().clone()).unwrap();
 
     let mut second_builder = BuilderData::new();
     second_builder.append_bit_one().unwrap();
-    second_builder.append_reference(BuilderData::from(map.data().unwrap().clone()));
+    second_builder.checked_append_reference(map.data().unwrap().clone()).unwrap();
 
-    chain_builder.append_reference(second_builder);
+    chain_builder.checked_append_reference(second_builder.into_cell().unwrap()).unwrap();
 
     let array1_token_value = TokenValue::Array(
         ParamType::Tuple(vec![
@@ -654,13 +647,13 @@ fn test_four_refs_and_four_int256() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
-    builder.append_reference(bytes_builder.clone());
-    builder.append_reference(bytes_builder.clone());
+    builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
+    builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
 
     let mut second_builder = BuilderData::new();
-    second_builder.append_reference(bytes_builder.clone());
+    second_builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
     second_builder.append_builder(&bytes_builder).unwrap();
     second_builder.append_builder(&bytes_builder).unwrap();
     second_builder.append_builder(&bytes_builder).unwrap();
@@ -668,8 +661,8 @@ fn test_four_refs_and_four_int256() {
     let mut third_builder = BuilderData::new();
     third_builder.append_builder(&bytes_builder).unwrap();
 
-    second_builder.append_reference(third_builder);
-    builder.append_reference(second_builder);
+    second_builder.checked_append_reference(third_builder.into_cell().unwrap()).unwrap();
+    builder.checked_append_reference(second_builder.into_cell().unwrap()).unwrap();
 
     let values = vec![
         TokenValue::Cell(bytes_builder.clone().into_cell().unwrap()),
@@ -697,20 +690,20 @@ fn test_four_refs_and_one_int256() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
-    builder.append_reference(bytes_builder.clone());
-    builder.append_reference(bytes_builder.clone());
+    builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
+    builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
 
     let mut builder_v2 = builder.clone();
-    builder_v2.append_reference(bytes_builder.clone());
+    builder_v2.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
     builder_v2.append_builder(&bytes_builder).unwrap();
 
     let mut second_builder = BuilderData::new();
-    second_builder.append_reference(bytes_builder.clone());
+    second_builder.checked_append_reference(bytes_builder.clone().into_cell().unwrap()).unwrap();
     second_builder.append_builder(&bytes_builder).unwrap();
 
-    builder.append_reference(second_builder);
+    builder.checked_append_reference(second_builder.into_cell().unwrap()).unwrap();
 
     let values = vec![
         TokenValue::Cell(bytes_builder.clone().into_cell().unwrap()),
@@ -739,7 +732,7 @@ fn test_header_params() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     let public_key = ed25519_dalek::PublicKey::from_bytes(&[0u8; ed25519_dalek::PUBLIC_KEY_LENGTH]).unwrap();
 
@@ -780,7 +773,7 @@ fn test_map() {
     let bytes = vec![0x55; 32];
     let bytes_builder = BuilderData::with_raw(bytes.clone(), bytes.len() * 8).unwrap();
     let mut builder = BuilderData::new();
-    builder.append_reference(bytes_builder);
+    builder.checked_append_reference(bytes_builder.into_cell().unwrap()).unwrap();
 
     let bytes_map = vec_to_map(
         &vec![
@@ -857,7 +850,7 @@ fn test_map() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_builder(&bytes_map.write_to_new_cell().unwrap()).unwrap();
     builder.append_builder(&int_map.write_to_new_cell().unwrap()).unwrap();
@@ -869,7 +862,7 @@ fn test_map() {
     let mut second_builder = BuilderData::new();
     second_builder.append_builder(&tuples_map.write_to_new_cell().unwrap()).unwrap();
     second_builder.append_bit_zero().unwrap();
-    builder.append_reference(second_builder);
+    builder.checked_append_reference(second_builder.into_cell().unwrap()).unwrap();
 
     let values = vec![
         bytes_value,
@@ -922,7 +915,7 @@ fn test_address_map_key() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_builder(&map.write_to_new_cell().unwrap()).unwrap();
 
@@ -950,7 +943,7 @@ fn test_address_map_key() {
     map_value.append_u128(2).unwrap();
     map_value.append_u128(0).unwrap();
     map_value.append_u128(3).unwrap();
-    map_value.append_reference(map_value_ref);
+    map_value.checked_append_reference(map_value_ref.into_cell().unwrap()).unwrap();
 
     let mut map_key = BuilderData::new();
     map_key.append_u128(0).unwrap();
@@ -992,7 +985,7 @@ fn test_address_map_key() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_builder(&map.write_to_new_cell().unwrap()).unwrap();
     builder.append_u32(1).unwrap();
@@ -1045,7 +1038,7 @@ fn test_abi_2_1_types() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_bits(1, 4).unwrap();
     builder.append_i8(-123).unwrap();
@@ -1102,14 +1095,14 @@ fn test_ref_type() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     let mut ref_builder = BuilderData::new();
     ref_builder.append_bit_one().unwrap();
-    ref_builder.append_reference(BuilderData::new());
+    ref_builder.checked_append_reference(Cell::default()).unwrap();
 
-    builder.append_reference(123u64.write_to_new_cell().unwrap());
-    builder.append_reference(ref_builder.clone());
+    builder.checked_append_reference(123u64.serialize().unwrap()).unwrap();
+    builder.checked_append_reference(ref_builder.clone().into_cell().unwrap()).unwrap();
 
     let values = vec![
         TokenValue::Ref(Box::new(TokenValue::Int(Int::new(123, 64)))),
@@ -1131,7 +1124,7 @@ fn test_ref_type() {
 fn test_partial_decoding() {
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(123u64.write_to_new_cell().unwrap());
+    builder.checked_append_reference(123u64.serialize().unwrap()).unwrap();
     builder.append_bit_one().unwrap();
     let slice = SliceData::load_builder(builder).unwrap();
 
@@ -1178,7 +1171,7 @@ fn test_four_optional_strings() {
     // test prefix with one ref and u32
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_bits(1, 2).unwrap();
     builder.checked_append_reference(string_builder.clone().into_cell().unwrap()).unwrap();
@@ -1202,7 +1195,7 @@ fn test_four_optional_strings() {
 
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();
-    builder.append_reference(BuilderData::new());
+    builder.checked_append_reference(Cell::default()).unwrap();
 
     builder.append_bits(5, 4).unwrap();
     builder.checked_append_reference(string_builder.clone().into_cell().unwrap()).unwrap();
