@@ -274,13 +274,19 @@ fn test_signed_call() {
     expected_tree.append_u8(12).unwrap();                   // value
     expected_tree.append_u32(30).unwrap();                  // period
 
+    let (test_sign, test_hash) = get_signature_data(
+        WALLET_ABI, test_tree.clone(), None
+    ).unwrap();
+
     assert!(test_tree.get_next_bit().unwrap());
     let sign = &test_tree.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH).unwrap();
+    assert_eq!(sign, &test_sign);
     let sign = Signature::from_bytes(sign).unwrap();
 
     assert_eq!(test_tree, SliceData::load_builder(expected_tree).unwrap());
 
     let hash = test_tree.into_cell().repr_hash();
+    assert_eq!(hash.clone().into_vec(), test_hash);
     pair.verify(hash.as_slice(), &sign).unwrap();
 
     let expected_response = r#"{"value0":"0"}"#;
@@ -601,8 +607,13 @@ fn test_signed_call_v23() {
 
     expected_tree.checked_append_reference(expected_tree_child.into_cell().unwrap()).unwrap();
 
+    let (test_sign, test_hash) = get_signature_data(
+        WALLET_ABI_V23, test_tree.clone(), Some(address.to_owned())
+    ).unwrap();
+
     assert!(test_tree.get_next_bit().unwrap());
     let sign = &test_tree.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH).unwrap();
+    assert_eq!(sign, &test_sign);
     let sign = Signature::from_bytes(sign).unwrap();
 
     assert_eq!(test_tree, SliceData::load_builder(expected_tree).unwrap());
@@ -611,6 +622,7 @@ fn test_signed_call_v23() {
     signed_tree.append_builder(&BuilderData::from_slice(&test_tree)).unwrap();
 
     let hash = signed_tree.into_cell().unwrap().repr_hash();
+    assert_eq!(hash.clone().into_vec(), test_hash);
     pair.verify(hash.as_slice(), &sign).unwrap();
 
     let expected_response = r#"{"value0":"0"}"#;

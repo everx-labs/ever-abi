@@ -17,7 +17,7 @@ use std::io;
 use std::collections::HashMap;
 use serde::de::{Error as SerdeError};
 use serde_json;
-use ton_block::Serializable;
+use ton_block::{Serializable, MsgAddressInt};
 use ton_types::{BuilderData, error, fail, HashmapE, Result, SliceData};
 
 
@@ -463,6 +463,15 @@ impl Contract {
     /// Decode account storage fields
     pub fn decode_storage_fields(&self, data: SliceData, allow_partial: bool) -> Result<Vec<Token>> {
         TokenValue::decode_params(&self.fields, data, &self.abi_version, allow_partial)
+    }
+
+    /// Get signature and signed hash from function call data
+    pub fn get_signature_data(
+        &self,
+        cursor: SliceData,
+        address: Option<MsgAddressInt>,
+    ) -> Result<(Vec<u8>, Vec<u8>)> {
+        Function::get_signature_data(&self.abi_version, cursor, address)
     }
 }
 
