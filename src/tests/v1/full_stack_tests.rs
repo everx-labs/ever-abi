@@ -236,12 +236,19 @@ fn test_signed_call() {
 
     let expected_tree = BuilderData::with_bitstring(vec).unwrap();
 
+    let (test_sign, test_hash) = get_signature_data(
+        WALLET_ABI, test_tree.clone(), None
+    ).unwrap();
+
     let mut sign = SliceData::load_cell(test_tree.checked_drain_reference().unwrap()).unwrap();
-    let sign = Signature::from_bytes(sign.get_next_bytes(64).unwrap().as_slice()).unwrap();
+    let sign = sign.get_next_bytes(64).unwrap();
+    assert_eq!(sign, test_sign);
+    let sign = Signature::from_bytes(&sign).unwrap();
 
     assert_eq!(test_tree, SliceData::load_builder(expected_tree).unwrap());
 
     let hash = test_tree.into_cell().repr_hash();
+    assert_eq!(hash.clone().into_vec(), test_hash);
     pair.verify(hash.as_slice(), &sign).unwrap();
 
     let expected_response = r#"{"value0":"0"}"#;

@@ -275,6 +275,33 @@ impl Function {
         Ok((tokens, id, cursor))
     }
 
+    pub fn get_signature_data(
+        abi_version: &AbiVersion,
+        mut cursor: SliceData,
+        address: Option<MsgAddressInt>,
+    ) -> Result<(Vec<u8>, Vec<u8>)> {
+        let signature = if abi_version == &ABI_VERSION_1_0 {
+            SliceData::load_cell(cursor.checked_drain_reference()?)?.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH)?
+        } else {
+            if cursor.get_next_bit()? {
+                cursor.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH)?
+            } else {
+                return Err(AbiError::InvalidData { msg: "No signature".to_owned() }.into());
+            }
+        };
+
+        let hash = if abi_version >= &ABI_VERSION_2_3 {
+            let address = address.ok_or(AbiError::AddressRequired)?;
+            let mut address_builder = address.write_to_new_cell()?;
+            address_builder.append_builder(&BuilderData::from_slice(&cursor))?;
+            address_builder.into_cell()?.repr_hash().into_vec()
+        } else {
+            cursor.into_cell().repr_hash().into_vec()
+        };
+
+        Ok((signature, hash))
+    }
+
     /// Encodes provided function parameters into `BuilderData` containing ABI contract call.
     /// `BuilderData` is prepared for signing. Sign should be the added by `add_sign_to_function_call` function
     pub fn create_unsigned_call(

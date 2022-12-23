@@ -188,6 +188,17 @@ pub fn decode_storage_fields(abi: &str, data: SliceData, allow_partial: bool) ->
     Detokenizer::detokenize(&decoded)
 }
 
+/// Get signature and signed hash from function call data
+pub fn get_signature_data(
+    abi: &str,
+    cursor: SliceData,
+    address: Option<String>,
+) -> Result<(Vec<u8>, Vec<u8>)> {
+    let contract = Contract::load(abi.as_bytes())?;
+    let address = address.map(|string| MsgAddressInt::from_str(&string)).transpose()?;
+    contract.get_signature_data(cursor, address)
+}
+
 #[cfg(test)]
 #[path = "tests/v1/full_stack_tests.rs"]
 mod tests_v1;
