@@ -3,7 +3,7 @@
 <p align="center">Application Binary Interface implementation</p>
 <p align="center">for TVM compatible blockchains (Everscale, Venom, TON, Gosh, etc) </p>
 
-<p align="left"><img src="https://github.com//tonlabs/ton-labs-abi/vf-dev-program.png" height="60"/></a></p> 
+!(./vf-dev-program.png)
 
 ## Specifications
 
