@@ -59,8 +59,8 @@ fn test_parameters_set(
         // tree check
         let test_tree = TokenValue::pack_values_into_chain(inputs, vec![prefix.into()], version).unwrap();
 
-        println!("{:#.2}", test_tree.clone().into_cell().unwrap());
-        println!("{:#.2}", params_tree.clone().into_cell().unwrap());
+        println!("{:#.3}", test_tree.clone().into_cell().unwrap());
+        println!("{:#.3}", params_tree.clone().into_cell().unwrap());
         assert_eq!(test_tree, params_tree);
 
         // check decoding
@@ -1027,7 +1027,7 @@ fn test_abi_2_1_types() {
         TokenValue::Optional(
             ParamType::VarUint(128),
             Some(Box::new(
-                TokenValue::VarUint(128, 123u32.into())
+                TokenValue::VarUint(128, 0u32.into())
         ))),
         TokenValue::Optional(
             ParamType::Tuple(params_from_tokens(&tuple_tokens)),
@@ -1054,8 +1054,7 @@ fn test_abi_2_1_types() {
     uint_builder.append_raw(&[0x4], 6).unwrap();
 
     let mut varuint_builder = BuilderData::new();
-    varuint_builder.append_raw(&[0x2], 7).unwrap();
-    varuint_builder.append_u8(123).unwrap();
+    varuint_builder.append_raw(&[0], 7).unwrap();
     let mut varuint_builder = BuilderData::with_raw_and_refs(
         vec![0x80],
         1,

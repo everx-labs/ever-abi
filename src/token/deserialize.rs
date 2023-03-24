@@ -92,15 +92,23 @@ impl TokenValue {
     fn read_varuint(size: usize, cursor: SliceData) -> Result<(Self, SliceData)> {
         let (len, cursor) = Self::read_uint_from_chain(ParamType::varint_size_len(size), cursor)?;
         let len = len.to_usize().unwrap();
-        let (number, cursor) = Self::read_uint_from_chain(len * 8, cursor)?;
-        Ok((TokenValue::VarUint(size, number), cursor))
+        if len == 0 {
+            Ok((TokenValue::VarUint(size, 0u32.into()), cursor))
+        } else {
+            let (number, cursor) = Self::read_uint_from_chain(len * 8, cursor)?;
+            Ok((TokenValue::VarUint(size, number), cursor))
+        }
     }
 
     fn read_varint(size: usize, cursor: SliceData) -> Result<(Self, SliceData)> {
         let (len, cursor) = Self::read_uint_from_chain(ParamType::varint_size_len(size), cursor)?;
         let len = len.to_usize().unwrap();
-        let (number, cursor) = Self::read_int_from_chain(len * 8, cursor)?;
-        Ok((TokenValue::VarInt(size, number), cursor))
+        if len == 0 {
+            Ok((TokenValue::VarInt(size, 0.into()), cursor))
+        } else {
+            let (number, cursor) = Self::read_int_from_chain(len * 8, cursor)?;
+            Ok((TokenValue::VarInt(size, number), cursor))
+        }
     }
 
     fn read_tuple(
