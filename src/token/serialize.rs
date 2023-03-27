@@ -211,8 +211,12 @@ impl TokenValue {
 
         let mut builder = BuilderData::new();
         let bits = ParamType::varint_size_len(size);
-        builder.append_bits(vec.len(), bits as usize)?;
-        builder.append_raw(&vec, vec.len() * 8)?;
+        if vec != &[0] {
+            builder.append_bits(vec.len(), bits as usize)?;
+            builder.append_raw(&vec, vec.len() * 8)?;
+        } else {
+            builder.append_bits(0, bits as usize)?;
+        }
 
         Ok(builder)
     }
