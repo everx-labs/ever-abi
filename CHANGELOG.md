@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 - Fix zero varint encoding
 - Increase version number
 - Update CHANGELOG.md file
+- Update CHANGELOG.md file
 
 ## Version: 2.3.51
 
