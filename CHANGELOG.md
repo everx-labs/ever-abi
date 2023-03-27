@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.3.76
+
+- Fix zero varint encoding
+- Increase version number
+
 ## Version: 2.3.51
 
 ### New
