@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.3.77
+
+- Supported ever-types version 2.0
+
 ## Version 2.3.76
 
 - Fix zero varint encoding

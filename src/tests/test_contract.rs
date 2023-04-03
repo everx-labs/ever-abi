@@ -11,10 +11,8 @@
 * limitations under the License.
 */
 
-use std::io::Cursor;
-
 use ton_block::{Deserializable, StateInit};
-use ton_types::{deserialize_cells_tree, Result, SliceData};
+use ton_types::{read_single_root_boc, Result, SliceData};
 
 use Contract;
 
@@ -26,10 +24,9 @@ const PUB_KEY: [u8; ed25519_dalek::PUBLIC_KEY_LENGTH] = [
 
 #[test]
 fn test_pubkey() -> Result<()> {
-    let mut si_roots = deserialize_cells_tree(&mut Cursor::new(DEPOOL_TVC))?;
-    assert_eq!(si_roots.len(), 1);
+    let si_root = read_single_root_boc(DEPOOL_TVC)?;
 
-    let state_init = StateInit::construct_from_cell(si_roots.remove(0))?;
+    let state_init = StateInit::construct_from_cell(si_root)?;
     let data = SliceData::load_cell(state_init.data.unwrap())?;
 
     let pub_key = Contract::get_pubkey(&data)?.unwrap();
