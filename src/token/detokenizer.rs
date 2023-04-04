@@ -16,7 +16,7 @@ use crate::{ param_type::ParamType, token::{Token, TokenValue} };
 use num_bigint::{BigInt, BigUint};
 use serde::ser::{Serialize, Serializer, SerializeMap};
 use std::collections::{HashMap, BTreeMap};
-use ton_types::{Cell, Result, serialize_tree_of_cells};
+use ton_types::{Cell, Result, write_boc};
 
 pub struct Detokenizer;
 
@@ -111,8 +111,7 @@ impl Token {
     where
         S: Serializer,
     {
-        let mut data = vec![];
-        serialize_tree_of_cells(cell, &mut data)
+        let data = write_boc(cell)
             .map_err(|err| serde::ser::Error::custom(err.to_string()))?;
 
         let data = base64::encode(&data);
