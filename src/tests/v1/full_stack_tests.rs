@@ -16,6 +16,7 @@ use ed25519::signature::{Signature, Signer};
 use ton_types::{BuilderData, SliceData};
 use ton_types::dictionary::HashmapE;
 use ton_block::{MsgAddressInt, Serializable};
+use serde_json::json;
 
 use json_abi::*;
 
@@ -432,4 +433,80 @@ fn test_update_decode_contract_data() {
         serde_json::from_str::<Value>(params).unwrap(),
         serde_json::from_str::<Value>(&decoded).unwrap()
     );
+}
+
+fn value_helper(abi_type: &str, value: &str) -> Result<BuilderData> {
+    let abi = json!({
+        "ABI version": 2,
+        "version": "2.3",
+        "functions": [
+          {"name": "test","inputs": [{"name":"value","type":abi_type}],"outputs": []}
+        ],
+        "events": [],
+        "data": []
+    }).to_string();
+    let params = json!({"value": value}).to_string();
+    encode_function_call(
+        abi,
+        "test".to_owned(),
+        None,
+        params.to_owned(),
+        false,
+        None,
+        None,
+    )
+}
+
+#[test]
+fn test_max_varuint32() {
+    // value max bit size (2 ** log2(32) - 1) * 8
+    let value = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+    let encoded = value_helper("varuint32", value).unwrap();
+    println!("{}", encoded);
+    assert_eq!(
+        encoded.data(),
+        &hex::decode("1869a0307ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc").unwrap()
+    );
+    assert_eq!(encoded.length_in_bits(), 286);
+    assert_eq!(encoded.references().len(), 0);
+}
+
+#[test]
+fn test_max_varint32() {
+    // value max bit size (2 ** log2(32) - 1) * 8
+    let value = "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+    let encoded = value_helper("varint32", value).unwrap();
+    println!("{}", encoded);
+    assert_eq!(
+        encoded.data(),
+        &hex::decode("30d82fc87dfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc").unwrap()
+    );
+    assert_eq!(encoded.length_in_bits(), 286);
+    assert_eq!(encoded.references().len(), 0);
+}
+
+#[test]
+fn test_max_uint() {
+    let value = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+    let encoded = value_helper("uint256", value).unwrap();
+    println!("{}", encoded);
+    assert_eq!(
+        encoded.data(),
+        &hex::decode("3a8707b37fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80").unwrap()
+    );
+    assert_eq!(encoded.length_in_bits(), 289);
+    assert_eq!(encoded.references().len(), 0);
+}
+
+#[test]
+fn test_max_int() {
+    let value = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+    let encoded = value_helper("int257", value).unwrap();
+    println!("{}", encoded);
+    assert_eq!(
+        encoded.data(),
+        &hex::decode("088fb044bfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc0").unwrap()
+    );
+    assert_eq!(encoded.length_in_bits(), 290);
+    assert_eq!(encoded.references().len(), 0);
 }
