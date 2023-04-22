@@ -320,7 +320,7 @@ impl Tokenizer {
     fn tokenize_varuint(size: usize, value: &Value, name: &str) -> Result<TokenValue> {
         let number = Self::read_uint(value, name)?;
 
-        if !Self::check_uint_size(&number, (size - 1) * 8) {
+        if !Self::check_uint_size(&number, (size - 1) * 8 + 1) {
             fail!(AbiError::InvalidParameterValue {
                 val: value.clone(),
                 name: name.to_string(),
