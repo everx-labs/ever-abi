@@ -200,15 +200,7 @@ impl TokenValue {
         Self::write_int(&int)
     }
 
-    fn write_varint(value: &BigInt, size: usize) -> Result<BuilderData> {
-        let vec = value.to_signed_bytes_be();
-
-        if vec.len() > size - 1 {
-            fail!(AbiError::InvalidData {
-                msg: format!("Too long value for varint{}: {}", size, value)
-            });
-        }
-
+    fn write_varnumber(vec: &Vec<u8>, size: usize) -> Result<BuilderData> {
         let mut builder = BuilderData::new();
         let bits = ParamType::varint_size_len(size);
         if vec != &[0] {
@@ -221,10 +213,26 @@ impl TokenValue {
         Ok(builder)
     }
 
-    fn write_varuint(value: &BigUint, size: usize) -> Result<BuilderData> {
-        let big_int = BigInt::from_biguint(Sign::Plus, value.clone());
+    fn write_varint(value: &BigInt, size: usize) -> Result<BuilderData> {
+        let vec = value.to_signed_bytes_be();
 
-        Self::write_varint(&big_int, size)
+        if vec.len() > size - 1 {
+            fail!(AbiError::InvalidData {
+                msg: format!("Too long value for varint{}: {}", size, value)
+            });
+        }
+        Self::write_varnumber(&vec, size)
+    }
+
+    fn write_varuint(value: &BigUint, size: usize) -> Result<BuilderData> {
+        let vec = value.to_bytes_be();
+
+        if vec.len() > size - 1 {
+            fail!(AbiError::InvalidData {
+                msg: format!("Too long value for varuint{}: {}", size, value)
+            });
+        }
+        Self::write_varnumber(&vec, size)
     }
 
     fn write_bool(value: &bool) -> Result<BuilderData> {

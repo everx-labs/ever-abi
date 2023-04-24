@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.3.83
+
+- Fixed max integer values serialization
+
 ## Version 2.3.77
 
 - Supported ever-types version 2.0

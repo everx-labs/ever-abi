@@ -278,7 +278,7 @@ impl Tokenizer {
 
     /// Checks if given number can be fit into given bits count
     fn check_uint_size(number: &BigUint, size: usize) -> bool {
-        (number.bits() as usize) < size
+        (number.bits() as usize) <= size
     }
 
     /// Tries to parse a value as grams.
@@ -291,7 +291,7 @@ impl Tokenizer {
     fn tokenize_uint(size: usize, value: &Value, name: &str) -> Result<TokenValue> {
         let number = Self::read_uint(value, name)?;
 
-        if !Self::check_uint_size(&number, size + 1) {
+        if !Self::check_uint_size(&number, size) {
             fail!(AbiError::InvalidParameterValue {
                 val: value.clone(),
                 name: name.to_string(),
