@@ -6,3 +6,6 @@
 /*.so
 /*.lib
 /*.dll
+
+.vscode
+.DS_Store
