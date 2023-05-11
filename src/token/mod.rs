@@ -33,10 +33,6 @@ pub use self::detokenizer::*;
 pub use self::serialize::*;
 pub use self::deserialize::*;
 
-#[cfg(test)]
-mod tests;
-#[cfg(test)]
-mod test_encoding;
 
 pub const STD_ADDRESS_BIT_LENGTH: usize = 267;
 pub const MAX_HASH_MAP_INFO_ABOUT_KEY: usize = 12;

@@ -475,12 +475,3 @@ impl Contract {
     }
 }
 
-#[cfg(test)]
-#[path = "tests/test_contract.rs"]
-mod tests_common;
-#[cfg(test)]
-#[path = "tests/v1/test_contract.rs"]
-mod tests_v1;
-#[cfg(test)]
-#[path = "tests/v2/test_contract.rs"]
-mod tests_v2;
