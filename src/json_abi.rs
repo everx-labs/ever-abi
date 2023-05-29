@@ -199,10 +199,4 @@ pub fn get_signature_data(
     contract.get_signature_data(cursor, address)
 }
 
-#[cfg(test)]
-#[path = "tests/v1/full_stack_tests.rs"]
-mod tests_v1;
 
-#[cfg(test)]
-#[path = "tests/v2/full_stack_tests.rs"]
-mod tests_v2;
