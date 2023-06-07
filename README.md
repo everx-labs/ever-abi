@@ -21,5 +21,5 @@
 ## Usage
 Use in your Rust projects by adding git dependency into `Cargo.toml`
 ```
-ton_abi = { git = "https://github.com/tonlabs/ton-labs-abi.git" }
+ton_abi = { git = "https://github.com/tonlabs/ever-abi.git" }
 ```
