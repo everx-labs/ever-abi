@@ -16,7 +16,7 @@
 
 ## Specifications
 
-[ABI specifications](./docs)
+[ABI specification](./docs/ABI.md)
 
 ## Usage
 Use in your Rust projects by adding git dependency into `Cargo.toml`
