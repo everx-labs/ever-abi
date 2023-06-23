@@ -293,7 +293,7 @@ impl Function {
         let hash = if abi_version >= &ABI_VERSION_2_3 {
             let address = address.ok_or(AbiError::AddressRequired)?;
             let mut address_builder = address.write_to_new_cell()?;
-            address_builder.append_builder(&BuilderData::from_slice(&cursor))?;
+            address_builder.append_builder(&cursor.as_builder())?;
             address_builder.into_cell()?.repr_hash().into_vec()
         } else {
             cursor.into_cell().repr_hash().into_vec()
@@ -364,7 +364,7 @@ impl Function {
             if remove_bits != 0 {
                 slice.get_next_bits(remove_bits)?;
             }
-            builder = BuilderData::from_slice(&slice);
+            builder = slice.as_builder();
         }
 
         let hash = if self.abi_version >= ABI_VERSION_2_3 && reserve_sign {
@@ -427,7 +427,7 @@ impl Function {
         public_key: Option<&[u8]>,
         function_call: SliceData
     ) -> Result<BuilderData> {
-        let builder = BuilderData::from_slice(&function_call);
+        let builder = function_call.as_builder();
 
         Self::fill_sign(abi_version, Some(signature), public_key, builder)
     }
