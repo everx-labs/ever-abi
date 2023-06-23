@@ -19,3 +19,5 @@ mod param_type;
 pub use self::param_type::ParamType;
 pub use self::deserialize::read_type;
 
+#[cfg(test)]
+mod tests;

@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.3.124
+
+- Return tagged dependencies and tests
+
 ## Version 2.3.83
 
 - Fixed max integer values serialization
