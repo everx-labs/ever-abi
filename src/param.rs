@@ -89,3 +89,6 @@ impl<'a> Deserialize<'a> for Param {
     }
 }
 
+#[cfg(test)]
+#[path = "tests/test_param.rs"]
+mod tests;
