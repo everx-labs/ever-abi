@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.3.130
+
+- Revert "Merge pull request #284 from tonlabs/ci/libraries-2536"
+  This reverts commit f60479dee7a5e1a2738a40571cbf4fa9964eada1, reversing
+  changes made to d46946a51029e92c81e2311f0c2d120ad28f45e5.
+- Bump project version
+
 ## Version 2.3.124
 
 - Return tagged dependencies and tests
