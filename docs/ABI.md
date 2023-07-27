@@ -1,4 +1,8 @@
-# Smart Contracts ABI v2.3 Specification
+---
+title: ABI Specification
+---
+
+# Smart Contracts ABI v2.4 Specification
 
 ABI specifies message bodies layout for client to contract and contract to contract interaction.
 
@@ -20,7 +24,7 @@ Message body with encoded function call has the following format:
 
 First comes an optional signature. It is prefixed by one bit flag that indicates the signature presence. If it is `1`, then in the next `512 bit` a signature is placed, otherwise the signature is omitted.
 
-Then comes the encoded header parameters set (same for all functions).
+Then comes the encoded header parameters set  (same for all functions).
 
 It is followed by ***32 bits*** of function ID identifying which contract functions are called. The `function ID` comes within the first `32 bits` of the `SHA256` hash of the function signature.
 
@@ -153,11 +157,29 @@ If a function has no input parameters or does not return any values, the corresp
     - Note: this type is useful to store payloads as a tree of cells analog to contract code and data in the form of `StateInit` structure of `message` structure.
 - [`address`](#address) is an account address in Everscale blockchain. Encoded as `MsgAddress` struct (see TL-B schema in blockchain [spec](https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L107)).
 - [`bytes`](#bytes): an array of `uint8` type elements. The array is put into a separate cell. 
-- [`fixedbytes<N>`](#fixedbytesn): a fixed-size array of `N` `uint8` type elements. Encoding is equivalent to `bytes`
 - [`string`](#string) - a type containing UTF-8 string data, encoded like `bytes`.
 - [`optional`](#optionalinnertype) - value of optional type `optional(innerType)` can store a value of `innerType` or be empty.
 - [`itemType[]`](#itemtype) is a dynamic array of `itemType` type elements. It is encoded as a TVM dictionary.  `uint32` defines the array elements count placed into the cell body.  `HashmapE` (see TL-B schema in TVM spec) struct is then added (one bit as a dictionary root and one reference with data if the dictionary is not empty). The dictionary key is a serialized `uint32` index of the array element, and the value is a serialized array element as `itemType` type.
   - `T[k]` is a static size array of `T` type elements. Encoding is equivalent to `T[]` without elements count.
+
+## Default values for parameter types
+
+Starting from API 2.4 the specification defines default values for parameter types.
+
+- [`int<N>`](#intn) – `N` zero bits.
+- [`uint<N>`](#uintn) – `N` zero bits.
+- [`varint<N>`](#varintn)/[`varuint<N>`](#varuintn) – `x` zero bits, where `x = [log2(N)]`.
+- [`bool`](#bool) – equivalent to [`int<N>`](#uintn), where `N = 1`.
+- [`tuple(T1, T2, ..., Tn)`](#tuple) – default values for each type, i.e. `D(tuple(T1, T2, ..., Tn)) = tuple(D(T1), D(T2), ..., D(Tn))`, where `D` is defined as a function that takes ABI type and returns the corresponding default value.
+- [`map(K,V)`](#mapkeytypevaluetype) – 1 zero bit, i.e. `b{0}`.
+- [`cell`](#cell) – reference to an empty cell, i.e. `^EmptyCell`.
+- [`address`](#address) – `addr_none$00` constructor, i.e. 2 zero bits.
+- [`bytes`](#bytes) – reference to an empty cell, i.e. `^EmptyCell`.
+- [`string`](#string) – reference to an empty cell, i.e. `^EmptyCell`.
+- [`optional(T)`](#optionalinnertype) – 1 zero bit, i.e. `b{0}`.
+- [`T[]`](#itemtype) – `x{00000000} b{0}`, i.e. 33 zero bits.
+- `T[k]` – encoded as an array with `k` default values of type `T`
+- `ref(T)` – reference to a cell, cell is encoded as the default value of type `T`.
 
 ## Encoding of function ID and its arguments
 
@@ -274,6 +296,7 @@ type Data = Param & {
 type Param = {
   name: string,
   type: string,
+  init: boolean,
   components?: Param[],
 }
 ```
@@ -356,54 +379,41 @@ This section specifies the events used in the contract. An event is an external 
 
 `inputs` have the same format as for functions.
 
-### Data
-
-This section covers the contract global public variables. Data is typically used when deploying multiple identical contracts with the same deployer keys. It affects the contract address, and thus varying data results in unique addresses for identical contracts.
-
-```json5
-{
-  "data": [
-    {
-      "name": "var_name",
-      "type": "abi_type",
-      "key": "<number>" // index of variable in contract data dictionary
-    },
-  ]
-}
-```
-
 ### Fields
 
-This section describes internal structure of the smart contracts data.
+This section describes persistent smart contract data. Data structure is described as a list of variables names with corresponding data types and init flag. They are listed in the order in which they are stored in the smart contract data.
 
-Data structure is described as a list of variables' names with corresponding data types.
-It includes contract state variables and some internal contract specific hidden variables.
-They are listed in the order in which they are stored in the data field of the contract.
-Example for a Solidity contract [BankClient](https://github.com/tonlabs/samples/blob/master/solidity/5_BankClient.sol):
+Fields that are `init = true` are recommended to be specified as initial data during deploy for correct contract behaviour. Tools and SDK, that responsible for encoding of this section should raise errors when a developer attempts to set a non-init (`init = false`) variable, requiring the specification of all init variables and filling non-init variables with [default values](#default-values-for-parameter-types).
 
-Contract state variables:
+:::note
+In case of [Solidity Compiler implementation for TVM](https://github.com/tonlabs/TON-Solidity-Compiler/tree/master) fields with `init = true` contain Solidity static variables and some specific internal Solidity variables that are required for smart contract deploy by the compiler, for example, `_pubkey`.
+:::
+
+Solidity contract state variables example:
 
 ```solidity
-contract BankClient {
-  uint public creditLimit = 0;  // allowed credit limit;
-  uint public totalDebt = 0;    // contract total debt;
-  uint public balance = 0;    // contract balance;
-  uint public value = 0;      // inbound message value.
+contract Bank {
+  uint256 creditLimit;
+  uint256 totalDebt;
+  uint256 balance;
+  uint256 value;
+  uint256 static seqno;
 }
 ```
 
-Fields section of the abi file:
+Fields section of the abi file. In this case the developer will need to explicitly pass `_pubkey` and `seqno` fields, and the rest of the variables will be filled with default values for its types.
 
 ```json
 {
   "fields": [
-    {"name":"_pubkey","type":"uint256"},
-    {"name":"_timestamp","type":"uint64"},
-    {"name":"_constructorFlag","type":"bool"},
-    {"name":"creditLimit","type":"uint256"},
-    {"name":"totalDebt","type":"uint256"},
-    {"name":"balance","type":"uint256"},
-    {"name":"value","type":"uint256"}
+    {"name":"_pubkey","type":"uint256","init": true},
+    {"name":"_timestamp","type":"uint64","init": false},
+    {"name":"_constructorFlag","type":"bool","init": false},
+    {"name":"creditLimit","type":"uint256","init": false},
+    {"name":"totalDebt","type":"uint256","init": false},
+    {"name":"balance","type":"uint256","init": false},
+    {"name":"value","type":"uint256","init": false},
+    {"name":"seqno","type":"uint256","init": true}
   ]
 }
 ```
@@ -637,12 +647,6 @@ Analog of `bytes` in Solidity. In C lang can be used as `void*`.
 |----------------|--------------------------------|------------|---|---|
 | Cell           | cell with data stored in a ref |            | 0 bit | 1 ref |
 | JSON object    | binary daya represented as hex string | `"313233"` | | |
-
-#### `fixedbytes<N>`
-
-Where N is a decimal byte length from 1 to 32. It is denoted in abi as `uint<M>`,
-where `M` is a bit length and `M = 8 * N`.
-Processed like `int<N>`.
 
 #### `string`
 
