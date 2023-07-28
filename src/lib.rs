@@ -50,8 +50,6 @@ pub use param::Param;
 pub use param_type::ParamType;
 pub use token::{Token, TokenValue};
 
-#[cfg(test)]
-extern crate rand;
 extern crate byteorder;
 #[cfg(test)]
 extern crate rand;
