@@ -28,7 +28,7 @@ use std::{
     str::FromStr,
 };
 use ton_block::{Grams, MsgAddress};
-use ton_types::{read_single_root_boc, error, fail, Cell, Result};
+use ton_types::{error, fail, read_single_root_boc, Cell, Result};
 
 /// This struct should be used to parse string values as tokens.
 pub struct Tokenizer;
@@ -89,7 +89,6 @@ impl Tokenizer {
     pub fn tokenize_optional_params(
         params: &[Param],
         values: &Value,
-        default_values: &HashMap<String, TokenValue>,
     ) -> Result<HashMap<String, TokenValue>> {
         if let Value::Object(map) = values {
             let mut map = map.clone();
@@ -98,8 +97,6 @@ impl Tokenizer {
                 if let Some(value) = map.remove(&param.name) {
                     let token_value = Self::tokenize_parameter(&param.kind, &value, &param.name)?;
                     tokens.insert(param.name.clone(), token_value);
-                } else if let Some(value) = default_values.get(&param.name) {
-                    tokens.insert(param.name.clone(), value.clone());
                 }
             }
             if !map.is_empty() {
@@ -116,7 +113,7 @@ impl Tokenizer {
             Ok(tokens)
         } else {
             fail!(AbiError::InvalidInputData {
-                msg: "Contract function parameters should be passed as a JSON object".to_string()
+                msg: "Contract parameters should be passed as a JSON object".to_string()
             })
         }
     }
@@ -361,12 +358,10 @@ impl Tokenizer {
             name: name.to_string(),
             err: format!("can not decode base64: {}", err),
         })?;
-        let cell = read_single_root_boc(&data).map_err(|err| {
-            AbiError::InvalidParameterValue {
-                val: value.clone(),
-                name: name.to_string(),
-                err: format!("can not deserialize cell: {}", err),
-            }
+        let cell = read_single_root_boc(&data).map_err(|err| AbiError::InvalidParameterValue {
+            val: value.clone(),
+            name: name.to_string(),
+            err: format!("can not deserialize cell: {}", err),
         })?;
         Ok(TokenValue::Cell(cell))
     }
@@ -446,7 +441,7 @@ impl Tokenizer {
                 expected: "JSON object".to_string()
             })
         }
-        
+
         let tokens = Self::tokenize_all_params(params, value)?;
 
         Ok(TokenValue::Tuple(tokens))
