@@ -12,8 +12,8 @@
 */
 
 mod param_type_tests {
-    use ParamType;
     use Param;
+    use ParamType;
 
     #[test]
     fn test_param_type_signature() {
@@ -23,53 +23,81 @@ mod param_type_tests {
 
         assert_eq!(
             ParamType::Array(Box::new(ParamType::Cell)).type_signature(),
-            "cell[]".to_owned());
+            "cell[]".to_owned()
+        );
 
         assert_eq!(
             ParamType::FixedArray(Box::new(ParamType::Int(33)), 2).type_signature(),
-            "int33[2]".to_owned());
+            "int33[2]".to_owned()
+        );
 
         assert_eq!(
             ParamType::FixedArray(Box::new(ParamType::Array(Box::new(ParamType::Bytes))), 2)
                 .type_signature(),
-            "bytes[][2]".to_owned());
+            "bytes[][2]".to_owned()
+        );
 
         let mut tuple_params = vec![];
-        tuple_params.push(Param {name: "a".to_owned(), kind: ParamType::Uint(123)});
-        tuple_params.push(Param {name: "b".to_owned(), kind: ParamType::Int(8)});
+        tuple_params.push(Param {
+            name: "a".to_owned(),
+            kind: ParamType::Uint(123),
+        });
+        tuple_params.push(Param {
+            name: "b".to_owned(),
+            kind: ParamType::Int(8),
+        });
 
         let tuple_with_tuple = vec![
-            Param {name: "a".to_owned(), kind: ParamType::Tuple(tuple_params.clone())},
-            Param {name: "b".to_owned(), kind: ParamType::Token}
+            Param {
+                name: "a".to_owned(),
+                kind: ParamType::Tuple(tuple_params.clone()),
+            },
+            Param {
+                name: "b".to_owned(),
+                kind: ParamType::Token,
+            },
         ];
 
         assert_eq!(
             ParamType::Tuple(tuple_params.clone()).type_signature(),
-            "(uint123,int8)".to_owned());
+            "(uint123,int8)".to_owned()
+        );
 
         assert_eq!(
             ParamType::Array(Box::new(ParamType::Tuple(tuple_with_tuple))).type_signature(),
-            "((uint123,int8),gram)[]".to_owned());
+            "((uint123,int8),gram)[]".to_owned()
+        );
 
         assert_eq!(
             ParamType::FixedArray(Box::new(ParamType::Tuple(tuple_params)), 4).type_signature(),
-            "(uint123,int8)[4]".to_owned());
+            "(uint123,int8)[4]".to_owned()
+        );
 
         assert_eq!(
-            ParamType::Map(Box::new(ParamType::Int(456)), Box::new(ParamType::Address)).type_signature(),
-            "map(int456,address)".to_owned());
+            ParamType::Map(Box::new(ParamType::Int(456)), Box::new(ParamType::Address))
+                .type_signature(),
+            "map(int456,address)".to_owned()
+        );
 
         assert_eq!(ParamType::String.type_signature(), "string".to_owned());
 
-        assert_eq!(ParamType::VarUint(16).type_signature(), "varuint16".to_owned());
-        assert_eq!(ParamType::VarInt(32).type_signature(), "varint32".to_owned());
+        assert_eq!(
+            ParamType::VarUint(16).type_signature(),
+            "varuint16".to_owned()
+        );
+        assert_eq!(
+            ParamType::VarInt(32).type_signature(),
+            "varint32".to_owned()
+        );
 
         assert_eq!(
             ParamType::Optional(Box::new(ParamType::Int(123))).type_signature(),
-            "optional(int123)".to_owned());
+            "optional(int123)".to_owned()
+        );
         assert_eq!(
             ParamType::Ref(Box::new(ParamType::Uint(123))).type_signature(),
-            "ref(uint123)".to_owned());
+            "ref(uint123)".to_owned()
+        );
     }
 }
 
@@ -84,36 +112,40 @@ mod deserialize_tests {
             "address", "bytes", "fixedbytes32", "token", "time", "expire", "pubkey", "string",
             "varuint16", "varint32", "optional(bytes)", "ref(bool)"]"#;
         let deserialized: Vec<ParamType> = serde_json::from_str(s).unwrap();
-        assert_eq!(deserialized, vec![
-            ParamType::Uint(256),
-            ParamType::Int(64),
-            ParamType::Bool,
-            ParamType::Array(Box::new(ParamType::Bool)),
-            ParamType::FixedArray(Box::new(ParamType::Int(33)), 2),
-            ParamType::FixedArray(Box::new(ParamType::Array(Box::new(ParamType::Bool))), 2),
-            ParamType::Tuple(vec![]),
-            ParamType::Array(Box::new(ParamType::Tuple(vec![]))),
-            ParamType::FixedArray(Box::new(ParamType::Tuple(vec![])), 4),
-            ParamType::Cell,
-            ParamType::Map(Box::new(ParamType::Int(3)), Box::new(ParamType::Bool)),
-            ParamType::Map(
-                Box::new(ParamType::Uint(1023)),
-                Box::new(ParamType::FixedArray(
-                    Box::new(ParamType::Array(
-                        Box::new(ParamType::Tuple(vec![])))),
-                    5))),
-            ParamType::Address,
-            ParamType::Bytes,
-            ParamType::FixedBytes(32),
-            ParamType::Token,
-            ParamType::Time,
-            ParamType::Expire,
-            ParamType::PublicKey,
-            ParamType::String,
-            ParamType::VarUint(16),
-            ParamType::VarInt(32),
-            ParamType::Optional(Box::new(ParamType::Bytes)),
-            ParamType::Ref(Box::new(ParamType::Bool)),
-        ]);
+        assert_eq!(
+            deserialized,
+            vec![
+                ParamType::Uint(256),
+                ParamType::Int(64),
+                ParamType::Bool,
+                ParamType::Array(Box::new(ParamType::Bool)),
+                ParamType::FixedArray(Box::new(ParamType::Int(33)), 2),
+                ParamType::FixedArray(Box::new(ParamType::Array(Box::new(ParamType::Bool))), 2),
+                ParamType::Tuple(vec![]),
+                ParamType::Array(Box::new(ParamType::Tuple(vec![]))),
+                ParamType::FixedArray(Box::new(ParamType::Tuple(vec![])), 4),
+                ParamType::Cell,
+                ParamType::Map(Box::new(ParamType::Int(3)), Box::new(ParamType::Bool)),
+                ParamType::Map(
+                    Box::new(ParamType::Uint(1023)),
+                    Box::new(ParamType::FixedArray(
+                        Box::new(ParamType::Array(Box::new(ParamType::Tuple(vec![])))),
+                        5
+                    ))
+                ),
+                ParamType::Address,
+                ParamType::Bytes,
+                ParamType::FixedBytes(32),
+                ParamType::Token,
+                ParamType::Time,
+                ParamType::Expire,
+                ParamType::PublicKey,
+                ParamType::String,
+                ParamType::VarUint(16),
+                ParamType::VarInt(32),
+                ParamType::Optional(Box::new(ParamType::Bytes)),
+                ParamType::Ref(Box::new(ParamType::Bool)),
+            ]
+        );
     }
 }
