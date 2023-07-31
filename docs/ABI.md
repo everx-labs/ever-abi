@@ -160,7 +160,8 @@ If a function has no input parameters or does not return any values, the corresp
 - [`string`](#string) - a type containing UTF-8 string data, encoded like `bytes`.
 - [`optional`](#optionalinnertype) - value of optional type `optional(innerType)` can store a value of `innerType` or be empty.
 - [`itemType[]`](#itemtype) is a dynamic array of `itemType` type elements. It is encoded as a TVM dictionary.  `uint32` defines the array elements count placed into the cell body.  `HashmapE` (see TL-B schema in TVM spec) struct is then added (one bit as a dictionary root and one reference with data if the dictionary is not empty). The dictionary key is a serialized `uint32` index of the array element, and the value is a serialized array element as `itemType` type.
-  - `T[k]` is a static size array of `T` type elements. Encoding is equivalent to `T[]` without elements count.
+- `T[k]` is a static size array of `T` type elements. Encoding is equivalent to `T[]` without elements count.
+- [`ref(T)`](#reft) indicates that `T` will be stored in a separate cell
 
 ## Default values for parameter types
 
@@ -179,7 +180,7 @@ Starting from API 2.4 the specification defines default values for parameter typ
 - [`optional(T)`](#optionalinnertype) – 1 zero bit, i.e. `b{0}`.
 - [`T[]`](#itemtype) – `x{00000000} b{0}`, i.e. 33 zero bits.
 - `T[k]` – encoded as an array with `k` default values of type `T`
-- `ref(T)` – reference to a cell, cell is encoded as the default value of type `T`.
+- [`ref(T)`](#reft) – reference to a cell, cell is encoded as the default value of type `T`.
 
 ## Encoding of function ID and its arguments
 
@@ -647,6 +648,15 @@ Analog of `bytes` in Solidity. In C lang can be used as `void*`.
 |----------------|--------------------------------|------------|---|---|
 | Cell           | cell with data stored in a ref |            | 0 bit | 1 ref |
 | JSON object    | binary daya represented as hex string | `"313233"` | | |
+
+#### `ref(T)`
+
+The auxiliary type `ref(T)` helps to explicitly say that `T` will be encoded into a separate cell and stored in the current cell as a reference. And `T` can be of any ABI types, including [`tuple(T1, T2, ..., Tn)`](#tuple), or contain itself like `ref(ref(...)`.
+
+| Usage           | Value                                      | Examples  | Max bit size | Max ref size |
+|-----------------|--------------------------------------------|-----------|--------------|--------------|
+| Cell            | cell with data stored in a ref             |           | 0 bit        | 1 ref        |
+| JSON object     | according to `T` or `null` if it is empty  | `"hello"` |              |              |
 
 #### `string`
 
