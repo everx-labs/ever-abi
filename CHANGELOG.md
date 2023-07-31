@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## Version 2.4
 
 - Param in fields section extended with `init: boolean`
+- `fixedbytes` – type is deprecated
+- `ref(T)` – new type added
 
 - Default values for parameter types:
 - - `int<N>` – `N` zero bits.
