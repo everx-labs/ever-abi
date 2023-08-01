@@ -2,10 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## Version 2.4
+## Version 2.4.0
 
+### New
+- ABI v2.4 specification implemented
 - Param in fields section extended with `init: boolean`
-- `fixedbytes` – type is deprecated
 - `ref(T)` – new type added
 
 - Default values for parameter types:
@@ -24,9 +25,9 @@ All notable changes to this project will be documented in this file.
 - - `T[k]` – encoded as an array with `k` default values of type `T`
 - - `ref(T)` – reference to a cell, cell is encoded as the default value of type `T`.
 
-## Version 2.3.130
-
-- ABI v2.4 implemented
+### Breaking
+- `data` section in ABI JSON is removed.
+- `fixedbytes` – type is deprecated
 
 ## Version 2.3.130
 
