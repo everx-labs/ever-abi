@@ -1,5 +1,11 @@
 # TON Smart Contracts ABI 2.1 Specification
 
+> **NOTE**: This is an older specification version.
+> 
+> For the current ABI specification refer to the [ABI.md](ABI.md) file.
+>
+> All changes between versions are documented in the [Changelog](../CHANGELOG.md).
+
 - [TON Smart Contracts ABI 2.1 Specification](#ton-smart-contracts-abi-21-specification)
   - [ABI JSON](#abi-json)
   - [Functions](#functions)

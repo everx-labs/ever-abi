@@ -621,7 +621,7 @@ fn test_signed_call_v23() {
     assert_eq!(test_tree, SliceData::load_builder(expected_tree).unwrap());
 
     let mut signed_tree = MsgAddressInt::from_str(address).unwrap().write_to_new_cell().unwrap();
-    signed_tree.append_builder(&BuilderData::from_slice(&test_tree)).unwrap();
+    signed_tree.append_builder(&test_tree.as_builder()).unwrap();
 
     let hash = signed_tree.into_cell().unwrap().repr_hash();
     assert_eq!(hash.clone().into_vec(), test_hash);

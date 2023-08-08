@@ -14,6 +14,9 @@
 extern crate sha2;
 extern crate num_bigint;
 extern crate hex;
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
 extern crate ton_block;
 extern crate ton_types;
 extern crate serde;
@@ -47,6 +50,8 @@ pub use param::Param;
 pub use int::{Int, Uint};
 pub use error::*;
 
+#[cfg(test)]
+extern crate rand;
 extern crate byteorder;
 
 include!("../common/src/info.rs");

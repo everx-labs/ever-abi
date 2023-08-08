@@ -1,5 +1,11 @@
 # Everscale Smart Contracts ABI 2.3 Specification
 
+> **NOTE**: This is an older specification version.
+> 
+> For the current ABI specification refer to the [ABI.md](ABI.md) file.
+>
+> All changes between versions are documented in the [Changelog](../CHANGELOG.md).
+
 ABI 2.3 introduces the new method to calculate external inbound message body signature. It is aimed to fix the below described problem in ABI v2.2.   
 Big thanks to Everscale community member https://github.com/mnill Ilia Kirichek who found these problems.
 
