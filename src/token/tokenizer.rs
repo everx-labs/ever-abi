@@ -25,10 +25,10 @@ use num_traits::cast::ToPrimitive;
 use serde_json::Value;
 use std::{
     collections::{BTreeMap, HashMap},
-    str::FromStr,
+    str::FromStr, convert::TryInto,
 };
 use ton_block::{Grams, MsgAddress};
-use ton_types::{read_single_root_boc, error, fail, Cell, Result};
+use ton_types::{read_single_root_boc, error, fail, Cell, Result, ED25519_PUBLIC_KEY_LENGTH};
 
 /// This struct should be used to parse string values as tokens.
 pub struct Tokenizer;
@@ -493,16 +493,14 @@ impl Tokenizer {
                 name: name.to_string(),
                 err: format!("can not decode hex: {}", err),
             })?;
-            if data.len() != ed25519_dalek::PUBLIC_KEY_LENGTH {
-                fail!(AbiError::InvalidParameterLength {
+            let bytes = data.try_into().map_err(|_| 
+                AbiError::InvalidParameterLength {
                     val: value.clone(),
                     name: name.to_string(),
-                    expected: format!("{} bytes", ed25519_dalek::PUBLIC_KEY_LENGTH),
-                })
-            };
-            Ok(TokenValue::PublicKey(Some(
-                ed25519_dalek::PublicKey::from_bytes(&data)?,
-            )))
+                    expected: format!("{} bytes", ED25519_PUBLIC_KEY_LENGTH),
+                }
+            )?;
+            Ok(TokenValue::PublicKey(Some(bytes)))
         }
     }
 

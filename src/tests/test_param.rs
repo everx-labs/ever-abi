@@ -11,13 +11,9 @@
 * limitations under the License.
 */
 
-use token::Detokenizer;
-use Int;
+use crate::token::Detokenizer;
+use crate::{Int, Token, Param, ParamType, TokenValue, Uint, Function};
 
-use Token;
-use {Param, ParamType};
-use {TokenValue, Uint};
-use Function;
 use ton_types::BuilderData;
 use ton_types::IBitstring;
 
