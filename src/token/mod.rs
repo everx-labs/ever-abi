@@ -13,7 +13,7 @@
 
 //! TON ABI params.
 use crate::{
-    error::AbiError, int::{Int, Uint}, param::Param, param_type::ParamType
+    error::AbiError, int::{Int, Uint}, param::Param, param_type::ParamType, PublicKeyData
 };
 
 use std::collections::BTreeMap;
@@ -124,7 +124,7 @@ pub enum TokenValue {
     /// Message expiration time
     Expire(u32),
     /// Public key
-    PublicKey(Option<ed25519_dalek::PublicKey>),
+    PublicKey(Option<PublicKeyData>),
     /// Optional parameter
     Optional(ParamType, Option<Box<TokenValue>>),
     /// Parameter stored in reference
@@ -175,7 +175,7 @@ impl fmt::Display for TokenValue {
             TokenValue::Expire(expire) => write!(f, "{}", expire),
             TokenValue::Ref(value) => write!(f, "{}", value),
             TokenValue::PublicKey(key) => if let Some(key) = key {
-                write!(f, "{}", hex::encode(&key.to_bytes()))
+                write!(f, "{}", hex::encode(&key))
             } else {
                 write!(f, "None")
             },

@@ -16,13 +16,12 @@ use std::iter::FromIterator;
 use std::str::FromStr;
 use num_bigint::{BigInt, BigUint};
 
-use ton_types::{AccountId, BuilderData, Cell, IBitstring, Result, SliceData};
+use ton_types::{AccountId, BuilderData, Cell, IBitstring, Result, SliceData, ED25519_PUBLIC_KEY_LENGTH};
 use ton_types::dictionary::{HashmapE, HashmapType};
 use ton_block::{AnycastInfo, Grams, MsgAddress, Serializable};
 
 use crate::contract::{ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_2, AbiVersion, MAX_SUPPORTED_VERSION};
-
-use {Int, Param, ParamType, Token, TokenValue, Uint};
+use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
 
 fn put_array_into_map<T: Serializable>(array: &[T]) -> HashmapE {
     let mut map = HashmapE::with_bit_len(32);
@@ -734,11 +733,11 @@ fn test_header_params() {
     builder.append_u32(0).unwrap();
     builder.checked_append_reference(Cell::default()).unwrap();
 
-    let public_key = ed25519_dalek::PublicKey::from_bytes(&[0u8; ed25519_dalek::PUBLIC_KEY_LENGTH]).unwrap();
+    let public_key = [0u8; ED25519_PUBLIC_KEY_LENGTH];
 
     builder.append_bit_zero().unwrap();
     builder.append_bit_one().unwrap();
-    builder.append_raw(&public_key.to_bytes(), ed25519_dalek::PUBLIC_KEY_LENGTH * 8).unwrap();
+    builder.append_raw(&public_key, ED25519_PUBLIC_KEY_LENGTH * 8).unwrap();
     builder.append_u64(12345).unwrap();
     builder.append_u32(67890).unwrap();
 

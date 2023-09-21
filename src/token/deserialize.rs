@@ -16,7 +16,7 @@ use crate::{contract::{ABI_VERSION_1_0, AbiVersion}, error::AbiError, int::{Int,
 use num_bigint::{BigInt, BigUint};
 use num_traits::ToPrimitive;
 use serde_json;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, convert::TryInto};
 use ton_block::{MsgAddress, types::Grams};
 use ton_types::{
     BuilderData, Cell, error, fail, HashmapE, HashmapType, IBitstring, Result, SliceData
@@ -276,7 +276,8 @@ impl TokenValue {
         cursor = find_next_bits(cursor, 1)?;
         if cursor.get_next_bit()? {
             let (vec, cursor) = get_next_bits_from_chain(cursor, 256)?;
-            Ok((TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&vec)?)), cursor))
+            let bytes = vec.try_into().map_err(|_| error!("Invalid public key length"))?;
+            Ok((TokenValue::PublicKey(Some(bytes)), cursor))
         } else {
             Ok((TokenValue::PublicKey(None), cursor))
         }

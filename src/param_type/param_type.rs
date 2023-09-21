@@ -14,10 +14,9 @@
 //! Function and event param types.
 
 use std::fmt;
-use Param;
 
-use crate::{AbiError, contract::ABI_VERSION_2_0};
-use crate::contract::{ABI_VERSION_1_0, ABI_VERSION_2_1, AbiVersion};
+use crate::{AbiError, Param};
+use crate::contract::{ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, AbiVersion};
 
 use ton_types::{BuilderData, Result, error};
 

@@ -33,7 +33,7 @@ impl Param {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 struct SerdeParam {
     /// Param name.
     pub name: String,

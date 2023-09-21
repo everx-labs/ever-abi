@@ -13,11 +13,10 @@
 
 mod tokenize_tests {
     use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
-    // use serde::Serialize;
+    use crate::token::{Detokenizer, Tokenizer};
     use std::collections::{BTreeMap, HashMap};
-    use token::{Detokenizer, Tokenizer};
     use ton_block::{Grams, MsgAddress};
-    use ton_types::{AccountId, BuilderData, Cell, SliceData};
+    use ton_types::{AccountId, BuilderData, Cell, SliceData, ED25519_PUBLIC_KEY_LENGTH};
 
     #[test]
     fn test_tokenize_ints() {
@@ -846,7 +845,7 @@ mod tokenize_tests {
         ];
 
         let expected_tokens = vec![
-            Token::new("a", TokenValue::PublicKey(Some(ed25519_dalek::PublicKey::from_bytes(&[0xcc; 32]).unwrap()))),
+            Token::new("a", TokenValue::PublicKey(Some([0xcc; ED25519_PUBLIC_KEY_LENGTH]))),
             Token::new("b", TokenValue::PublicKey(None))
         ];
 
@@ -968,7 +967,7 @@ mod tokenize_tests {
 }
 
 mod types_check_tests {
-    use {Int, Param, ParamType, Token, TokenValue, Uint};
+    use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
     use ton_block::MsgAddress;
     use ton_types::Cell;
     use std::collections::BTreeMap;
@@ -1259,7 +1258,7 @@ mod types_check_tests {
 }
 
 mod default_values_tests {
-    use {ParamType, TokenValue};
+    use crate::{ParamType, TokenValue};
     use chrono::prelude::Utc;
 
     #[test]

@@ -11,7 +11,7 @@
 * limitations under the License.
 */
 
-use {Contract, Function, Event, Param, ParamType, DataItem};
+use crate::{Contract, Function, Event, Param, ParamType, DataItem};
 use std::collections::HashMap;
 
 use crate::contract::ABI_VERSION_2_2;
