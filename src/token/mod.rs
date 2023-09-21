@@ -13,30 +13,34 @@
 
 //! TON ABI params.
 use crate::{
-    error::AbiError, int::{Int, Uint}, param::Param, param_type::ParamType
+    error::AbiError,
+    int::{Int, Uint},
+    param::Param,
+    param_type::ParamType,
+    PublicKeyData,
 };
 
+use chrono::prelude::Utc;
+use num_bigint::{BigInt, BigUint};
 use std::collections::BTreeMap;
 use std::fmt;
 use ton_block::{Grams, MsgAddress};
-use ton_types::{Result, Cell};
-use chrono::prelude::Utc;
-use num_bigint::{BigInt, BigUint};
+use ton_types::{Cell, Result};
 
-mod tokenizer;
+mod deserialize;
 mod detokenizer;
 mod serialize;
-mod deserialize;
+mod tokenizer;
 
-pub use self::tokenizer::*;
+pub use self::deserialize::*;
 pub use self::detokenizer::*;
 pub use self::serialize::*;
-pub use self::deserialize::*;
+pub use self::tokenizer::*;
 
 #[cfg(test)]
-mod tests;
-#[cfg(test)]
 mod test_encoding;
+#[cfg(test)]
+mod tests;
 
 pub const STD_ADDRESS_BIT_LENGTH: usize = 267;
 pub const MAX_HASH_MAP_INFO_ABOUT_KEY: usize = 12;
@@ -50,7 +54,10 @@ pub struct Token {
 
 impl Token {
     pub fn new(name: &str, value: TokenValue) -> Self {
-        Self { name: name.to_string(), value }
+        Self {
+            name: name.to_string(),
+            value,
+        }
     }
 }
 
@@ -105,26 +112,26 @@ pub enum TokenValue {
     ///
     Address(MsgAddress),
     /// Raw byte array
-    /// 
+    ///
     /// Encoded as separate cells chain
     Bytes(Vec<u8>),
     /// Fixed sized raw byte array
-    /// 
+    ///
     /// Encoded as separate cells chain
     FixedBytes(Vec<u8>),
     /// UTF8 string
-    /// 
+    ///
     /// Encoded similar to `Bytes`
     String(String),
     /// Nanograms
-    /// 
+    ///
     Token(Grams),
     /// Timestamp
     Time(u64),
     /// Message expiration time
     Expire(u32),
     /// Public key
-    PublicKey(Option<ed25519_dalek::PublicKey>),
+    PublicKey(Option<PublicKeyData>),
     /// Optional parameter
     Optional(ParamType, Option<Box<TokenValue>>),
     /// Parameter stored in reference
@@ -174,15 +181,19 @@ impl fmt::Display for TokenValue {
             TokenValue::Time(time) => write!(f, "{}", time),
             TokenValue::Expire(expire) => write!(f, "{}", expire),
             TokenValue::Ref(value) => write!(f, "{}", value),
-            TokenValue::PublicKey(key) => if let Some(key) = key {
-                write!(f, "{}", hex::encode(&key.to_bytes()))
-            } else {
-                write!(f, "None")
-            },
-            TokenValue::Optional(_, value) => if let Some(value) = value {
-                write!(f, "{}", value)
-            } else {
-                write!(f, "None")
+            TokenValue::PublicKey(key) => {
+                if let Some(key) = key {
+                    write!(f, "{}", hex::encode(&key))
+                } else {
+                    write!(f, "None")
+                }
+            }
+            TokenValue::Optional(_, value) => {
+                if let Some(value) = value {
+                    write!(f, "{}", value)
+                } else {
+                    write!(f, "None")
+                }
             }
         }
     }
@@ -210,7 +221,7 @@ impl TokenValue {
             TokenValue::Array(inner_type, ref tokens) => {
                 if let ParamType::Array(ref param_type) = *param_type {
                     inner_type == param_type.as_ref()
-                    && tokens.iter().all(|t| t.type_check(param_type))
+                        && tokens.iter().all(|t| t.type_check(param_type))
                 } else {
                     false
                 }
@@ -218,22 +229,22 @@ impl TokenValue {
             TokenValue::FixedArray(inner_type, ref tokens) => {
                 if let ParamType::FixedArray(ref param_type, size) = *param_type {
                     size == tokens.len()
-                    && inner_type == param_type.as_ref()
-                    && tokens.iter().all(|t| t.type_check(param_type))
+                        && inner_type == param_type.as_ref()
+                        && tokens.iter().all(|t| t.type_check(param_type))
                 } else {
                     false
                 }
             }
             TokenValue::Cell(_) => *param_type == ParamType::Cell,
-            TokenValue::Map(map_key_type, map_value_type, ref values) =>{
+            TokenValue::Map(map_key_type, map_value_type, ref values) => {
                 if let ParamType::Map(ref key_type, ref value_type) = *param_type {
                     map_key_type == key_type.as_ref()
-                    && map_value_type == value_type.as_ref()
-                    && values.iter().all(|t| t.1.type_check(value_type))
+                        && map_value_type == value_type.as_ref()
+                        && values.iter().all(|t| t.1.type_check(value_type))
                 } else {
                     false
                 }
-            },
+            }
             TokenValue::Address(_) => *param_type == ParamType::Address,
             TokenValue::Bytes(_) => *param_type == ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => *param_type == ParamType::FixedBytes(arr.len()),
@@ -244,12 +255,15 @@ impl TokenValue {
             TokenValue::PublicKey(_) => *param_type == ParamType::PublicKey,
             TokenValue::Optional(opt_type, opt_value) => {
                 if let ParamType::Optional(ref param_type) = *param_type {
-                    param_type.as_ref() == opt_type &&
-                    opt_value.as_ref().map(|val| val.type_check(param_type)).unwrap_or(true)
+                    param_type.as_ref() == opt_type
+                        && opt_value
+                            .as_ref()
+                            .map(|val| val.type_check(param_type))
+                            .unwrap_or(true)
                 } else {
                     false
                 }
-            },
+            }
             TokenValue::Ref(value) => {
                 if let ParamType::Ref(ref param_type) = *param_type {
                     value.type_check(param_type)
@@ -262,7 +276,6 @@ impl TokenValue {
 
     /// Returns `ParamType` the token value represents
     pub(crate) fn get_param_type(&self) -> ParamType {
-
         match self {
             TokenValue::Uint(uint) => ParamType::Uint(uint.size),
             TokenValue::Int(int) => ParamType::Int(int.size),
@@ -277,8 +290,9 @@ impl TokenValue {
                 ParamType::FixedArray(Box::new(param_type.clone()), tokens.len())
             }
             TokenValue::Cell(_) => ParamType::Cell,
-            TokenValue::Map(key_type, value_type, _) => 
-                ParamType::Map(Box::new(key_type.clone()), Box::new(value_type.clone())),
+            TokenValue::Map(key_type, value_type, _) => {
+                ParamType::Map(Box::new(key_type.clone()), Box::new(value_type.clone()))
+            }
             TokenValue::Address(_) => ParamType::Address,
             TokenValue::Bytes(_) => ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => ParamType::FixedBytes(arr.len()),
@@ -287,10 +301,10 @@ impl TokenValue {
             TokenValue::Time(_) => ParamType::Time,
             TokenValue::Expire(_) => ParamType::Expire,
             TokenValue::PublicKey(_) => ParamType::PublicKey,
-            TokenValue::Optional(ref param_type, _) => 
-                ParamType::Optional(Box::new(param_type.clone())),
-            TokenValue::Ref(value) => 
-                ParamType::Ref(Box::new(value.get_param_type())),
+            TokenValue::Optional(ref param_type, _) => {
+                ParamType::Optional(Box::new(param_type.clone()))
+            }
+            TokenValue::Ref(value) => ParamType::Ref(Box::new(value.get_param_type())),
         }
     }
 
@@ -299,11 +313,13 @@ impl TokenValue {
             ParamType::Time => Ok(TokenValue::Time(Utc::now().timestamp_millis() as u64)),
             ParamType::Expire => Ok(TokenValue::Expire(u32::max_value())),
             ParamType::PublicKey => Ok(TokenValue::PublicKey(None)),
-            any_type => Err(
-                AbiError::InvalidInputData {
-                    msg: format!(
-                        "Type {} doesn't have default value and must be explicitly defined",
-                        any_type)}.into())
+            any_type => Err(AbiError::InvalidInputData {
+                msg: format!(
+                    "Type {} doesn't have default value and must be explicitly defined",
+                    any_type
+                ),
+            }
+            .into()),
         }
     }
 }

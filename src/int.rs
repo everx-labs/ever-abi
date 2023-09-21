@@ -25,16 +25,20 @@ pub struct Uint {
     pub size: usize,
 }
 
-
 impl Int {
     pub fn new(number: i128, size: usize) -> Self {
-        Self { number: BigInt::from(number), size }
+        Self {
+            number: BigInt::from(number),
+            size,
+        }
     }
 }
 
-
 impl Uint {
     pub fn new(number: u128, size: usize) -> Self {
-        Self { number: BigUint::from(number), size }
+        Self {
+            number: BigUint::from(number),
+            size,
+        }
     }
 }
