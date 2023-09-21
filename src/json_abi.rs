@@ -12,13 +12,16 @@
 */
 
 use crate::{
-    error::AbiError, contract::Contract, token::{Detokenizer, Tokenizer, TokenValue}, PublicKeyData, SignatureData
+    contract::Contract,
+    error::AbiError,
+    token::{Detokenizer, TokenValue, Tokenizer},
+    PublicKeyData, SignatureData,
 };
 
 use serde_json::Value;
-use ton_block::MsgAddressInt;
 use std::{collections::HashMap, str::FromStr};
-use ton_types::{Result, BuilderData, SliceData, Ed25519PrivateKey};
+use ton_block::MsgAddressInt;
+use ton_types::{BuilderData, Ed25519PrivateKey, Result, SliceData};
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
 /// which can be used as message body for calling contract
@@ -36,7 +39,7 @@ pub fn encode_function_call(
     let function = contract.function(&function)?;
 
     let mut header_tokens = if let Some(header) = header {
-        let v: Value = serde_json::from_str(header).map_err(|err| AbiError::SerdeError { err } )?;
+        let v: Value = serde_json::from_str(header).map_err(|err| AbiError::SerdeError { err })?;
         Tokenizer::tokenize_optional_params(function.header_params(), &v, &HashMap::new())?
     } else {
         HashMap::new()
@@ -45,16 +48,16 @@ pub fn encode_function_call(
     if sign_key.is_some() && header_tokens.get("pubkey").is_none() {
         header_tokens.insert(
             "pubkey".to_owned(),
-            TokenValue::PublicKey(
-                sign_key.as_ref().map(|sign_key| sign_key.verifying_key())
-            )
+            TokenValue::PublicKey(sign_key.as_ref().map(|sign_key| sign_key.verifying_key())),
         );
     }
 
-    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err } )?;
+    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err })?;
     let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
 
-    let address = address.map(|string| MsgAddressInt::from_str(&string)).transpose()?;
+    let address = address
+        .map(|string| MsgAddressInt::from_str(&string))
+        .transpose()?;
 
     function.encode_input(&header_tokens, &input_tokens, internal, sign_key, address)
 }
@@ -74,16 +77,18 @@ pub fn prepare_function_call_for_sign(
     let function = contract.function(function)?;
 
     let header_tokens = if let Some(header) = header {
-        let v: Value = serde_json::from_str(header).map_err(|err| AbiError::SerdeError { err } )?;
+        let v: Value = serde_json::from_str(header).map_err(|err| AbiError::SerdeError { err })?;
         Tokenizer::tokenize_optional_params(function.header_params(), &v, &HashMap::new())?
     } else {
         HashMap::new()
     };
 
-    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err } )?;
+    let v: Value = serde_json::from_str(&parameters).map_err(|err| AbiError::SerdeError { err })?;
     let input_tokens = Tokenizer::tokenize_all_params(function.input_params(), &v)?;
 
-    let address = address.map(|string| MsgAddressInt::from_str(&string)).transpose()?;
+    let address = address
+        .map(|string| MsgAddressInt::from_str(&string))
+        .transpose()?;
 
     function.create_unsigned_call(&header_tokens, &input_tokens, false, true, address)
 }
@@ -93,7 +98,7 @@ pub fn add_sign_to_function_call(
     abi: &str,
     signature: &SignatureData,
     public_key: Option<&PublicKeyData>,
-    function_call: SliceData
+    function_call: SliceData,
 ) -> Result<BuilderData> {
     let contract = Contract::load(abi.as_bytes())?;
     contract.add_sign_to_encoded_input(signature, public_key, function_call)
@@ -118,7 +123,7 @@ pub fn decode_function_response(
 
 pub struct DecodedMessage {
     pub function_name: String,
-    pub params: String
+    pub params: String,
 }
 
 /// Decodes output parameters returned by some function call. Returns parametes and function name
@@ -136,7 +141,7 @@ pub fn decode_unknown_function_response(
 
     Ok(DecodedMessage {
         function_name: result.function_name,
-        params: output
+        params: output,
     })
 }
 
@@ -155,7 +160,7 @@ pub fn decode_unknown_function_call(
 
     Ok(DecodedMessage {
         function_name: result.function_name,
-        params: input
+        params: input,
     })
 }
 
@@ -199,7 +204,9 @@ pub fn get_signature_data(
     address: Option<&str>,
 ) -> Result<(Vec<u8>, Vec<u8>)> {
     let contract = Contract::load(abi.as_bytes())?;
-    let address = address.map(|string| MsgAddressInt::from_str(string)).transpose()?;
+    let address = address
+        .map(|string| MsgAddressInt::from_str(string))
+        .transpose()?;
     contract.get_signature_data(cursor, address)
 }
 

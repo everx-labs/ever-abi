@@ -25,10 +25,11 @@ use num_traits::cast::ToPrimitive;
 use serde_json::Value;
 use std::{
     collections::{BTreeMap, HashMap},
-    str::FromStr, convert::TryInto,
+    convert::TryInto,
+    str::FromStr,
 };
 use ton_block::{Grams, MsgAddress};
-use ton_types::{read_single_root_boc, error, fail, Cell, Result, ED25519_PUBLIC_KEY_LENGTH};
+use ton_types::{error, fail, read_single_root_boc, Cell, Result, ED25519_PUBLIC_KEY_LENGTH};
 
 /// This struct should be used to parse string values as tokens.
 pub struct Tokenizer;
@@ -361,12 +362,10 @@ impl Tokenizer {
             name: name.to_string(),
             err: format!("can not decode base64: {}", err),
         })?;
-        let cell = read_single_root_boc(&data).map_err(|err| {
-            AbiError::InvalidParameterValue {
-                val: value.clone(),
-                name: name.to_string(),
-                err: format!("can not deserialize cell: {}", err),
-            }
+        let cell = read_single_root_boc(&data).map_err(|err| AbiError::InvalidParameterValue {
+            val: value.clone(),
+            name: name.to_string(),
+            err: format!("can not deserialize cell: {}", err),
         })?;
         Ok(TokenValue::Cell(cell))
     }
@@ -446,7 +445,7 @@ impl Tokenizer {
                 expected: "JSON object".to_string()
             })
         }
-        
+
         let tokens = Self::tokenize_all_params(params, value)?;
 
         Ok(TokenValue::Tuple(tokens))
@@ -493,13 +492,13 @@ impl Tokenizer {
                 name: name.to_string(),
                 err: format!("can not decode hex: {}", err),
             })?;
-            let bytes = data.try_into().map_err(|_| 
-                AbiError::InvalidParameterLength {
+            let bytes = data
+                .try_into()
+                .map_err(|_| AbiError::InvalidParameterLength {
                     val: value.clone(),
                     name: name.to_string(),
                     expected: format!("{} bytes", ED25519_PUBLIC_KEY_LENGTH),
-                }
-            )?;
+                })?;
             Ok(TokenValue::PublicKey(Some(bytes)))
         }
     }

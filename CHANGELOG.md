@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Version 2.3.146
+## Version 2.3.147
 
 - Use crypto functions from ever-types
 

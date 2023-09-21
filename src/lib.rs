@@ -12,23 +12,23 @@
 */
 
 pub mod contract;
-pub mod function;
+pub mod error;
 pub mod event;
+pub mod function;
 pub mod int;
+pub mod json_abi;
 pub mod param;
 pub mod param_type;
 pub mod token;
-pub mod json_abi;
-pub mod error;
 
-pub use param_type::ParamType;
 pub use contract::{Contract, DataItem, PublicKeyData, SignatureData};
-pub use token::{Token, TokenValue};
-pub use function::Function;
+pub use error::*;
 pub use event::Event;
+pub use function::Function;
+pub use int::{Int, Uint};
 pub use json_abi::*;
 pub use param::Param;
-pub use int::{Int, Uint};
-pub use error::*;
+pub use param_type::ParamType;
+pub use token::{Token, TokenValue};
 
 include!("../common/src/info.rs");
