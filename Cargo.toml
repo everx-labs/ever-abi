@@ -21,3 +21,4 @@ ton_types = { git = 'https://github.com/tonlabs/ever-types.git', tag = '2.0.28' 
 
 [dev-dependencies]
 pretty_assertions = '1.3'
+
