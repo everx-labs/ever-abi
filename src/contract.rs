@@ -533,14 +533,15 @@ impl Contract {
     }
 
     // Gets public key from contract data
-    pub fn get_pubkey(data: &SliceData) -> Result<Option<Vec<u8>>> {
+    pub fn get_pubkey(data: &SliceData) -> Result<Option<PublicKeyData>> {
         let map = HashmapE::with_hashmap(Self::DATA_MAP_KEYLEN, data.reference_opt(0));
-        map.get(SliceData::load_builder(0u64.write_to_new_cell()?)?)
-            .map(|opt| opt.map(|slice| slice.get_bytestring(0)))
+        Ok(map.get(SliceData::load_builder(0u64.write_to_new_cell()?)?)?
+            .map(|slice| slice.get_bytestring(0).as_slice().try_into())
+            .transpose()?)
     }
 
     /// Sets public key into contract data
-    pub fn insert_pubkey(data: SliceData, pubkey: &[u8]) -> Result<SliceData> {
+    pub fn insert_pubkey(data: SliceData, pubkey: &PublicKeyData) -> Result<SliceData> {
         let pubkey_vec = pubkey.to_vec();
         let pubkey_len = pubkey_vec.len() * 8;
         let value = BuilderData::with_raw(pubkey_vec, pubkey_len)?;
