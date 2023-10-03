@@ -14,8 +14,7 @@
 mod tokenize_tests {
     use crate::token::{Detokenizer, Tokenizer};
     use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
-    use token::{Detokenizer, Tokenizer};
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
     use ton_block::{Grams, MsgAddress};
     use ton_types::{AccountId, BuilderData, Cell, SliceData, ED25519_PUBLIC_KEY_LENGTH};
 

@@ -25,7 +25,7 @@ use num_bigint::{BigInt, BigUint};
 use std::collections::BTreeMap;
 use std::fmt;
 use ton_block::{Grams, MsgAddress};
-use ton_types::{Cell, Result};
+use ton_types::{Cell, Result, BuilderData};
 
 mod deserialize;
 mod detokenizer;
@@ -212,7 +212,7 @@ impl TokenValue {
             TokenValue::VarInt(size, _) => *param_type == ParamType::VarInt(*size),
             TokenValue::Bool(_) => *param_type == ParamType::Bool,
             TokenValue::Tuple(ref arr) => {
-                if let ParamType::Tuple(ref params) = *param_type {
+                if let ParamType::Tuple(params) = param_type {
                     Token::types_check(arr, &params)
                 } else {
                     false

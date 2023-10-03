@@ -23,7 +23,7 @@ use crate::{
 };
 use serde::de::Error as SerdeError;
 use serde_json;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::io;
 use ton_block::{MsgAddressInt, Serializable};

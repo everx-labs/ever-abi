@@ -13,7 +13,6 @@
 
 use crate::{Contract, DataItem, Event, Function, Param, ParamType};
 use std::collections::HashMap;
-use {Contract, DataItem, Event, Function, Param, ParamType};
 
 const TEST_ABI: &str = r#"
 {

@@ -48,7 +48,7 @@ impl Param {
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
-struct SerdeParam {
+pub(crate) struct SerdeParam {
     /// Param name.
     pub name: String,
     /// Param type.
