@@ -15,40 +15,40 @@ use crate::{
     contract::Contract,
     error::AbiError,
     token::{Detokenizer, TokenValue, Tokenizer},
+    PublicKeyData, SignatureData,
 };
 
-use ed25519_dalek::Keypair;
 use serde_json::Value;
 use std::{collections::HashMap, str::FromStr};
 use ton_block::MsgAddressInt;
-use ton_types::{BuilderData, Result, SliceData};
+use ton_types::{BuilderData, Ed25519PrivateKey, Result, SliceData};
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
 /// which can be used as message body for calling contract
 pub fn encode_function_call(
-    abi: String,
-    function: String,
-    header: Option<String>,
-    parameters: String,
+    abi: &str,
+    function: &str,
+    header: Option<&str>,
+    parameters: &str,
     internal: bool,
-    pair: Option<&Keypair>,
-    address: Option<String>,
+    sign_key: Option<&Ed25519PrivateKey>,
+    address: Option<&str>,
 ) -> Result<BuilderData> {
     let contract = Contract::load(abi.as_bytes())?;
 
     let function = contract.function(&function)?;
 
     let mut header_tokens = if let Some(header) = header {
-        let v: Value = serde_json::from_str(&header).map_err(|err| AbiError::SerdeError { err })?;
+        let v: Value = serde_json::from_str(header).map_err(|err| AbiError::SerdeError { err })?;
         Tokenizer::tokenize_optional_params(function.header_params(), &v)?
     } else {
         HashMap::new()
     };
     // add public key into header
-    if pair.is_some() && header_tokens.get("pubkey").is_none() {
+    if sign_key.is_some() && header_tokens.get("pubkey").is_none() {
         header_tokens.insert(
             "pubkey".to_owned(),
-            TokenValue::PublicKey(pair.map(|pair| pair.public)),
+            TokenValue::PublicKey(sign_key.as_ref().map(|sign_key| sign_key.verifying_key())),
         );
     }
 
@@ -59,25 +59,25 @@ pub fn encode_function_call(
         .map(|string| MsgAddressInt::from_str(&string))
         .transpose()?;
 
-    function.encode_input(&header_tokens, &input_tokens, internal, pair, address)
+    function.encode_input(&header_tokens, &input_tokens, internal, sign_key, address)
 }
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
 /// which can be used as message body for calling contract. Message body is prepared for
 /// signing. Sign should be the added by `add_sign_to_function_call` function
 pub fn prepare_function_call_for_sign(
-    abi: String,
-    function: String,
-    header: Option<String>,
-    parameters: String,
-    address: Option<String>,
+    abi: &str,
+    function: &str,
+    header: Option<&str>,
+    parameters: &str,
+    address: Option<&str>,
 ) -> Result<(BuilderData, Vec<u8>)> {
     let contract = Contract::load(abi.as_bytes())?;
 
-    let function = contract.function(&function)?;
+    let function = contract.function(function)?;
 
     let header_tokens = if let Some(header) = header {
-        let v: Value = serde_json::from_str(&header).map_err(|err| AbiError::SerdeError { err })?;
+        let v: Value = serde_json::from_str(header).map_err(|err| AbiError::SerdeError { err })?;
         Tokenizer::tokenize_optional_params(function.header_params(), &v)?
     } else {
         HashMap::new()
@@ -95,9 +95,9 @@ pub fn prepare_function_call_for_sign(
 
 /// Add sign to messsage body returned by `prepare_function_call_for_sign` function
 pub fn add_sign_to_function_call(
-    abi: String,
-    signature: &[u8],
-    public_key: Option<&[u8]>,
+    abi: &str,
+    signature: &SignatureData,
+    public_key: Option<&PublicKeyData>,
     function_call: SliceData,
 ) -> Result<BuilderData> {
     let contract = Contract::load(abi.as_bytes())?;
@@ -106,8 +106,8 @@ pub fn add_sign_to_function_call(
 
 /// Decodes output parameters returned by contract function call
 pub fn decode_function_response(
-    abi: String,
-    function: String,
+    abi: &str,
+    function: &str,
     response: SliceData,
     internal: bool,
     allow_partial: bool,
@@ -128,7 +128,7 @@ pub struct DecodedMessage {
 
 /// Decodes output parameters returned by some function call. Returns parametes and function name
 pub fn decode_unknown_function_response(
-    abi: String,
+    abi: &str,
     response: SliceData,
     internal: bool,
     allow_partial: bool,
@@ -147,7 +147,7 @@ pub fn decode_unknown_function_response(
 
 /// Decodes output parameters returned by some function call. Returns parametes and function name
 pub fn decode_unknown_function_call(
-    abi: String,
+    abi: &str,
     response: SliceData,
     internal: bool,
     allow_partial: bool,
@@ -201,11 +201,11 @@ pub fn decode_storage_fields(abi: &str, data: SliceData, allow_partial: bool) ->
 pub fn get_signature_data(
     abi: &str,
     cursor: SliceData,
-    address: Option<String>,
+    address: Option<&str>,
 ) -> Result<(Vec<u8>, Vec<u8>)> {
     let contract = Contract::load(abi.as_bytes())?;
     let address = address
-        .map(|string| MsgAddressInt::from_str(&string))
+        .map(|string| MsgAddressInt::from_str(string))
         .transpose()?;
     contract.get_signature_data(cursor, address)
 }

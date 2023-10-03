@@ -17,6 +17,7 @@ use crate::{
     int::{Int, Uint},
     param::Param,
     param_type::ParamType,
+    PublicKeyData,
 };
 
 use chrono::prelude::Utc;
@@ -24,7 +25,7 @@ use num_bigint::{BigInt, BigUint};
 use std::collections::BTreeMap;
 use std::fmt;
 use ton_block::{Grams, MsgAddress};
-use ton_types::{BuilderData, Cell, Result};
+use ton_types::{Cell, Result};
 
 mod deserialize;
 mod detokenizer;
@@ -130,7 +131,7 @@ pub enum TokenValue {
     /// Message expiration time
     Expire(u32),
     /// Public key
-    PublicKey(Option<ed25519_dalek::PublicKey>),
+    PublicKey(Option<PublicKeyData>),
     /// Optional parameter
     Optional(ParamType, Option<Box<TokenValue>>),
     /// Parameter stored in reference
@@ -182,7 +183,7 @@ impl fmt::Display for TokenValue {
             TokenValue::Ref(value) => write!(f, "{}", value),
             TokenValue::PublicKey(key) => {
                 if let Some(key) = key {
-                    write!(f, "{}", hex::encode(&key.to_bytes()))
+                    write!(f, "{}", hex::encode(&key))
                 } else {
                     write!(f, "None")
                 }

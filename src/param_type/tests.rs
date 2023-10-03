@@ -12,8 +12,7 @@
 */
 
 mod param_type_tests {
-    use Param;
-    use ParamType;
+    use crate::{Param, ParamType};
 
     #[test]
     fn test_param_type_signature() {
@@ -102,8 +101,7 @@ mod param_type_tests {
 }
 
 mod deserialize_tests {
-    use serde_json;
-    use ParamType;
+    use crate::ParamType;
 
     #[test]
     fn param_type_deserialization() {

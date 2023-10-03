@@ -14,6 +14,7 @@
 use crate::{
     param_type::ParamType,
     token::{Token, TokenValue},
+    PublicKeyData,
 };
 
 use num_bigint::{BigInt, BigUint};
@@ -128,7 +129,7 @@ impl Token {
         serializer.serialize_str(&data)
     }
 
-    pub fn detokenize_bytes<S>(arr: &Vec<u8>, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    pub fn detokenize_bytes<S>(arr: &[u8], serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -137,28 +138,14 @@ impl Token {
     }
 
     pub fn detokenize_public_key<S>(
-        value: &Option<ed25519_dalek::PublicKey>,
+        value: &Option<PublicKeyData>,
         serializer: S,
     ) -> std::result::Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         if let Some(key) = value {
-            Self::detokenize_bytes(&key.to_bytes().to_vec(), serializer)
-        } else {
-            serializer.serialize_str("")
-        }
-    }
-
-    pub fn detokenize_optional<S>(
-        value: &Option<ed25519_dalek::PublicKey>,
-        serializer: S,
-    ) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if let Some(key) = value {
-            Self::detokenize_bytes(&key.to_bytes().to_vec(), serializer)
+            Self::detokenize_bytes(key, serializer)
         } else {
             serializer.serialize_str("")
         }

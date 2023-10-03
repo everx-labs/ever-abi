@@ -14,20 +14,19 @@
 //! Contract function call builder.
 
 use crate::{
-    contract::{ABI_VERSION_1_0, ABI_VERSION_2_3},
+    contract::{AbiVersion, SerdeFunction, ABI_VERSION_1_0, ABI_VERSION_2_3},
     error::AbiError,
     param::Param,
     token::{SerializedValue, Token, TokenValue},
-    ParamType,
+    ParamType, PublicKeyData, SignatureData,
 };
 
-use contract::{AbiVersion, SerdeFunction};
-use ed25519::signature::Signer;
-use ed25519_dalek::{Keypair, SIGNATURE_LENGTH};
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use ton_block::{MsgAddressInt, Serializable};
-use ton_types::{error, fail, BuilderData, Cell, IBitstring, Result, SliceData, MAX_DATA_BYTES};
+use ton_types::{
+    error, fail, sha256_digest, BuilderData, Cell, Ed25519PrivateKey, IBitstring, Result,
+    SliceData, ED25519_SIGNATURE_LENGTH, MAX_DATA_BYTES,
+};
 
 /// Contract function specification.
 #[derive(Debug, Clone, PartialEq)]
@@ -138,7 +137,7 @@ impl Function {
 
     pub fn calc_function_id(signature: &str) -> u32 {
         // Sha256 hash of signature
-        let function_hash = Sha256::digest(&signature.as_bytes());
+        let function_hash = sha256_digest(&signature.as_bytes());
 
         let mut bytes: [u8; 4] = [0; 4];
         bytes.copy_from_slice(&function_hash[..4]);
@@ -221,20 +220,20 @@ impl Function {
         header: &HashMap<String, TokenValue>,
         input: &[Token],
         internal: bool,
-        pair: Option<&Keypair>,
+        sign_key: Option<&Ed25519PrivateKey>,
         address: Option<MsgAddressInt>,
     ) -> Result<BuilderData> {
         let (mut builder, hash) =
-            self.create_unsigned_call(header, input, internal, pair.is_some(), address)?;
+            self.create_unsigned_call(header, input, internal, sign_key.is_some(), address)?;
 
         if !internal {
-            builder = match pair {
-                Some(pair) => {
-                    let signature = pair.sign(&hash).to_bytes().to_vec();
+            builder = match sign_key {
+                Some(key) => {
+                    let signature = key.sign(&hash);
                     Self::fill_sign(
                         &self.abi_version,
                         Some(&signature),
-                        Some(&pair.public.to_bytes()),
+                        Some(&key.verifying_key()),
                         builder,
                     )?
                 }
@@ -301,7 +300,7 @@ impl Function {
                 cursor.checked_drain_reference()?;
             } else {
                 if cursor.get_next_bit()? {
-                    cursor.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH)?;
+                    cursor.get_next_bytes(ED25519_SIGNATURE_LENGTH)?;
                 }
             }
 
@@ -329,10 +328,10 @@ impl Function {
     ) -> Result<(Vec<u8>, Vec<u8>)> {
         let signature = if abi_version == &ABI_VERSION_1_0 {
             SliceData::load_cell(cursor.checked_drain_reference()?)?
-                .get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH)?
+                .get_next_bytes(ED25519_SIGNATURE_LENGTH)?
         } else {
             if cursor.get_next_bit()? {
-                cursor.get_next_bytes(ed25519_dalek::SIGNATURE_LENGTH)?
+                cursor.get_next_bytes(ED25519_SIGNATURE_LENGTH)?
             } else {
                 return Err(AbiError::InvalidData {
                     msg: "No signature".to_owned(),
@@ -391,8 +390,11 @@ impl Function {
                         remove_bits = TokenValue::max_bit_size(&ParamType::Address);
                     } else {
                         sign_builder.append_bit_one()?;
-                        sign_builder.append_raw(&[0u8; SIGNATURE_LENGTH], SIGNATURE_LENGTH * 8)?;
-                        remove_bits = 1 + SIGNATURE_LENGTH * 8;
+                        sign_builder.append_raw(
+                            &[0u8; ED25519_SIGNATURE_LENGTH],
+                            ED25519_SIGNATURE_LENGTH * 8,
+                        )?;
+                        remove_bits = 1 + ED25519_SIGNATURE_LENGTH * 8;
                     }
                 } else {
                     sign_builder.append_bit_zero()?;
@@ -406,7 +408,7 @@ impl Function {
                     max_bits: if self.abi_version >= ABI_VERSION_2_3 {
                         TokenValue::max_bit_size(&ParamType::Address)
                     } else {
-                        1 + SIGNATURE_LENGTH * 8
+                        1 + ED25519_SIGNATURE_LENGTH * 8
                     },
                     max_refs: if remove_ref { 1 } else { 0 },
                 },
@@ -443,8 +445,8 @@ impl Function {
     /// Add sign to messsage body returned by `prepare_input_for_sign` function
     pub fn fill_sign(
         abi_version: &AbiVersion,
-        signature: Option<&[u8]>,
-        public_key: Option<&[u8]>,
+        signature: Option<&SignatureData>,
+        public_key: Option<&PublicKeyData>,
         mut builder: BuilderData,
     ) -> Result<BuilderData> {
         if abi_version == &ABI_VERSION_1_0 {
@@ -472,7 +474,7 @@ impl Function {
             if let Some(signature) = signature {
                 let len = signature.len() * 8;
                 sign_builder.append_bit_one()?;
-                sign_builder.append_raw(&signature, len)?;
+                sign_builder.append_raw(signature, len)?;
             } else {
                 sign_builder.append_bit_zero()?;
             }
@@ -485,8 +487,8 @@ impl Function {
     /// Add sign to messsage body returned by `prepare_input_for_sign` function
     pub fn add_sign_to_encoded_input(
         abi_version: &AbiVersion,
-        signature: &[u8],
-        public_key: Option<&[u8]>,
+        signature: &SignatureData,
+        public_key: Option<&PublicKeyData>,
         function_call: SliceData,
     ) -> Result<BuilderData> {
         let builder = function_call.as_builder();

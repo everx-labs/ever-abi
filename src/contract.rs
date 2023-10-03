@@ -11,18 +11,26 @@
 * limitations under the License.
 */
 
-use crate::param::SerdeParam;
 use crate::{
-    error::AbiError, event::Event, function::Function, param::Param, param_type::ParamType,
-    token::Token, TokenValue,
+    error::AbiError,
+    event::Event,
+    function::Function,
+    param::{Param, SerdeParam},
+    param_type::ParamType,
+    token::Token,
+    TokenValue,
+
 };
 use serde::de::Error as SerdeError;
 use serde_json;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::io;
-use std::{collections::HashSet, fmt::Display};
 use ton_block::{MsgAddressInt, Serializable};
-use ton_types::{error, fail, BuilderData, HashmapE, Result, SliceData};
+use ton_types::{
+    error, fail, BuilderData, HashmapE, Result, SliceData, ED25519_PUBLIC_KEY_LENGTH,
+    ED25519_SIGNATURE_LENGTH,
+};
 
 pub const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_1_0;
 pub const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_4;
@@ -33,6 +41,9 @@ pub const ABI_VERSION_2_1: AbiVersion = AbiVersion::from_parts(2, 1);
 pub const ABI_VERSION_2_2: AbiVersion = AbiVersion::from_parts(2, 2);
 pub const ABI_VERSION_2_3: AbiVersion = AbiVersion::from_parts(2, 3);
 pub const ABI_VERSION_2_4: AbiVersion = AbiVersion::from_parts(2, 4);
+
+pub type PublicKeyData = [u8; ED25519_PUBLIC_KEY_LENGTH];
+pub type SignatureData = [u8; ED25519_SIGNATURE_LENGTH];
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub struct AbiVersion {
@@ -90,7 +101,7 @@ impl From<u8> for AbiVersion {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 pub struct DataItem {
     pub key: u64,
     #[serde(flatten)]
@@ -143,7 +154,7 @@ where
 }
 
 /// Contract function specification.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 pub(crate) struct SerdeFunction {
     /// Function name.
     pub name: String,
@@ -160,7 +171,7 @@ pub(crate) struct SerdeFunction {
 }
 
 /// Contract event specification.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 pub(crate) struct SerdeEvent {
     /// Event name.
     pub name: String,
@@ -176,7 +187,7 @@ fn bool_true() -> bool {
     true
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 struct SerdeContract {
     /// ABI version up to 2.
     #[serde(rename = "ABI version")]
@@ -542,8 +553,8 @@ impl Contract {
     /// Add sign to messsage body returned by `prepare_input_for_sign` function
     pub fn add_sign_to_encoded_input(
         &self,
-        signature: &[u8],
-        public_key: Option<&[u8]>,
+        signature: &SignatureData,
+        public_key: Option<&PublicKeyData>,
         function_call: SliceData,
     ) -> Result<BuilderData> {
         Function::add_sign_to_encoded_input(&self.abi_version, signature, public_key, function_call)

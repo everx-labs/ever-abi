@@ -29,6 +29,10 @@ All notable changes to this project will be documented in this file.
 - `data` section in ABI JSON is removed.
 - `fixedbytes` – type is deprecated
 
+## Version 2.3.147
+
+- Use crypto functions from ever-types
+
 ## Version 2.3.130
 
 - Revert tests

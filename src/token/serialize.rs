@@ -17,6 +17,7 @@ use crate::{
     int::{Int, Uint},
     param_type::ParamType,
     token::{Token, TokenValue, Tokenizer},
+    PublicKeyData,
 };
 
 use num_bigint::{BigInt, BigUint, Sign};
@@ -401,13 +402,11 @@ impl TokenValue {
         Ok(builder)
     }
 
-    fn write_public_key(data: &Option<ed25519_dalek::PublicKey>) -> Result<BuilderData> {
+    fn write_public_key(data: &Option<PublicKeyData>) -> Result<BuilderData> {
         let mut builder = BuilderData::new();
         if let Some(key) = data {
             builder.append_bit_one()?;
-            let bytes = &key.to_bytes()[..];
-            let length = bytes.len() * 8;
-            builder.append_raw(bytes, length)?;
+            builder.append_raw(key, key.len() * 8)?;
         } else {
             builder.append_bit_zero()?;
         }
