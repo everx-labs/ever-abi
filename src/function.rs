@@ -17,7 +17,7 @@ use crate::{
     contract::{AbiVersion, SerdeFunction, ABI_VERSION_1_0, ABI_VERSION_2_3},
     error::AbiError,
     param::Param,
-    token::{SerializedValue, Token, TokenValue},
+    token::{SerializedValue, Token, TokenValue, Cursor},
     ParamType, PublicKeyData, SignatureData,
 };
 
@@ -190,12 +190,13 @@ impl Function {
             Err(AbiError::WrongId { id })?
         }
 
-        TokenValue::decode_params(
+        TokenValue::decode_params_with_cursor(
             self.input_params(),
             cursor,
             &self.abi_version,
             allow_partial,
         )
+        .map(|(tokens, _)| tokens)
     }
 
     /// Decodes function id from contract answer
@@ -285,38 +286,38 @@ impl Function {
     /// Encodes function header with provided header parameters
     pub fn decode_header(
         abi_version: &AbiVersion,
-        mut cursor: SliceData,
+        cursor: SliceData,
         header: &Vec<Param>,
         internal: bool,
-    ) -> Result<(Vec<Token>, u32, SliceData)> {
+    ) -> Result<(Vec<Token>, u32, Cursor)> {
         let mut tokens = vec![];
         let mut id = 0;
+        let mut cursor: Cursor = cursor.into();
         if abi_version == &ABI_VERSION_1_0 {
-            id = cursor.get_next_u32()?;
+            id = cursor.slice.get_next_u32()?;
+            cursor.used_bits += 32;
         }
         if !internal {
             // skip signature
             if abi_version == &ABI_VERSION_1_0 {
-                cursor.checked_drain_reference()?;
+                cursor.slice.checked_drain_reference()?;
+                cursor.used_refs += 1;
             } else {
-                if cursor.get_next_bit()? {
-                    cursor.get_next_bytes(ED25519_SIGNATURE_LENGTH)?;
+                if cursor.slice.get_next_bit()? {
+                    cursor.slice.get_next_bytes(ED25519_SIGNATURE_LENGTH)?;
                 }
+                cursor.used_bits += if abi_version >= &ABI_VERSION_2_3 {
+                    TokenValue::max_bit_size(&ParamType::Address)
+                } else {
+                    1 + ED25519_SIGNATURE_LENGTH * 8
+                };
             }
 
-            for param in header {
-                let (token_value, new_cursor) =
-                    TokenValue::read_from(&param.kind, cursor, false, abi_version, false)?;
-
-                cursor = new_cursor;
-                tokens.push(Token {
-                    name: param.name.clone(),
-                    value: token_value,
-                });
-            }
+            (tokens, cursor) = TokenValue::decode_params_with_cursor(header, cursor, abi_version, true)?;
         }
         if abi_version != &ABI_VERSION_1_0 {
-            id = cursor.get_next_u32()?;
+            id = cursor.slice.get_next_u32()?;
+            cursor.used_bits += 32;
         }
         Ok((tokens, id, cursor))
     }
