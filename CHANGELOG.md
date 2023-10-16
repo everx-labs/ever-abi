@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.3.148
+
+- Fixed names
+
 ## Version 2.3.147
 
 - Use crypto functions from ever-types

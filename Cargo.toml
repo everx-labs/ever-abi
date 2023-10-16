@@ -2,7 +2,7 @@
 build = 'common/build/build.rs'
 edition = '2021'
 name = 'ever_abi'
-version = '2.3.147'
+version = '2.3.148'
 
 [dependencies]
 base64 = '0.10.0'
