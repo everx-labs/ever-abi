@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2023 EverX. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -7,7 +7,7 @@
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
+* See the License for the specific EVERX DEV software governing permissions and
 * limitations under the License.
 */
 
@@ -24,8 +24,8 @@ use num_bigint::{BigInt, BigUint};
 use num_traits::ToPrimitive;
 use serde_json;
 use std::{collections::BTreeMap, convert::TryInto};
-use ton_block::{types::Grams, MsgAddress};
-use ton_types::{
+use ever_block::{types::Grams, MsgAddress};
+use ever_types::{
     error, fail, BuilderData, Cell, HashmapE, HashmapType, IBitstring, Result, SliceData,
 };
 
@@ -64,7 +64,7 @@ impl TokenValue {
             ParamType::Address => {
                 cursor = find_next_bits(cursor, 1)?;
                 let address =
-                    <MsgAddress as ton_block::Deserializable>::construct_from(&mut cursor)?;
+                    <MsgAddress as ever_block::Deserializable>::construct_from(&mut cursor)?;
                 Ok((TokenValue::Address(address), cursor))
             }
             ParamType::Bytes => Self::read_bytes(None, cursor, last, abi_version),
@@ -72,7 +72,7 @@ impl TokenValue {
             ParamType::String => Self::read_string(cursor, last, abi_version),
             ParamType::Token => {
                 cursor = find_next_bits(cursor, 1)?;
-                let gram = <Grams as ton_block::Deserializable>::construct_from(&mut cursor)?;
+                let gram = <Grams as ever_block::Deserializable>::construct_from(&mut cursor)?;
                 Ok((TokenValue::Token(gram), cursor))
             }
             ParamType::Time => Self::read_time(cursor),

@@ -73,7 +73,7 @@ The message body signature is generated from the *representation hash* of the ba
 4. Address data is removed from the root cell and replaced with bit `1` followed by 512 bits of the signature.
 
 :::note
-This functionality is added since `ABI v2.3` and supported staring with [0.64.0](https://github.com/tonlabs/TON-Solidity-Compiler/blob/master/Changelog_TON.md#0640-2022-08-18) version of the Solidity compiler.
+This functionality is added since `ABI v2.3` and supported staring with [0.64.0](https://github.com/tonlabs/EVERX-Solidity-Compiler/blob/master/Changelog_EVERX.md#0640-2022-08-18) version of the Solidity compiler.
 :::
 
 ## Function Signature (Function ID)
@@ -151,7 +151,7 @@ If a function has no input parameters or does not return any values, the corresp
 - [`map(K,V)`](#mapkeytypevaluetype) is a dictionary of `V` type values with `K` type key. Dictionary is encoded as  `HashmapE` type (one bit put into cell data as dictionary root and one reference with data is added if the dictionary is not empty).
 - [`cell`](#cell): a type for defining a raw tree of cells. Stored as a reference in the current cell. Must be decoded with `LDREF`  command and stored as-is.
     - Note: this type is useful to store payloads as a tree of cells analog to contract code and data in the form of `StateInit` structure of `message` structure.
-- [`address`](#address) is an account address in Everscale blockchain. Encoded as `MsgAddress` struct (see TL-B schema in blockchain [spec](https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L107)).
+- [`address`](#address) is an account address in Everscale blockchain. Encoded as `MsgAddress` struct (see TL-B schema in blockchain [spec](https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L107)).
 - [`bytes`](#bytes): an array of `uint8` type elements. The array is put into a separate cell. 
 - [`fixedbytes<N>`](#fixedbytesn): a fixed-size array of `N` `uint8` type elements. Encoding is equivalent to `bytes`
 - [`string`](#string) - a type containing UTF-8 string data, encoded like `bytes`.
@@ -601,7 +601,7 @@ Internal addresses are serialised as:
 
 **Size**
 
-Maximum size allocated for address is 591 bits: see [https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L107](https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L107)
+Maximum size allocated for address is 591 bits: see [https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L107](https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L107)
 
 ```TL-B
 anycast_info$_ depth:(#<= 30) { depth >= 1 }
@@ -693,7 +693,7 @@ else write data to reference.
 12 = 2 + 10 ≥ 2 + log2(keyLength).
 ```
 
-See [https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L30](https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L30)
+See [https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L30](https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L30)
 
 ## Reference
 

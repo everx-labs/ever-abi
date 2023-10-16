@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2023 EverX. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -7,11 +7,11 @@
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
+* See the License for the specific EVERX DEV software governing permissions and
 * limitations under the License.
 */
 
-//! TON ABI params.
+//! EVERX ABI params.
 use crate::{
     error::AbiError,
     int::{Int, Uint},
@@ -24,8 +24,8 @@ use chrono::prelude::Utc;
 use num_bigint::{BigInt, BigUint};
 use std::collections::BTreeMap;
 use std::fmt;
-use ton_block::{Grams, MsgAddress};
-use ton_types::{Cell, Result};
+use ever_block::{Grams, MsgAddress};
+use ever_types::{Cell, Result};
 
 mod deserialize;
 mod detokenizer;
@@ -45,7 +45,7 @@ mod tests;
 pub const STD_ADDRESS_BIT_LENGTH: usize = 267;
 pub const MAX_HASH_MAP_INFO_ABOUT_KEY: usize = 12;
 
-/// TON ABI params.
+/// EVERX ABI params.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub name: String,
@@ -67,7 +67,7 @@ impl fmt::Display for Token {
     }
 }
 
-/// TON ABI param values.
+/// EVERX ABI param values.
 #[derive(Debug, PartialEq, Clone)]
 pub enum TokenValue {
     /// uint<M>: unsigned integer type of M bits.
