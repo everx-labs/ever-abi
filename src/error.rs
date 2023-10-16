@@ -102,4 +102,7 @@ pub enum AbiError {
         display = "Message destination address is required to encode signed external inbound message body since ABI version 2.3"
     )]
     AddressRequired,
+
+    #[fail(display = "Wrong data layout")]
+    WrongDataLayout
 }

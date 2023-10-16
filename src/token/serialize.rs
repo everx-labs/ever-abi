@@ -291,9 +291,9 @@ impl TokenValue {
                 Self::pack_cells_into_chain(array[i].write_to_cells(abi_version)?, abi_version)?;
 
             if value_in_ref {
-                map.set_builder(index, &data)?;
-            } else {
                 map.setref(index, &data.into_cell()?)?;
+            } else {
+                map.set_builder(index, &data)?;
             }
         }
 
@@ -352,8 +352,8 @@ impl TokenValue {
         Ok(builder)
     }
 
-    fn map_value_in_ref(key_len: usize, value_len: usize) -> bool {
-        super::MAX_HASH_MAP_INFO_ABOUT_KEY + key_len + value_len <= 1023
+    pub(crate) fn map_value_in_ref(key_len: usize, value_len: usize) -> bool {
+        super::MAX_HASH_MAP_INFO_ABOUT_KEY + key_len + value_len > 1023
     }
 
     fn write_map(
@@ -390,9 +390,9 @@ impl TokenValue {
 
             let slice_key = SliceData::load_builder(key_vec.pop().unwrap().data)?;
             if value_in_ref {
-                hashmap.set_builder(slice_key, &data)?;
-            } else {
                 hashmap.setref(slice_key, &data.into_cell()?)?;
+            } else {
+                hashmap.set_builder(slice_key, &data)?;
             }
         }
 
