@@ -491,6 +491,25 @@ impl Contract {
         Ok(())
     }
 
+    pub fn init_fields_supported_in_version(abi_version: &AbiVersion) -> bool {
+        abi_version >= &ABI_VERSION_2_4
+    }
+
+    pub fn init_fields_supported(&self) -> bool {
+        Self::init_fields_supported_in_version(&self.abi_version)
+    }
+
+    fn check_init_fields_support(&self) -> Result<()> {
+        if !self.init_fields_supported() {
+            return Err(AbiError::NotSupported {
+                subject: "Initial storage fields".to_owned(),
+                version: self.abi_version,
+            }
+            .into());
+        }
+        Ok(())
+    }
+
     /// Changes initial values for public contract variables
     pub fn update_data(&self, data: SliceData, tokens: &[Token]) -> Result<SliceData> {
         self.check_data_map_support()?;
@@ -566,6 +585,8 @@ impl Contract {
         &self,
         mut init_fields: HashMap<String, TokenValue>,
     ) -> Result<BuilderData> {
+        self.check_init_fields_support()?;
+        
         let mut tokens = vec![];
         for param in &self.fields {
             let token = init_fields
