@@ -195,6 +195,7 @@ impl Function {
             cursor,
             &self.abi_version,
             allow_partial,
+            true,
         )
         .map(|(tokens, _)| tokens)
     }
@@ -313,7 +314,7 @@ impl Function {
                 };
             }
 
-            (tokens, cursor) = TokenValue::decode_params_with_cursor(header, cursor, abi_version, true)?;
+            (tokens, cursor) = TokenValue::decode_params_with_cursor(header, cursor, abi_version, true, false)?;
         }
         if abi_version != &ABI_VERSION_1_0 {
             id = cursor.slice.get_next_u32()?;

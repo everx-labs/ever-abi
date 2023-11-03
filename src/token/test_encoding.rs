@@ -88,7 +88,7 @@ fn test_parameters_set(
         };
 
         let decoded_tokens =
-            TokenValue::decode_params_with_cursor(&params, cursor, version, false).unwrap().0;
+            TokenValue::decode_params_with_cursor(&params, cursor, version, false, true).unwrap().0;
         assert_eq!(decoded_tokens, inputs);
     }
 }

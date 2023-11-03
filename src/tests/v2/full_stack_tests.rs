@@ -11,7 +11,7 @@
 * limitations under the License.
 */
 
-use ton_block::{MsgAddressInt, Serializable};
+use ton_block::{MsgAddressInt, Serializable, Deserializable};
 use ton_types::dictionary::HashmapE;
 use ton_types::{
     ed25519_generate_private_key, ed25519_verify, BuilderData, IBitstring, SliceData,
@@ -758,4 +758,35 @@ fn test_encode_storage_fields() {
         ),
     ))
     .is_err());
+}
+
+const ABI_WRONG_STORAGE_LAYOUT: &str = r#"{
+	"ABI version": 2,
+	"version": "2.3",
+	"header": ["pubkey", "time", "expire"],
+	"functions": [],
+	"data": [
+		{"key":1,"name":"_collectionName","type":"bytes"}
+	],
+	"events": [
+	],
+	"fields": [
+		{"name":"_pubkey","type":"uint256"},
+		{"name":"_timestamp","type":"uint64"},
+		{"name":"_constructorFlag","type":"bool"},
+		{"components":[{"name":"dtCreated","type":"uint32"},{"name":"ownerAddress","type":"address"},{"name":"kekAddress","type":"address"}],"name":"_info","type":"tuple"},
+		{"components":[{"name":"contents","type":"bytes"},{"name":"extension","type":"bytes"},{"name":"name","type":"bytes"},{"name":"comment","type":"bytes"}],"name":"_media","type":"tuple"},
+		{"name":"_collectionName","type":"bytes"},
+		{"name":"_tokensIssued","type":"uint128"},
+		{"name":"_externalMedia","type":"address"}
+	]
+}
+"#;
+
+#[test]
+fn test_wrong_storage_layout() {
+    let image = include_bytes!("FairNFTCollection.tvc");
+    let image = ton_block::StateInit::construct_from_bytes(image).unwrap();
+
+    assert!(decode_storage_fields(ABI_WRONG_STORAGE_LAYOUT, SliceData::load_cell(image.data.unwrap()).unwrap(), false).is_ok());
 }

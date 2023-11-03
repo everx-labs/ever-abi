@@ -52,7 +52,7 @@ impl TokenValue {
         allow_partial: bool,
     ) -> Result<(Self, Cursor)> {
         let slice = cursor.slice.clone();
-        let (value, slice) = match dbg!(param_type) {
+        let (value, slice) = match param_type {
             ParamType::Uint(size) => Self::read_uint(*size, slice),
             ParamType::Int(size) => Self::read_int(*size, slice),
             ParamType::VarUint(size) => Self::read_varuint(*size, slice),
@@ -218,7 +218,7 @@ impl TokenValue {
         allow_partial: bool,
     ) -> Result<(Self, Cursor)> {
         let (tokens, cursor) = Self::decode_params_with_cursor(
-            tuple_params, cursor, abi_version, allow_partial || !last
+            tuple_params, cursor, abi_version, allow_partial, last
         )?;
         Ok((TokenValue::Tuple(tokens), cursor))
     }
@@ -501,7 +501,7 @@ impl TokenValue {
         abi_version: &AbiVersion,
         allow_partial: bool,
     ) -> Result<Vec<Token>> {
-        Self::decode_params_with_cursor(params, cursor.into(), abi_version, allow_partial)
+        Self::decode_params_with_cursor(params, cursor.into(), abi_version, allow_partial, true)
             .map(|(tokens, _)| tokens)
     }
 
@@ -510,12 +510,13 @@ impl TokenValue {
         mut cursor: Cursor,
         abi_version: &AbiVersion,
         allow_partial: bool,
+        last: bool,
     ) -> Result<(Vec<Token>, Cursor)> {
         let mut tokens = vec![];
 
         for param in params {
             // println!("{:?}", param);
-            let last = Some(param) == params.last();
+            let last = Some(param) == params.last() && last;
             let (token_value, new_cursor) =
                 Self::read_from(&param.kind, cursor, last, abi_version, allow_partial)?;
 
