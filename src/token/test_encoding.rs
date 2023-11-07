@@ -24,7 +24,7 @@ use ton_types::{
 
 use crate::contract::{
     AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_2,
-    MAX_SUPPORTED_VERSION,
+    MAX_SUPPORTED_VERSION, ABI_VERSION_2_4, ABI_VERSION_2_3,
 };
 use crate::token::Cursor;
 use crate::{Int, Param, ParamType, Token, TokenValue, Uint, AbiError};
@@ -1459,14 +1459,7 @@ fn test_default_values() {
     add_array_as_map(&mut second, &[false; 5], true);
 
     // ParamType::FixedBytes(3)
-    second
-        .checked_append_reference(
-            BuilderData::with_raw([0u8; 3].as_slice(), 3 * 8)
-                .unwrap()
-                .into_cell()
-                .unwrap(),
-        )
-        .unwrap();
+    second.append_raw(&[0u8; 3], 24).unwrap();
 
     // ParamType::Int(10)
     second.append_raw(&[0u8; 2], 10).unwrap();
@@ -1480,10 +1473,8 @@ fn test_default_values() {
     // ParamType::PublicKey
     second.append_bit_zero().unwrap();
 
-    let mut third = BuilderData::new();
-
     // ParamType::Ref(Box::new(ParamType::Int(15)))
-    third
+    second
         .checked_append_reference(
             BuilderData::with_raw([0u8; 2].as_slice(), 15)
                 .unwrap()
@@ -1491,6 +1482,8 @@ fn test_default_values() {
                 .unwrap(),
         )
         .unwrap();
+
+    let mut third = BuilderData::new();
 
     // ParamType::String
     third.checked_append_reference(Cell::default()).unwrap();
@@ -1583,5 +1576,36 @@ fn test_wrong_layout() {
                 .unwrap(),
             AbiError::WrongDataLayout,
         )
+    );
+}
+
+#[test]
+fn test_fixed_bytes() {
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.checked_append_reference(Cell::default()).unwrap();
+
+    let bytes = vec![0u8; 32];
+    let bytes_builder = BuilderData::with_raw(bytes.clone(), 256).unwrap();
+
+    let mut builder_v24 = builder.clone();
+    builder_v24.append_builder(&bytes_builder).unwrap();
+
+    builder.checked_append_reference(bytes_builder.into_cell().unwrap()).unwrap();
+
+    let values = vec![TokenValue::FixedBytes(bytes)];
+
+    test_parameters_set(
+        &tokens_from_values(values.clone()),
+        None,
+        builder,
+        &[ABI_VERSION_1_0, ABI_VERSION_2_3],
+    );
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder_v24,
+        &[ABI_VERSION_2_4],
     );
 }

@@ -27,7 +27,8 @@ All notable changes to this project will be documented in this file.
 
 ### Breaking
 - `data` section in ABI JSON is removed.
-- `fixedbytes` – type is deprecated
+- `fixedbytes` type serialization changed. Now it is limited to 127 bytes and serialized into cell
+body instead of chained cells in current cell reference
 
 ## Version 2.3.147
 

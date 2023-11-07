@@ -12,7 +12,7 @@
 */
 
 use crate::{
-    contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_2},
+    contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_2, ABI_VERSION_2_4},
     error::AbiError,
     int::{Int, Uint},
     param::Param,
@@ -81,8 +81,8 @@ impl TokenValue {
                     <MsgAddress as ton_block::Deserializable>::construct_from(&mut slice)?;
                 Ok((TokenValue::Address(address), slice))
             }
-            ParamType::Bytes => Self::read_bytes(None, slice, last, abi_version),
-            ParamType::FixedBytes(size) => Self::read_bytes(Some(*size), slice, last, abi_version),
+            ParamType::Bytes => Self::read_bytes(slice, last, abi_version),
+            ParamType::FixedBytes(size) => Self::read_fixed_bytes(*size, slice, last, abi_version),
             ParamType::String => Self::read_string(slice, last, abi_version),
             ParamType::Token => {
                 let mut slice = find_next_bits(slice, 1)?;
@@ -121,8 +121,8 @@ impl TokenValue {
         let new_cell = new_slice.cell_opt();
         let orig_cell = cursor.slice.cell_opt();
         if abi_version >= &ABI_VERSION_2_2 {
-            let param_max_bits = Self::max_bit_size(param_type);
-            let param_max_refs = Self::max_refs_count(param_type);
+            let param_max_bits = Self::max_bit_size(param_type, abi_version);
+            let param_max_refs = Self::max_refs_count(param_type, abi_version);
             if new_cell != orig_cell {
                 if  cursor.used_bits + param_max_bits <= BuilderData::bits_capacity() && 
                     (last && cursor.used_refs + param_max_refs <= BuilderData::references_capacity() ||
@@ -240,7 +240,7 @@ impl TokenValue {
         abi_version: &AbiVersion,
         allow_partial: bool,
     ) -> Result<(Vec<Self>, SliceData)> {
-        let value_len = Self::max_bit_size(item_type);
+        let value_len = Self::max_bit_size(item_type, abi_version);
         let value_in_ref = Self::map_value_in_ref(32, value_len);
 
         let original = cursor.clone();
@@ -333,7 +333,7 @@ impl TokenValue {
         allow_partial: bool,
     ) -> Result<(Self, SliceData)> {
         let bit_len = TokenValue::get_map_key_size(key_type)?;
-        let value_len = Self::max_bit_size(value_type);
+        let value_len = Self::max_bit_size(value_type, abi_version);
         let value_in_ref = Self::map_value_in_ref(bit_len, value_len);
 
         cursor = find_next_bits(cursor, 1)?;
@@ -386,23 +386,39 @@ impl TokenValue {
         Ok((data, cursor))
     }
 
-    fn read_bytes(
-        size: Option<usize>,
+    fn read_fixed_bytes(
+        size: usize,
         cursor: SliceData,
         last: bool,
         abi_version: &AbiVersion,
     ) -> Result<(Self, SliceData)> {
-        let original = cursor.clone();
+        if abi_version >= &ABI_VERSION_2_4 {
+            let (data, cursor) = get_next_bits_from_chain(cursor, size * 8)?;
+            Ok((TokenValue::FixedBytes(data), cursor))
+        } else {
+            let original = cursor.clone();
+            let (data, cursor) = Self::read_bytes_from_chain(cursor, last, abi_version)?;
+
+            if size == data.len() {
+                Ok((TokenValue::FixedBytes(data), cursor))
+            } else {
+                Err(error!(AbiError::DeserializationError {
+                    msg: "Size of fixed bytes does not correspond to expected size",
+                    cursor: original
+                }))
+            }
+        }
+
+    }
+
+    fn read_bytes(
+        cursor: SliceData,
+        last: bool,
+        abi_version: &AbiVersion,
+    ) -> Result<(Self, SliceData)> {
         let (data, cursor) = Self::read_bytes_from_chain(cursor, last, abi_version)?;
 
-        match size {
-            Some(size) if size == data.len() => Ok((TokenValue::FixedBytes(data), cursor)),
-            Some(_) => fail!(AbiError::DeserializationError {
-                msg: "Size of fixed bytes does not correspond to expected size",
-                cursor: original
-            }),
-            None => Ok((TokenValue::Bytes(data), cursor)),
-        }
+        Ok((TokenValue::Bytes(data), cursor))
     }
 
     fn read_string(
@@ -450,7 +466,7 @@ impl TokenValue {
     ) -> Result<(Self, SliceData)> {
         let mut cursor = find_next_bits(cursor, 1)?;
         if cursor.get_next_bit()? {
-            if Self::is_large_optional(inner_type) {
+            if Self::is_large_optional(inner_type, abi_version) {
                 let cell = cursor.checked_drain_reference()?;
                 let (result, _) = Self::read_from(
                     inner_type,

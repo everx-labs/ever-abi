@@ -308,7 +308,7 @@ impl Function {
                     cursor.slice.get_next_bytes(ED25519_SIGNATURE_LENGTH)?;
                 }
                 cursor.used_bits += if abi_version >= &ABI_VERSION_2_3 {
-                    TokenValue::max_bit_size(&ParamType::Address)
+                    TokenValue::max_bit_size(&ParamType::Address, abi_version)
                 } else {
                     1 + ED25519_SIGNATURE_LENGTH * 8
                 };
@@ -387,9 +387,9 @@ impl Function {
                     if self.abi_version >= ABI_VERSION_2_3 {
                         sign_builder.append_raw(
                             &[0u8; MAX_DATA_BYTES],
-                            TokenValue::max_bit_size(&ParamType::Address),
+                            TokenValue::max_bit_size(&ParamType::Address, &self.abi_version),
                         )?;
-                        remove_bits = TokenValue::max_bit_size(&ParamType::Address);
+                        remove_bits = TokenValue::max_bit_size(&ParamType::Address, &self.abi_version);
                     } else {
                         sign_builder.append_bit_one()?;
                         sign_builder.append_raw(
@@ -408,7 +408,7 @@ impl Function {
                 SerializedValue {
                     data: sign_builder,
                     max_bits: if self.abi_version >= ABI_VERSION_2_3 {
-                        TokenValue::max_bit_size(&ParamType::Address)
+                        TokenValue::max_bit_size(&ParamType::Address, &self.abi_version)
                     } else {
                         1 + ED25519_SIGNATURE_LENGTH * 8
                     },

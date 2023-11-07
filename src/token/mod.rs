@@ -17,7 +17,7 @@ use crate::{
     int::{Int, Uint},
     param::Param,
     param_type::ParamType,
-    PublicKeyData,
+    PublicKeyData, contract::{AbiVersion, ABI_VERSION_2_4},
 };
 
 use chrono::prelude::Utc;
@@ -337,12 +337,12 @@ impl TokenValue {
         8 - ((size - 1) as u8).leading_zeros() as usize
     }
 
-    pub(crate) fn is_large_optional(param_type: &ParamType) -> bool {
-        Self::max_bit_size(param_type) >= BuilderData::bits_capacity()
-            || Self::max_refs_count(param_type) >= BuilderData::references_capacity()
+    pub(crate) fn is_large_optional(param_type: &ParamType, abi_version: &AbiVersion) -> bool {
+        Self::max_bit_size(param_type, abi_version) >= BuilderData::bits_capacity()
+            || Self::max_refs_count(param_type, abi_version) >= BuilderData::references_capacity()
     }
 
-    pub(crate) fn max_refs_count(param_type: &ParamType) -> usize {
+    pub(crate) fn max_refs_count(param_type: &ParamType, abi_version: &AbiVersion) -> usize {
         match param_type {
             // in-cell serialized types
             ParamType::Uint(_)
@@ -355,6 +355,7 @@ impl TokenValue {
             | ParamType::Time
             | ParamType::Expire
             | ParamType::PublicKey => 0,
+            ParamType::FixedBytes(_) if &ABI_VERSION_2_4 <= abi_version => 0,
             // reference serialized types
             ParamType::Array(_)
             | ParamType::FixedArray(_, _)
@@ -367,19 +368,19 @@ impl TokenValue {
             // tuple refs is sum of inner types refs
             ParamType::Tuple(params) => params
                 .iter()
-                .fold(0, |acc, param| acc + Self::max_refs_count(&param.kind)),
+                .fold(0, |acc, param| acc + Self::max_refs_count(&param.kind, abi_version)),
             // large optional is serialized into reference
             ParamType::Optional(param_type) => {
-                if Self::is_large_optional(param_type) {
+                if Self::is_large_optional(param_type, abi_version) {
                     1
                 } else {
-                    Self::max_refs_count(param_type)
+                    Self::max_refs_count(param_type, abi_version)
                 }
             }
         }
     }
 
-    pub(crate) fn max_bit_size(param_type: &ParamType) -> usize {
+    pub(crate) fn max_bit_size(param_type: &ParamType, abi_version: &AbiVersion) -> usize {
         match param_type {
             ParamType::Uint(size) => *size,
             ParamType::Int(size) => *size,
@@ -391,6 +392,7 @@ impl TokenValue {
             ParamType::Cell => 0,
             ParamType::Map(_, _) => 1,
             ParamType::Address => 591,
+            ParamType::FixedBytes(size) if &ABI_VERSION_2_4 <= abi_version => size * 8,
             ParamType::Bytes | ParamType::FixedBytes(_) => 0,
             ParamType::String => 0,
             ParamType::Token => 124,
@@ -400,12 +402,12 @@ impl TokenValue {
             ParamType::Ref(_) => 0,
             ParamType::Tuple(params) => params
                 .iter()
-                .fold(0, |acc, param| acc + Self::max_bit_size(&param.kind)),
+                .fold(0, |acc, param| acc + Self::max_bit_size(&param.kind, abi_version)),
             ParamType::Optional(param_type) => {
-                if Self::is_large_optional(&param_type) {
+                if Self::is_large_optional(&param_type, abi_version) {
                     1
                 } else {
-                    1 + Self::max_bit_size(&param_type)
+                    1 + Self::max_bit_size(&param_type, abi_version)
                 }
             }
         }
