@@ -14,7 +14,7 @@
 mod tokenize_tests {
     use crate::token::{Detokenizer, Tokenizer};
     use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
     use ton_block::{Grams, MsgAddress};
     use ton_types::{AccountId, BuilderData, Cell, SliceData, ED25519_PUBLIC_KEY_LENGTH};
 
@@ -1073,7 +1073,6 @@ mod tokenize_tests {
         assert!(Tokenizer::tokenize_optional_params(
             &params,
             &serde_json::from_str(input).unwrap(),
-            &HashMap::new()
         )
         .is_err(),);
     }

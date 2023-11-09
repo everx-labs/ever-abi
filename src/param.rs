@@ -31,10 +31,24 @@ impl Param {
             kind,
         }
     }
+
+    pub(crate) fn from_serde(serde_param: SerdeParam) -> Result<Self, String> {
+        let mut result = Self {
+            name: serde_param.name,
+            kind: serde_param.kind,
+        };
+
+        result
+            .kind
+            .set_components(serde_param.components)
+            .map_err(|err| err.to_string())?;
+
+        Ok(result)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
-struct SerdeParam {
+pub(crate) struct SerdeParam {
     /// Param name.
     pub name: String,
     /// Param type.
@@ -43,6 +57,9 @@ struct SerdeParam {
     /// Tuple components
     #[serde(default)]
     pub components: Vec<Param>,
+    /// `init` flag for fields section
+    #[serde(default)]
+    pub init: bool,
 }
 
 impl<'a> Deserialize<'a> for Param {
@@ -79,17 +96,7 @@ impl<'a> Deserialize<'a> for Param {
             let serde_param: SerdeParam =
                 serde_json::from_value(value).map_err(|err| D::Error::custom(err))?;
 
-            let mut result = Self {
-                name: serde_param.name,
-                kind: serde_param.kind,
-            };
-
-            result
-                .kind
-                .set_components(serde_param.components)
-                .map_err(D::Error::custom)?;
-
-            Ok(result)
+            Self::from_serde(serde_param).map_err(D::Error::custom)
         }
     }
 }
