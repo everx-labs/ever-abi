@@ -157,7 +157,7 @@ If a function has no input parameters or does not return any values, the corresp
     - Note: this type is useful to store payloads as a tree of cells analog to contract code and data in the form of `StateInit` structure of `message` structure.
 - [`address`](#address) is an account address in Everscale blockchain. Encoded as `MsgAddress` struct (see TL-B schema in blockchain [spec](https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L107)).
 - [`bytes`](#bytes): an array of `uint8` type elements. The array is put into a separate cell.
-- [`fixedbytes[N]`] an array of N `uint8` type elements. The array is put into the cell data and limited to 127 bytes.
+- [`fixedbytes[N]`](#fixedbytesn) an array of N `uint8` type elements. The array is put into the cell data and limited to 127 bytes.
 - [`string`](#string) - a type containing UTF-8 string data, encoded like `bytes`.
 - [`optional`](#optionalinnertype) - value of optional type `optional(innerType)` can store a value of `innerType` or be empty.
 - [`itemType[]`](#itemtype) is a dynamic array of `itemType` type elements. It is encoded as a TVM dictionary.  `uint32` defines the array elements count placed into the cell body.  `HashmapE` (see TL-B schema in TVM spec) struct is then added (one bit as a dictionary root and one reference with data if the dictionary is not empty). The dictionary key is a serialized `uint32` index of the array element, and the value is a serialized array element as `itemType` type.
