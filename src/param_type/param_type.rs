@@ -13,12 +13,11 @@
 
 //! Function and event param types.
 
+use crate::{AbiError, Param};
+use crate::contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_4};
 use std::fmt;
 
-use crate::contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1};
-use crate::{AbiError, Param};
-
-use ton_types::{error, BuilderData, Result};
+use ton_types::{error, Result};
 
 /// Function and event param types.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -148,96 +147,8 @@ impl ParamType {
             | ParamType::Optional(_)
             | ParamType::VarInt(_)
             | ParamType::VarUint(_) => abi_version >= &ABI_VERSION_2_1,
-            ParamType::Ref(_) => false,
+            ParamType::Ref(_) => abi_version >= &ABI_VERSION_2_4,
             _ => abi_version >= &ABI_VERSION_1_0,
-        }
-    }
-
-    pub fn get_map_key_size(&self) -> Result<usize> {
-        match self {
-            ParamType::Int(size) | ParamType::Uint(size) => Ok(*size),
-            ParamType::Address => Ok(crate::token::STD_ADDRESS_BIT_LENGTH),
-            _ => Err(error!(AbiError::InvalidData {
-                msg: "Only integer and std address values can be map keys".to_owned()
-            })),
-        }
-    }
-
-    pub(crate) fn varint_size_len(size: usize) -> usize {
-        8 - ((size - 1) as u8).leading_zeros() as usize
-    }
-
-    pub(crate) fn is_large_optional(&self) -> bool {
-        self.max_bit_size() >= BuilderData::bits_capacity()
-            || self.max_refs_count() >= BuilderData::references_capacity()
-    }
-
-    pub(crate) fn max_refs_count(&self) -> usize {
-        match self {
-            // in-cell serialized types
-            ParamType::Uint(_)
-            | ParamType::Int(_)
-            | ParamType::VarUint(_)
-            | ParamType::VarInt(_)
-            | ParamType::Bool
-            | ParamType::Address
-            | ParamType::Token
-            | ParamType::Time
-            | ParamType::Expire
-            | ParamType::PublicKey => 0,
-            // reference serialized types
-            ParamType::Array(_)
-            | ParamType::FixedArray(_, _)
-            | ParamType::Cell
-            | ParamType::String
-            | ParamType::Map(_, _)
-            | ParamType::Bytes
-            | ParamType::FixedBytes(_)
-            | ParamType::Ref(_) => 1,
-            // tuple refs is sum of inner types refs
-            ParamType::Tuple(params) => params
-                .iter()
-                .fold(0, |acc, param| acc + param.kind.max_refs_count()),
-            // large optional is serialized into reference
-            ParamType::Optional(param_type) => {
-                if param_type.is_large_optional() {
-                    1
-                } else {
-                    param_type.max_refs_count()
-                }
-            }
-        }
-    }
-
-    pub(crate) fn max_bit_size(&self) -> usize {
-        match self {
-            ParamType::Uint(size) => *size,
-            ParamType::Int(size) => *size,
-            ParamType::VarUint(size) => Self::varint_size_len(*size) + (size - 1) * 8,
-            ParamType::VarInt(size) => Self::varint_size_len(*size) + (size - 1) * 8,
-            ParamType::Bool => 1,
-            ParamType::Array(_) => 33,
-            ParamType::FixedArray(_, _) => 1,
-            ParamType::Cell => 0,
-            ParamType::Map(_, _) => 1,
-            ParamType::Address => 591,
-            ParamType::Bytes | ParamType::FixedBytes(_) => 0,
-            ParamType::String => 0,
-            ParamType::Token => 124,
-            ParamType::Time => 64,
-            ParamType::Expire => 32,
-            ParamType::PublicKey => 257,
-            ParamType::Ref(_) => 0,
-            ParamType::Tuple(params) => params
-                .iter()
-                .fold(0, |acc, param| acc + param.kind.max_bit_size()),
-            ParamType::Optional(param_type) => {
-                if param_type.is_large_optional() {
-                    1
-                } else {
-                    1 + param_type.max_bit_size()
-                }
-            }
         }
     }
 }
