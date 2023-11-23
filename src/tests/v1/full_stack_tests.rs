@@ -317,7 +317,7 @@ fn test_find_event() {
 #[test]
 fn test_store_pubkey() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
-    let test_pubkey = vec![11u8; 32];
+    let test_pubkey = [11u8; 32];
     test_map
         .set_builder(
             SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap(),

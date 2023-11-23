@@ -17,7 +17,7 @@ use crate::{
     int::{Int, Uint},
     param::Param,
     param_type::ParamType,
-    PublicKeyData,
+    PublicKeyData, contract::{AbiVersion, ABI_VERSION_2_4},
 };
 
 use chrono::prelude::Utc;
@@ -25,7 +25,7 @@ use num_bigint::{BigInt, BigUint};
 use std::collections::BTreeMap;
 use std::fmt;
 use ton_block::{Grams, MsgAddress};
-use ton_types::{Cell, Result};
+use ton_types::{Cell, Result, BuilderData};
 
 mod deserialize;
 mod detokenizer;
@@ -36,11 +36,6 @@ pub use self::deserialize::*;
 pub use self::detokenizer::*;
 pub use self::serialize::*;
 pub use self::tokenizer::*;
-
-#[cfg(test)]
-mod test_encoding;
-#[cfg(test)]
-mod tests;
 
 pub const STD_ADDRESS_BIT_LENGTH: usize = 267;
 pub const MAX_HASH_MAP_INFO_ABOUT_KEY: usize = 12;
@@ -212,7 +207,7 @@ impl TokenValue {
             TokenValue::VarInt(size, _) => *param_type == ParamType::VarInt(*size),
             TokenValue::Bool(_) => *param_type == ParamType::Bool,
             TokenValue::Tuple(ref arr) => {
-                if let ParamType::Tuple(ref params) = *param_type {
+                if let ParamType::Tuple(params) = param_type {
                     Token::types_check(arr, &params)
                 } else {
                     false
@@ -320,6 +315,138 @@ impl TokenValue {
                 ),
             }
             .into()),
+        }
+    }
+
+    pub fn get_map_key_size(param_type: &ParamType) -> Result<usize> {
+        match param_type {
+            ParamType::Int(size) | ParamType::Uint(size) => Ok(*size),
+            ParamType::Address => Ok(crate::token::STD_ADDRESS_BIT_LENGTH),
+            _ => Err(ton_types::error!(AbiError::InvalidData {
+                msg: "Only integer and std address values can be map keys".to_owned()
+            })),
+        }
+    }
+
+    pub(crate) fn varint_size_len(size: usize) -> usize {
+        8 - ((size - 1) as u8).leading_zeros() as usize
+    }
+
+    pub(crate) fn is_large_optional(param_type: &ParamType, abi_version: &AbiVersion) -> bool {
+        Self::max_bit_size(param_type, abi_version) >= BuilderData::bits_capacity()
+            || Self::max_refs_count(param_type, abi_version) >= BuilderData::references_capacity()
+    }
+
+    pub(crate) fn max_refs_count(param_type: &ParamType, abi_version: &AbiVersion) -> usize {
+        match param_type {
+            // in-cell serialized types
+            ParamType::Uint(_)
+            | ParamType::Int(_)
+            | ParamType::VarUint(_)
+            | ParamType::VarInt(_)
+            | ParamType::Bool
+            | ParamType::Address
+            | ParamType::Token
+            | ParamType::Time
+            | ParamType::Expire
+            | ParamType::PublicKey => 0,
+            ParamType::FixedBytes(_) if &ABI_VERSION_2_4 <= abi_version => 0,
+            // reference serialized types
+            ParamType::Array(_)
+            | ParamType::FixedArray(_, _)
+            | ParamType::Cell
+            | ParamType::String
+            | ParamType::Map(_, _)
+            | ParamType::Bytes
+            | ParamType::FixedBytes(_)
+            | ParamType::Ref(_) => 1,
+            // tuple refs is sum of inner types refs
+            ParamType::Tuple(params) => params
+                .iter()
+                .fold(0, |acc, param| acc + Self::max_refs_count(&param.kind, abi_version)),
+            // large optional is serialized into reference
+            ParamType::Optional(param_type) => {
+                if Self::is_large_optional(param_type, abi_version) {
+                    1
+                } else {
+                    Self::max_refs_count(param_type, abi_version)
+                }
+            }
+        }
+    }
+
+    pub(crate) fn max_bit_size(param_type: &ParamType, abi_version: &AbiVersion) -> usize {
+        match param_type {
+            ParamType::Uint(size) => *size,
+            ParamType::Int(size) => *size,
+            ParamType::VarUint(size) => Self::varint_size_len(*size) + (size - 1) * 8,
+            ParamType::VarInt(size) => Self::varint_size_len(*size) + (size - 1) * 8,
+            ParamType::Bool => 1,
+            ParamType::Array(_) => 33,
+            ParamType::FixedArray(_, _) => 1,
+            ParamType::Cell => 0,
+            ParamType::Map(_, _) => 1,
+            ParamType::Address => 591,
+            ParamType::FixedBytes(size) if &ABI_VERSION_2_4 <= abi_version => size * 8,
+            ParamType::Bytes | ParamType::FixedBytes(_) => 0,
+            ParamType::String => 0,
+            ParamType::Token => 124,
+            ParamType::Time => 64,
+            ParamType::Expire => 32,
+            ParamType::PublicKey => 257,
+            ParamType::Ref(_) => 0,
+            ParamType::Tuple(params) => params
+                .iter()
+                .fold(0, |acc, param| acc + Self::max_bit_size(&param.kind, abi_version)),
+            ParamType::Optional(param_type) => {
+                if Self::is_large_optional(&param_type, abi_version) {
+                    1
+                } else {
+                    1 + Self::max_bit_size(&param_type, abi_version)
+                }
+            }
+        }
+    }
+
+    pub(crate) fn default_value(param_type: &ParamType) -> TokenValue {
+        match param_type {
+            ParamType::Uint(size) => TokenValue::Uint(Uint::new(0, *size)),
+            ParamType::Int(size) => TokenValue::Int(Int::new(0, *size)),
+            ParamType::VarUint(size) => TokenValue::VarUint(*size, 0u32.into()),
+            ParamType::VarInt(size) => TokenValue::VarInt(*size, 0.into()),
+            ParamType::Bool => TokenValue::Bool(false),
+            ParamType::Array(inner) => TokenValue::Array(inner.as_ref().clone(), vec![]),
+            ParamType::FixedArray(inner, size) => TokenValue::FixedArray(
+                inner.as_ref().clone(),
+                std::iter::repeat(Self::default_value(inner))
+                    .take(*size)
+                    .collect(),
+            ),
+            ParamType::Cell => TokenValue::Cell(Default::default()),
+            ParamType::Map(key, value) => TokenValue::Map(
+                key.as_ref().clone(),
+                value.as_ref().clone(),
+                Default::default(),
+            ),
+            ParamType::Address => TokenValue::Address(MsgAddress::AddrNone),
+            ParamType::Bytes => TokenValue::Bytes(vec![]),
+            ParamType::FixedBytes(size) => TokenValue::FixedBytes(vec![0; *size]),
+            ParamType::String => TokenValue::String(Default::default()),
+            ParamType::Token => TokenValue::Token(Default::default()),
+            ParamType::Time => TokenValue::Time(0),
+            ParamType::Expire => TokenValue::Expire(0),
+            ParamType::PublicKey => TokenValue::PublicKey(None),
+            ParamType::Ref(inner) => TokenValue::Ref(Box::new(Self::default_value(inner))),
+            ParamType::Tuple(params) => TokenValue::Tuple(
+                params
+                    .iter()
+                    .map(|inner| Token {
+                        name: inner.name.clone(),
+                        value: Self::default_value(&inner.kind),
+                    })
+                    .collect(),
+            ),
+            ParamType::Optional(inner) => TokenValue::Optional(inner.as_ref().clone(), None),
         }
     }
 }
