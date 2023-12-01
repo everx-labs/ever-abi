@@ -12,7 +12,7 @@
 */
 
 use crate::{
-    contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_2},
+    contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_2, ABI_VERSION_2_4},
     error::AbiError,
     int::{Int, Uint},
     param_type::ParamType,
@@ -162,9 +162,8 @@ impl TokenValue {
                 Self::write_map(key_type, value_type, value, abi_version)
             }
             TokenValue::Address(address) => Ok(address.write_to_new_cell()?),
-            TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) => {
-                Self::write_bytes(arr, abi_version)
-            }
+            TokenValue::Bytes(ref arr) => Self::write_bytes(arr, abi_version),
+            TokenValue::FixedBytes(ref arr) => Self::write_fixed_bytes(arr, abi_version),
             TokenValue::String(ref string) => Self::write_bytes(string.as_bytes(), abi_version),
             TokenValue::Token(gram) => Ok(gram.write_to_new_cell()?),
             TokenValue::Time(time) => Ok(time.write_to_new_cell()?),
@@ -181,8 +180,8 @@ impl TokenValue {
         let param_type = self.get_param_type();
         Ok(vec![SerializedValue {
             data,
-            max_bits: param_type.max_bit_size(),
-            max_refs: param_type.max_refs_count(),
+            max_bits: Self::max_bit_size(&param_type, abi_version),
+            max_refs: Self::max_refs_count(&param_type, abi_version),
         }])
     }
 
@@ -228,7 +227,7 @@ impl TokenValue {
 
     fn write_varnumber(vec: &Vec<u8>, size: usize) -> Result<BuilderData> {
         let mut builder = BuilderData::new();
-        let bits = ParamType::varint_size_len(size);
+        let bits = Self::varint_size_len(size);
         if vec != &[0] {
             builder.append_bits(vec.len(), bits as usize)?;
             builder.append_raw(&vec, vec.len() * 8)?;
@@ -282,7 +281,7 @@ impl TokenValue {
     ) -> Result<HashmapE> {
         let mut map = HashmapE::with_bit_len(32);
 
-        let value_in_ref = Self::map_value_in_ref(32, param_type.max_bit_size());
+        let value_in_ref = Self::map_value_in_ref(32, Self::max_bit_size(param_type, abi_version));
 
         for i in 0..array.len() {
             let index = SliceData::load_builder((i as u32).write_to_new_cell()?)?;
@@ -291,9 +290,9 @@ impl TokenValue {
                 Self::pack_cells_into_chain(array[i].write_to_cells(abi_version)?, abi_version)?;
 
             if value_in_ref {
-                map.set_builder(index, &data)?;
-            } else {
                 map.setref(index, &data.into_cell()?)?;
+            } else {
+                map.set_builder(index, &data)?;
             }
         }
 
@@ -325,6 +324,21 @@ impl TokenValue {
         Ok(map.write_to_new_cell()?)
     }
 
+    fn write_fixed_bytes(data: &[u8], abi_version: &AbiVersion) -> Result<BuilderData> {
+        if abi_version >= &ABI_VERSION_2_4 {
+            if data.len() * 8 > BuilderData::bits_capacity() {
+                fail!(AbiError::InvalidData {
+                    msg: "FixedBytes value size is limited to 127 bytes".to_owned()
+                })
+            }
+            let mut builder = BuilderData::new();
+            builder.append_raw(data, data.len() * 8)?;
+            Ok(builder)
+        } else {
+            Self::write_bytes(data, abi_version)
+        }
+    }
+
     fn write_bytes(data: &[u8], abi_version: &AbiVersion) -> Result<BuilderData> {
         let cell_len = BuilderData::bits_capacity() / 8;
         let mut len = data.len();
@@ -352,8 +366,8 @@ impl TokenValue {
         Ok(builder)
     }
 
-    fn map_value_in_ref(key_len: usize, value_len: usize) -> bool {
-        super::MAX_HASH_MAP_INFO_ABOUT_KEY + key_len + value_len <= 1023
+    pub(crate) fn map_value_in_ref(key_len: usize, value_len: usize) -> bool {
+        super::MAX_HASH_MAP_INFO_ABOUT_KEY + key_len + value_len > 1023
     }
 
     fn write_map(
@@ -362,8 +376,8 @@ impl TokenValue {
         value: &BTreeMap<String, TokenValue>,
         abi_version: &AbiVersion,
     ) -> Result<BuilderData> {
-        let key_len = key_type.get_map_key_size()?;
-        let value_len = value_type.max_bit_size();
+        let key_len = Self::get_map_key_size(key_type)?;
+        let value_len = Self::max_bit_size(value_type, abi_version);
         let value_in_ref = Self::map_value_in_ref(key_len, value_len);
 
         let mut hashmap = HashmapE::with_bit_len(key_len);
@@ -390,9 +404,9 @@ impl TokenValue {
 
             let slice_key = SliceData::load_builder(key_vec.pop().unwrap().data)?;
             if value_in_ref {
-                hashmap.set_builder(slice_key, &data)?;
-            } else {
                 hashmap.setref(slice_key, &data.into_cell()?)?;
+            } else {
+                hashmap.set_builder(slice_key, &data)?;
             }
         }
 
@@ -419,7 +433,7 @@ impl TokenValue {
         abi_version: &AbiVersion,
     ) -> Result<BuilderData> {
         if let Some(value) = value {
-            if param_type.is_large_optional() {
+            if Self::is_large_optional(param_type, abi_version) {
                 let value = value.pack_into_chain(abi_version)?;
                 let mut builder = BuilderData::new();
                 builder.append_bit_one()?;

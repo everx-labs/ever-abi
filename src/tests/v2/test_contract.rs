@@ -14,11 +14,11 @@
 use crate::{Contract, DataItem, Event, Function, Param, ParamType};
 use std::collections::HashMap;
 
-use crate::contract::ABI_VERSION_2_2;
+use crate::contract::ABI_VERSION_2_4;
 
 const TEST_ABI: &str = r#"
 {
-    "version": "2.2",
+    "version": "2.4",
     "header": [
         "time",
         "expire",
@@ -71,7 +71,7 @@ const TEST_ABI: &str = r#"
     ],
     "fields": [
         { "name": "a", "type": "uint32" },
-        { "name": "b", "type": "int128" }
+        { "name": "b", "type": "int128", "init": true }
     ]
 }"#;
 
@@ -98,7 +98,7 @@ fn test_abi_parse() {
             kind: ParamType::Uint(64),
         },
     ];
-    let abi_version = ABI_VERSION_2_2;
+    let abi_version = ABI_VERSION_2_4;
 
     functions.insert(
         "input_and_output".to_owned(),
@@ -256,6 +256,8 @@ fn test_abi_parse() {
         },
     ];
 
+    let init_fields = vec!["b".to_owned()].into_iter().collect();
+
     let expected_contract = Contract {
         abi_version,
         header,
@@ -263,6 +265,7 @@ fn test_abi_parse() {
         events,
         data,
         fields,
+        init_fields,
     };
 
     assert_eq!(parsed_contract, expected_contract);

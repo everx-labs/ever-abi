@@ -12,12 +12,18 @@
 */
 
 use crate::{
-    error::AbiError, event::Event, function::Function, param::Param, param_type::ParamType,
-    token::Token, TokenValue,
+    error::AbiError,
+    event::Event,
+    function::Function,
+    param::{Param, SerdeParam},
+    param_type::ParamType,
+    token::Token,
+    TokenValue,
+
 };
 use serde::de::Error as SerdeError;
 use serde_json;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::io;
 use ton_block::{MsgAddressInt, Serializable};
@@ -27,13 +33,14 @@ use ton_types::{
 };
 
 pub const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_1_0;
-pub const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_3;
+pub const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_4;
 
 pub const ABI_VERSION_1_0: AbiVersion = AbiVersion::from_parts(1, 0);
 pub const ABI_VERSION_2_0: AbiVersion = AbiVersion::from_parts(2, 0);
 pub const ABI_VERSION_2_1: AbiVersion = AbiVersion::from_parts(2, 1);
 pub const ABI_VERSION_2_2: AbiVersion = AbiVersion::from_parts(2, 2);
 pub const ABI_VERSION_2_3: AbiVersion = AbiVersion::from_parts(2, 3);
+pub const ABI_VERSION_2_4: AbiVersion = AbiVersion::from_parts(2, 4);
 
 pub type PublicKeyData = [u8; ED25519_PUBLIC_KEY_LENGTH];
 pub type SignatureData = [u8; ED25519_SIGNATURE_LENGTH];
@@ -204,7 +211,7 @@ struct SerdeContract {
     pub data: Vec<DataItem>,
     /// Contract storage fields.
     #[serde(default)]
-    pub fields: Vec<Param>,
+    pub fields: Vec<SerdeParam>,
 }
 
 pub struct DecodedMessage {
@@ -227,6 +234,8 @@ pub struct Contract {
     data: HashMap<String, DataItem>,
     /// Contract storage fields.
     fields: Vec<Param>,
+    /// List of `fields` parameters with `init == true`
+    init_fields: HashSet<String>,
 }
 
 impl Contract {
@@ -280,7 +289,8 @@ impl Contract {
             functions: HashMap::new(),
             events: HashMap::new(),
             data: HashMap::new(),
-            fields: serde_contract.fields,
+            fields: Vec::new(),
+            init_fields: HashSet::new(),
         };
 
         for function in serde_contract.functions {
@@ -305,6 +315,15 @@ impl Contract {
             result.data.insert(data.value.name.clone(), data);
         }
 
+        for field in serde_contract.fields {
+            if field.init {
+                result.init_fields.insert(field.name.clone());
+            }
+            result
+                .fields
+                .push(Param::from_serde(field).map_err(|err| AbiError::InvalidData { msg: err })?);
+        }
+
         Ok(result)
     }
 
@@ -314,11 +333,9 @@ impl Contract {
     {
         for param in params {
             if !param.kind.is_supported(abi_version) {
-                return Err(AbiError::InvalidData {
-                    msg: format!(
-                        "Parameters of type {} are not supported in ABI v{}",
-                        param.kind, abi_version
-                    ),
+                return Err(AbiError::NotSupported {
+                    subject: format!("Parameter type {}", param.kind),
+                    version: *abi_version,
                 }
                 .into());
             }
@@ -455,8 +472,47 @@ impl Contract {
 
     pub const DATA_MAP_KEYLEN: usize = 64;
 
+    pub fn data_map_supported_in_version(abi_version: &AbiVersion) -> bool {
+        abi_version < &ABI_VERSION_2_4
+    }
+
+    pub fn data_map_supported(&self) -> bool {
+        Self::data_map_supported_in_version(&self.abi_version)
+    }
+
+    fn check_data_map_support(&self) -> Result<()> {
+        if !self.data_map_supported() {
+            return Err(AbiError::NotSupported {
+                subject: "Initial data dictionary".to_owned(),
+                version: self.abi_version,
+            }
+            .into());
+        }
+        Ok(())
+    }
+
+    pub fn init_fields_supported_in_version(abi_version: &AbiVersion) -> bool {
+        abi_version >= &ABI_VERSION_2_4
+    }
+
+    pub fn init_fields_supported(&self) -> bool {
+        Self::init_fields_supported_in_version(&self.abi_version)
+    }
+
+    fn check_init_fields_support(&self) -> Result<()> {
+        if !self.init_fields_supported() {
+            return Err(AbiError::NotSupported {
+                subject: "Initial storage fields".to_owned(),
+                version: self.abi_version,
+            }
+            .into());
+        }
+        Ok(())
+    }
+
     /// Changes initial values for public contract variables
     pub fn update_data(&self, data: SliceData, tokens: &[Token]) -> Result<SliceData> {
+        self.check_data_map_support()?;
         let mut map = HashmapE::with_hashmap(Self::DATA_MAP_KEYLEN, data.reference_opt(0));
 
         for token in tokens {
@@ -476,6 +532,7 @@ impl Contract {
 
     /// Decode initial values of public contract variables
     pub fn decode_data(&self, data: SliceData, allow_partial: bool) -> Result<Vec<Token>> {
+        self.check_data_map_support()?;
         let map = HashmapE::with_hashmap(Self::DATA_MAP_KEYLEN, data.reference_opt(0));
 
         let mut tokens = vec![];
@@ -495,14 +552,15 @@ impl Contract {
     }
 
     // Gets public key from contract data
-    pub fn get_pubkey(data: &SliceData) -> Result<Option<Vec<u8>>> {
+    pub fn get_pubkey(data: &SliceData) -> Result<Option<PublicKeyData>> {
         let map = HashmapE::with_hashmap(Self::DATA_MAP_KEYLEN, data.reference_opt(0));
-        map.get(SliceData::load_builder(0u64.write_to_new_cell()?)?)
-            .map(|opt| opt.map(|slice| slice.get_bytestring(0)))
+        Ok(map.get(SliceData::load_builder(0u64.write_to_new_cell()?)?)?
+            .map(|slice| slice.get_bytestring(0).as_slice().try_into())
+            .transpose()?)
     }
 
     /// Sets public key into contract data
-    pub fn insert_pubkey(data: SliceData, pubkey: &[u8]) -> Result<SliceData> {
+    pub fn insert_pubkey(data: SliceData, pubkey: &PublicKeyData) -> Result<SliceData> {
         let pubkey_vec = pubkey.to_vec();
         let pubkey_len = pubkey_vec.len() * 8;
         let value = BuilderData::with_raw(pubkey_vec, pubkey_len)?;
@@ -520,6 +578,45 @@ impl Contract {
         function_call: SliceData,
     ) -> Result<BuilderData> {
         Function::add_sign_to_encoded_input(&self.abi_version, signature, public_key, function_call)
+    }
+
+    /// Encode account storage fields
+    pub fn encode_storage_fields(
+        &self,
+        mut init_fields: HashMap<String, TokenValue>,
+    ) -> Result<BuilderData> {
+        self.check_init_fields_support()?;
+        
+        let mut tokens = vec![];
+        for param in &self.fields {
+            let token = init_fields
+                .remove_entry(&param.name)
+                .map(|(name, value)| Token { name, value });
+
+            if self.init_fields.contains(&param.name) {
+                let token = token.ok_or_else(|| AbiError::InvalidInputData {
+                    msg: format!(
+                        "Storage field '{}' is marked as `init` and should be supplied",
+                        param.name
+                    ),
+                })?;
+                tokens.push(token);
+            } else {
+                if token.is_some() {
+                    return Err(error!(AbiError::InvalidInputData {
+                        msg: format!(
+                            "Storage field '{}' is not marked as `init` and should not be supplied",
+                            param.name
+                        )
+                    }));
+                }
+                tokens.push(Token {
+                    name: param.name.clone(),
+                    value: TokenValue::default_value(&param.kind),
+                });
+            }
+        }
+        TokenValue::pack_values_into_chain(&tokens, vec![], &self.abi_version)
     }
 
     /// Decode account storage fields

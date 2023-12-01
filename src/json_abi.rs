@@ -40,7 +40,7 @@ pub fn encode_function_call(
 
     let mut header_tokens = if let Some(header) = header {
         let v: Value = serde_json::from_str(header).map_err(|err| AbiError::SerdeError { err })?;
-        Tokenizer::tokenize_optional_params(function.header_params(), &v, &HashMap::new())?
+        Tokenizer::tokenize_optional_params(function.header_params(), &v)?
     } else {
         HashMap::new()
     };
@@ -78,7 +78,7 @@ pub fn prepare_function_call_for_sign(
 
     let header_tokens = if let Some(header) = header {
         let v: Value = serde_json::from_str(header).map_err(|err| AbiError::SerdeError { err })?;
-        Tokenizer::tokenize_optional_params(function.header_params(), &v, &HashMap::new())?
+        Tokenizer::tokenize_optional_params(function.header_params(), &v)?
     } else {
         HashMap::new()
     };
@@ -208,6 +208,22 @@ pub fn get_signature_data(
         .map(|string| MsgAddressInt::from_str(string))
         .transpose()?;
     contract.get_signature_data(cursor, address)
+}
+
+/// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
+/// which can be used as message body for calling contract
+pub fn encode_storage_fields(abi: &str, init_fields: Option<&str>) -> Result<BuilderData> {
+    let contract = Contract::load(abi.as_bytes())?;
+
+    let init_fields = if let Some(init_fields) = init_fields {
+        let v: Value =
+            serde_json::from_str(&init_fields).map_err(|err| AbiError::SerdeError { err })?;
+        Tokenizer::tokenize_optional_params(&contract.fields(), &v)?
+    } else {
+        HashMap::new()
+    };
+
+    contract.encode_storage_fields(init_fields)
 }
 
 #[cfg(test)]
