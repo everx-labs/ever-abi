@@ -12,7 +12,7 @@
 */
 
 use crate::{
-    contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_2, ABI_VERSION_2_4},
+    contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2, ABI_VERSION_2_4},
     error::AbiError,
     int::{Int, Uint},
     param::Param,
@@ -240,9 +240,6 @@ impl TokenValue {
         abi_version: &AbiVersion,
         allow_partial: bool,
     ) -> Result<(Vec<Self>, SliceData)> {
-        let value_len = Self::max_bit_size(item_type, abi_version);
-        let value_in_ref = Self::map_value_in_ref(32, value_len);
-
         let original = cursor.clone();
         cursor = find_next_bits(cursor, 1)?;
         let map = HashmapE::with_hashmap(32, cursor.get_dictionary()?.reference_opt(0));
@@ -258,7 +255,14 @@ impl TokenValue {
             index.append_u32(i as u32)?;
             match map.get(SliceData::load_builder(index)?) {
                 Ok(Some(mut item_slice)) => {
-                    if value_in_ref {
+                    let expression = 
+                        if abi_version == &ABI_VERSION_1_0 || abi_version == &ABI_VERSION_2_0 {
+                            item_slice.remaining_bits() == 0 && Self::max_bit_size(item_type, abi_version) != 0
+                        } else {
+                            let value_len = Self::max_bit_size(item_type, abi_version);
+                            Self::map_value_in_ref(32, value_len)
+                        };
+                    if expression  {
                         item_slice = SliceData::load_cell(item_slice.checked_drain_reference()?)?;
                     }
                     let (token, _) =
