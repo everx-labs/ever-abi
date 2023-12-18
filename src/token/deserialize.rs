@@ -255,14 +255,14 @@ impl TokenValue {
             index.append_u32(i as u32)?;
             match map.get(SliceData::load_builder(index)?) {
                 Ok(Some(mut item_slice)) => {
-                    let expression = 
+                    let do_load_ref = 
                         if abi_version == &ABI_VERSION_1_0 || abi_version == &ABI_VERSION_2_0 {
                             item_slice.remaining_bits() == 0 && Self::max_bit_size(item_type, abi_version) != 0
                         } else {
                             let value_len = Self::max_bit_size(item_type, abi_version);
                             Self::map_value_in_ref(32, value_len)
                         };
-                    if expression  {
+                    if do_load_ref  {
                         item_slice = SliceData::load_cell(item_slice.checked_drain_reference()?)?;
                     }
                     let (token, _) =
