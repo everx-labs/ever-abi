@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.4.10
+
+### Fixed
+- Fixed decoding of a large-size elements array.
+
 ## Version 2.4.0
 
 ### New
