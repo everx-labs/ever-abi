@@ -11,9 +11,9 @@
 * limitations under the License.
 */
 
-use ever_block::{MsgAddressInt, Serializable};
-use ever_types::dictionary::HashmapE;
-use ever_types::{
+use ever_block::{MsgAddressInt, Serializable, Deserializable};
+use ever_block::dictionary::HashmapE;
+use ever_block::{
     ed25519_generate_private_key, ed25519_verify, BuilderData, IBitstring, SliceData,
     ED25519_SIGNATURE_LENGTH,
 };
@@ -380,7 +380,7 @@ fn test_find_event() {
 #[test]
 fn test_store_pubkey() {
     let mut test_map = HashmapE::with_bit_len(Contract::DATA_MAP_KEYLEN);
-    let test_pubkey = vec![11u8; 32];
+    let test_pubkey = [11u8; 32];
     test_map
         .set_builder(
             SliceData::load_builder(0u64.write_to_new_cell().unwrap()).unwrap(),
@@ -697,4 +697,96 @@ fn test_max_int() {
     );
     assert_eq!(encoded.length_in_bits(), 290);
     assert_eq!(encoded.references().len(), 0);
+}
+
+const ABI_WITH_FIELDS_V24: &str = r#"{
+    "version": "2.4",
+    "functions": [],
+    "fields": [
+        {"name":"__pubkey","type":"uint256","init":true},
+        {"name":"__timestamp","type":"uint64"},
+        {"name":"ok","type":"bool", "init": true},
+        {"name":"value","type":"address"}
+    ]
+}"#;
+
+#[test]
+fn test_encode_storage_fields() {
+    let test_tree = encode_storage_fields(
+        ABI_WITH_FIELDS_V24,
+        Some(
+            r#"{
+            "__pubkey": "0x11c0a428b6768562df09db05326595337dbb5f8dde0e128224d4df48df760f17",
+            "ok": true
+        }"#,
+        ),
+    )
+    .unwrap();
+
+    let mut expected_tree = BuilderData::new();
+    expected_tree
+        .append_raw(
+            &hex::decode("11c0a428b6768562df09db05326595337dbb5f8dde0e128224d4df48df760f17")
+                .unwrap(),
+            32 * 8,
+        )
+        .unwrap();
+    expected_tree.append_u64(0).unwrap();
+    expected_tree.append_bit_one().unwrap();
+    expected_tree.append_bits(0, 2).unwrap();
+
+    assert_eq!(test_tree, expected_tree);
+
+    assert!(dbg!(encode_storage_fields(
+        ABI_WITH_FIELDS_V24,
+        Some(
+            r#"{
+            "ok": true
+        }"#
+        ),
+    ))
+    .is_err());
+
+    assert!(dbg!(encode_storage_fields(
+        ABI_WITH_FIELDS_V24,
+        Some(
+            r#"{
+            "__pubkey": "0x11c0a428b6768562df09db05326595337dbb5f8dde0e128224d4df48df760f17",
+            "__timestamp": 123,
+            "ok": true
+        }"#
+        ),
+    ))
+    .is_err());
+}
+
+const ABI_WRONG_STORAGE_LAYOUT: &str = r#"{
+	"ABI version": 2,
+	"version": "2.3",
+	"header": ["pubkey", "time", "expire"],
+	"functions": [],
+	"data": [
+		{"key":1,"name":"_collectionName","type":"bytes"}
+	],
+	"events": [
+	],
+	"fields": [
+		{"name":"_pubkey","type":"uint256"},
+		{"name":"_timestamp","type":"uint64"},
+		{"name":"_constructorFlag","type":"bool"},
+		{"components":[{"name":"dtCreated","type":"uint32"},{"name":"ownerAddress","type":"address"},{"name":"kekAddress","type":"address"}],"name":"_info","type":"tuple"},
+		{"components":[{"name":"contents","type":"bytes"},{"name":"extension","type":"bytes"},{"name":"name","type":"bytes"},{"name":"comment","type":"bytes"}],"name":"_media","type":"tuple"},
+		{"name":"_collectionName","type":"bytes"},
+		{"name":"_tokensIssued","type":"uint128"},
+		{"name":"_externalMedia","type":"address"}
+	]
+}
+"#;
+
+#[test]
+fn test_wrong_storage_layout() {
+    let image = include_bytes!("FairNFTCollection.tvc");
+    let image = ever_block::StateInit::construct_from_bytes(image).unwrap();
+
+    assert!(decode_storage_fields(ABI_WRONG_STORAGE_LAYOUT, SliceData::load_cell(image.data.unwrap()).unwrap(), false).is_ok());
 }

@@ -24,9 +24,10 @@ use ever_types::{
 
 use crate::contract::{
     AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_2,
-    MAX_SUPPORTED_VERSION,
+    MAX_SUPPORTED_VERSION, ABI_VERSION_2_4, ABI_VERSION_2_3,
 };
-use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
+use crate::token::Cursor;
+use crate::{Int, Param, ParamType, Token, TokenValue, Uint, AbiError};
 
 fn put_array_into_map<T: Serializable>(array: &[T]) -> HashmapE {
     let mut map = HashmapE::with_bit_len(32);
@@ -80,9 +81,14 @@ fn test_parameters_set(
         let mut slice = SliceData::load_builder(test_tree).unwrap();
         slice.checked_drain_reference().unwrap();
         slice.get_next_u32().unwrap();
+        let cursor = Cursor {
+            slice,
+            used_bits: 32,
+            used_refs: 1
+        };
 
         let decoded_tokens =
-            TokenValue::decode_params(&params, slice, &version.clone().into(), false).unwrap();
+            TokenValue::decode_params_with_cursor(&params, cursor, version, false, true).unwrap().0;
         assert_eq!(decoded_tokens, inputs);
     }
 }
@@ -103,6 +109,22 @@ fn tokens_from_values(values: Vec<TokenValue>) -> Vec<Token> {
         .map(|(value, name)| Token {
             name: name.to_owned(),
             value: value,
+        })
+        .collect()
+}
+
+fn params_from_types(types: Vec<ParamType>) -> Vec<Param> {
+    let param_names = vec![
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r",
+        "s", "t", "u", "v", "w", "x", "y", "z",
+    ];
+
+    types
+        .into_iter()
+        .zip(param_names)
+        .map(|(kind, name)| Param {
+            name: name.to_owned(),
+            kind: kind,
         })
         .collect()
 }
@@ -1375,5 +1397,215 @@ fn test_four_optional_strings() {
         None,
         builder,
         &[ABI_VERSION_2_1],
+    );
+}
+
+#[test]
+fn test_default_values() {
+    let param_type = ParamType::Tuple(params_from_types(
+        [
+            ParamType::Address,
+            ParamType::Array(Box::new(ParamType::Uint(32))),
+            ParamType::Bool,
+            ParamType::Bytes,
+            ParamType::Cell,
+            ParamType::Expire,
+            ParamType::FixedArray(Box::new(ParamType::Bool), 5),
+            ParamType::FixedBytes(3),
+            ParamType::Int(10),
+            ParamType::Map(Box::new(ParamType::Address), Box::new(ParamType::VarInt(6))),
+            ParamType::Optional(Box::new(ParamType::Address)),
+            ParamType::PublicKey,
+            ParamType::Ref(Box::new(ParamType::Int(15))),
+            ParamType::String,
+            ParamType::Time,
+            ParamType::Token,
+            ParamType::Uint(1),
+            ParamType::VarInt(7),
+            ParamType::VarUint(20),
+        ]
+        .to_vec(),
+    ));
+
+    let default = TokenValue::default_value(&param_type);
+
+    let encoded = default.pack_into_chain(&MAX_SUPPORTED_VERSION).unwrap();
+
+    let mut root = BuilderData::new();
+
+    // ParamType::Address
+    root.append_bit_zero().unwrap();
+    root.append_bit_zero().unwrap();
+
+    // ParamType::Array(Box::new(ParamType::Uint(32)))
+    root.append_u32(0).unwrap();
+    root.append_bit_zero().unwrap();
+
+    // ParamType::Bool
+    root.append_bit_zero().unwrap();
+
+    // ParamType::Bytes
+    root.checked_append_reference(Cell::default()).unwrap();
+
+    // ParamType::Cell
+    root.checked_append_reference(Cell::default()).unwrap();
+
+    // ParamType::Expire
+    root.append_u32(0).unwrap();
+
+    let mut second = BuilderData::new();
+
+    // ParamType::FixedArray(Box::new(ParamType::Bool), 5)
+    add_array_as_map(&mut second, &[false; 5], true);
+
+    // ParamType::FixedBytes(3)
+    second.append_raw(&[0u8; 3], 24).unwrap();
+
+    // ParamType::Int(10)
+    second.append_raw(&[0u8; 2], 10).unwrap();
+
+    // ParamType::Map(Box::new(ParamType::Address), Box::new(ParamType::VarInt(6)))
+    second.append_bit_zero().unwrap();
+
+    // ParamType::Optional(Box::new(ParamType::Address))
+    second.append_bit_zero().unwrap();
+
+    // ParamType::PublicKey
+    second.append_bit_zero().unwrap();
+
+    // ParamType::Ref(Box::new(ParamType::Int(15)))
+    second
+        .checked_append_reference(
+            BuilderData::with_raw([0u8; 2].as_slice(), 15)
+                .unwrap()
+                .into_cell()
+                .unwrap(),
+        )
+        .unwrap();
+
+    let mut third = BuilderData::new();
+
+    // ParamType::String
+    third.checked_append_reference(Cell::default()).unwrap();
+
+    // ParamType::Time
+    third.append_u64(0).unwrap();
+
+    // ParamType::Token
+    third.append_raw(&[0u8], 4).unwrap();
+
+    // ParamType::Uint(1)
+    third.append_bit_zero().unwrap();
+
+    // ParamType::VarInt(7)
+    third.append_raw(&[0], 3).unwrap();
+
+    // ParamType::VarUint(20)
+    third.append_raw(&[0; 2], 5).unwrap();
+
+    second
+        .checked_append_reference(third.into_cell().unwrap())
+        .unwrap();
+    root.checked_append_reference(second.into_cell().unwrap())
+        .unwrap();
+
+    assert_eq!(encoded, root);
+}
+
+#[test]
+fn test_wrong_layout() {
+    let mut builder = BuilderData::new();
+    builder.append_u32(123).unwrap();
+    builder.checked_append_reference(
+        BuilderData::with_raw(456u64.to_be_bytes().as_slice(), 64).unwrap().into_cell().unwrap(),
+    ).unwrap();
+
+    let slice = SliceData::load_builder(builder).unwrap();
+
+    let params = params_from_types(vec![
+        ParamType::Uint(32),
+        ParamType::Uint(64),
+    ]);
+
+    assert!(
+        matches!(
+            TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_1_0, false)
+                .unwrap_err()
+                .downcast::<AbiError>()
+                .unwrap(),
+            AbiError::WrongDataLayout,
+        )
+    );
+    assert!(
+        matches!(
+            TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_2_1, false)
+                .unwrap_err()
+                .downcast::<AbiError>()
+                .unwrap(),
+            AbiError::WrongDataLayout,
+        )
+    );
+    assert!( 
+        matches!(
+            TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_2_2, false)
+                .unwrap_err()
+                .downcast::<AbiError>()
+                .unwrap(),
+            AbiError::WrongDataLayout,
+        )
+    );
+
+    let addr = MsgAddress::AddrStd(Default::default());
+
+    let mut builder = BuilderData::new();
+    builder.append_builder(&addr.write_to_new_cell().unwrap().into()).unwrap();
+    builder.append_builder(&addr.write_to_new_cell().unwrap().into()).unwrap();
+
+    let slice = SliceData::load_builder(builder).unwrap();
+
+    let params = params_from_types(vec![
+        ParamType::Address,
+        ParamType::Address,
+    ]);
+
+    assert!(
+        matches!(
+            TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_2_2, false)
+                .unwrap_err()
+                .downcast::<AbiError>()
+                .unwrap(),
+            AbiError::WrongDataLayout,
+        )
+    );
+}
+
+#[test]
+fn test_fixed_bytes() {
+    // test prefix with one ref and u32
+    let mut builder = BuilderData::new();
+    builder.append_u32(0).unwrap();
+    builder.checked_append_reference(Cell::default()).unwrap();
+
+    let bytes = vec![0u8; 32];
+    let bytes_builder = BuilderData::with_raw(bytes.clone(), 256).unwrap();
+
+    let mut builder_v24 = builder.clone();
+    builder_v24.append_builder(&bytes_builder).unwrap();
+
+    builder.checked_append_reference(bytes_builder.into_cell().unwrap()).unwrap();
+
+    let values = vec![TokenValue::FixedBytes(bytes)];
+
+    test_parameters_set(
+        &tokens_from_values(values.clone()),
+        None,
+        builder,
+        &[ABI_VERSION_1_0, ABI_VERSION_2_3],
+    );
+    test_parameters_set(
+        &tokens_from_values(values),
+        None,
+        builder_v24,
+        &[ABI_VERSION_2_4],
     );
 }

@@ -14,9 +14,9 @@
 mod tokenize_tests {
     use crate::token::{Detokenizer, Tokenizer};
     use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
     use ever_block::{Grams, MsgAddress};
-    use ever_types::{AccountId, BuilderData, Cell, SliceData, ED25519_PUBLIC_KEY_LENGTH};
+    use ever_block::{AccountId, BuilderData, Cell, SliceData, ED25519_PUBLIC_KEY_LENGTH};
 
     #[test]
     fn test_tokenize_ints() {
@@ -1073,7 +1073,6 @@ mod tokenize_tests {
         assert!(Tokenizer::tokenize_optional_params(
             &params,
             &serde_json::from_str(input).unwrap(),
-            &HashMap::new()
         )
         .is_err(),);
     }
@@ -1083,7 +1082,7 @@ mod types_check_tests {
     use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
     use std::collections::BTreeMap;
     use ever_block::MsgAddress;
-    use ever_types::Cell;
+    use ever_block::Cell;
 
     #[test]
     fn test_type_check() {

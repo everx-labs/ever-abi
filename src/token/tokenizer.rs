@@ -90,7 +90,6 @@ impl Tokenizer {
     pub fn tokenize_optional_params(
         params: &[Param],
         values: &Value,
-        default_values: &HashMap<String, TokenValue>,
     ) -> Result<HashMap<String, TokenValue>> {
         if let Value::Object(map) = values {
             let mut map = map.clone();
@@ -99,8 +98,6 @@ impl Tokenizer {
                 if let Some(value) = map.remove(&param.name) {
                     let token_value = Self::tokenize_parameter(&param.kind, &value, &param.name)?;
                     tokens.insert(param.name.clone(), token_value);
-                } else if let Some(value) = default_values.get(&param.name) {
-                    tokens.insert(param.name.clone(), value.clone());
                 }
             }
             if !map.is_empty() {
@@ -117,7 +114,7 @@ impl Tokenizer {
             Ok(tokens)
         } else {
             fail!(AbiError::InvalidInputData {
-                msg: "Contract function parameters should be passed as a JSON object".to_string()
+                msg: "Contract parameters should be passed as a JSON object".to_string()
             })
         }
     }

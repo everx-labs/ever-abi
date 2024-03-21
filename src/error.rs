@@ -11,10 +11,18 @@
 * limitations under the License.
 */
 
+use crate::contract::AbiVersion;
+
 #[derive(Debug, failure::Fail)]
 pub enum AbiError {
     #[fail(display = "Invalid data: {}", msg)]
     InvalidData { msg: String },
+
+    #[fail(display = "{} is not supported in ABI v{}", subject, version)]
+    NotSupported {
+        subject: String,
+        version: AbiVersion,
+    },
 
     #[fail(display = "Invalid name: {}", name)]
     InvalidName { name: String },
@@ -94,4 +102,7 @@ pub enum AbiError {
         display = "Message destination address is required to encode signed external inbound message body since ABI version 2.3"
     )]
     AddressRequired,
+
+    #[fail(display = "Wrong data layout")]
+    WrongDataLayout
 }
