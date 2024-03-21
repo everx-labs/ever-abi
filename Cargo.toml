@@ -2,7 +2,7 @@
 build = 'common/build/build.rs'
 edition = '2021'
 name = 'ton_abi'
-version = '2.4.16'
+version = '2.4.23'
 
 [dependencies]
 base64 = '0.10.0'
@@ -16,8 +16,8 @@ serde = '1.0.91'
 serde_derive = '1.0.91'
 serde_json = '1.0.41'
 sha2 = '0.10'
-ton_block = { git = 'https://github.com/tonlabs/ever-block.git', tag = '1.9.126' }
-ton_types = { git = 'https://github.com/tonlabs/ever-types.git', tag = '2.0.33' }
+ton_block = { git = 'https://github.com/tonlabs/ever-block.git', tag = 'pre_lightweight' }
+ton_types = { git = 'https://github.com/tonlabs/ever-types.git', tag = 'pre_lightweight' }
 
 [dev-dependencies]
 pretty_assertions = '1.3'
