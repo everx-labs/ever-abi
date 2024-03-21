@@ -26,6 +26,6 @@ To solve the problem signature must be dependent on the destination address.
 3. *Representation hash* of the bag is signed using the *Ed25519* algorithm.
 4. Address data is removed from the root cell and replaced with bit `1` followed by 512 bits of the signature.
 
-> This fucntionality is supported staring with [0.64.0](https://github.com/tonlabs/EVERX-Solidity-Compiler/blob/master/Changelog_EVERX.md#0640-2022-08-18) version of the Solidity compiler.
+> This fucntionality is supported staring with [0.64.0](https://github.com/tonlabs/TVM-Solidity-Compiler/blob/master/Changelog.md#0640-2022-08-18) version of the Solidity compiler.
 
 

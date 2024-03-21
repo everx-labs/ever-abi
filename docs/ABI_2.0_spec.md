@@ -211,7 +211,7 @@ The goal of the ABI specification is to design ABI types that are cheap to read 
     - Note: analog of `bytes` in Solidity. In C lang can be used as `void*`.
 - `fixedbytes<M>`: a fixed-size array of `M` `uint8` type elements. Encoding is equivalent to `bytes`
 - `map(K,V)` is a dictionary of `V` type values with `K` type key. `K` may be any of `int<M>/uint<M>` types with `M` from `1` to `1023`. Dictionary is encoded as  `HashmapE` type (one bit put into cell data as dictionary root and one reference with data is added if the dictionary is not empty).
-- `address` is an account address in EVERX blockchain. Encoded as `MsgAddress` struct (see TL-B schema in EVERX blockchain spec).
+- `address` is an account address in blockchain. Encoded as `MsgAddress` struct (see TL-B schema in blockchain spec).
 - `cell`: a type for defining a raw tree of cells. Stored as a reference in the current cell. Must be decoded with `LDREF`  command and stored as-is.
     - Note: this type is useful to store payloads as a tree of cells analog to contract code and data in the form of `StateInit` structure of `message` structure.
 
@@ -358,14 +358,14 @@ if (12 + len(key) + maxPossibleValueLength <= 1023) then we use DICTSET.
 
 else we will use DICTSETREF.
 
-12 = 2 + 10 ≥ 2 + log2(keyLength). See [https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L30](https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L30)
+12 = 2 + 10 ≥ 2 + log2(keyLength). See [https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L30](https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L30)
 
   
 
 Max possible size of value:
 
 - intN/uintN - N bit.
-- address - 591 bit. See [https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L107](https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L107)
+- address - 591 bit. See [https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L107](https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L107)
 
 ```jsx
 anycast_info$_ depth:(#<= 30) { depth >= 1 }

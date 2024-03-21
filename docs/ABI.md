@@ -613,7 +613,7 @@ Internal addresses are serialised as:
 
 **Size**
 
-Maximum size allocated for address is 591 bits: see [https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L107](https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L107)
+Maximum size allocated for address is 591 bits: see [https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L107](https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L107)
 
 ```TL-B
 anycast_info$_ depth:(#<= 30) { depth >= 1 }
@@ -717,7 +717,7 @@ else write data to reference.
 12 = 2 + 10 ≥ 2 + log2(keyLength).
 ```
 
-See [https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L30](https://github.com/ever-blockchain/ever/blob/master/crypto/block/block.tlb#L30)
+See [https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L30](https://github.com/ton-blockchain/ton/blob/master/crypto/block/block.tlb#L30)
 
 ## Reference
 

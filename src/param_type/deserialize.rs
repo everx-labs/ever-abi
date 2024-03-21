@@ -15,7 +15,7 @@ use crate::{error::AbiError, param_type::ParamType};
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
-use ever_types::{error, fail, Result};
+use ever_block::{error, fail, Result};
 
 impl<'a> Deserialize<'a> for ParamType {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>

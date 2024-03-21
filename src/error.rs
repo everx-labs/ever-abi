@@ -33,7 +33,7 @@ pub enum AbiError {
     #[fail(display = "Deserialization error {}: {}", msg, cursor)]
     DeserializationError {
         msg: &'static str,
-        cursor: ever_types::SliceData,
+        cursor: ever_block::SliceData,
     },
 
     #[fail(display = "Not implemented")]

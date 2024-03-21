@@ -14,8 +14,8 @@
 use crate::token::Detokenizer;
 use crate::{Function, Int, Param, ParamType, Token, TokenValue, Uint};
 
-use ever_types::BuilderData;
-use ever_types::IBitstring;
+use ever_block::BuilderData;
+use ever_block::IBitstring;
 
 use crate::contract::ABI_VERSION_2_0;
 

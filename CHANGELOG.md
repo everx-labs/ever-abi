@@ -91,7 +91,7 @@ body instead of chained cells in current cell reference
 
     This prevents a problem where a message to one of several contracts with identical public keys and function signatures may be duplicated and sent to any other of this set of contracts and be successful.
 
-    > This functionality is supported staring with [0.64.0](https://github.com/tonlabs/EVERX-Solidity-Compiler/blob/master/Changelog_EVERX.md#0640-2022-08-18) version of the Solidity compiler.
+    > This functionality is supported staring with [0.64.0](https://github.com/tonlabs/TVM-Solidity-Compiler/blob/master/Changelog.md#0640-2022-08-18) version of the Solidity compiler.
 
 
 ## Version 2.2 - 2021-07-19

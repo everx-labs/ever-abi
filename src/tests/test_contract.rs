@@ -12,7 +12,7 @@
 */
 
 use ever_block::{Deserializable, StateInit};
-use ever_types::{read_single_root_boc, Result, SliceData};
+use ever_block::{read_single_root_boc, Result, SliceData};
 
 use crate::{Contract, PublicKeyData};
 

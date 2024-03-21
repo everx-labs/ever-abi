@@ -42,7 +42,7 @@ pub enum ParamType {
     Cell,
     /// hashmap - values dictionary
     Map(Box<ParamType>, Box<ParamType>),
-    /// EVERX message address
+    /// message address
     Address,
     /// byte array
     Bytes,

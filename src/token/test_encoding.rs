@@ -17,8 +17,8 @@ use std::iter::FromIterator;
 use std::str::FromStr;
 
 use ever_block::{AnycastInfo, Grams, MsgAddress, Serializable};
-use ever_types::dictionary::{HashmapE, HashmapType};
-use ever_types::{
+use ever_block::dictionary::{HashmapE, HashmapType};
+use ever_block::{
     AccountId, BuilderData, Cell, IBitstring, Result, SliceData, ED25519_PUBLIC_KEY_LENGTH,
 };
 

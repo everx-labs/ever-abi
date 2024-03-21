@@ -23,7 +23,7 @@ use crate::{
 
 use std::collections::HashMap;
 use ever_block::{MsgAddressInt, Serializable};
-use ever_types::{
+use ever_block::{
     error, fail, sha256_digest, BuilderData, Cell, Ed25519PrivateKey, IBitstring, Result,
     SliceData, ED25519_SIGNATURE_LENGTH, MAX_DATA_BYTES,
 };

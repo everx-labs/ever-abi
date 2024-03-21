@@ -27,7 +27,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::io;
 use ever_block::{MsgAddressInt, Serializable};
-use ever_types::{
+use ever_block::{
     error, fail, BuilderData, HashmapE, Result, SliceData, ED25519_PUBLIC_KEY_LENGTH,
     ED25519_SIGNATURE_LENGTH,
 };

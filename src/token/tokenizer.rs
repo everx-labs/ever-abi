@@ -29,7 +29,7 @@ use std::{
     str::FromStr,
 };
 use ever_block::{Grams, MsgAddress};
-use ever_types::{error, fail, read_single_root_boc, Cell, Result, ED25519_PUBLIC_KEY_LENGTH};
+use ever_block::{error, fail, read_single_root_boc, Cell, Result, ED25519_PUBLIC_KEY_LENGTH};
 
 /// This struct should be used to parse string values as tokens.
 pub struct Tokenizer;
