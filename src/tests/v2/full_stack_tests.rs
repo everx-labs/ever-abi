@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2023 EverX. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -7,13 +7,13 @@
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
+* See the License for the specific EVERX DEV software governing permissions and
 * limitations under the License.
 */
 
-use ton_block::{MsgAddressInt, Serializable, Deserializable};
-use ton_types::dictionary::HashmapE;
-use ton_types::{
+use ever_block::{MsgAddressInt, Serializable, Deserializable};
+use ever_block::dictionary::HashmapE;
+use ever_block::{
     ed25519_generate_private_key, ed25519_verify, BuilderData, IBitstring, SliceData,
     ED25519_SIGNATURE_LENGTH,
 };
@@ -786,7 +786,7 @@ const ABI_WRONG_STORAGE_LAYOUT: &str = r#"{
 #[test]
 fn test_wrong_storage_layout() {
     let image = include_bytes!("FairNFTCollection.tvc");
-    let image = ton_block::StateInit::construct_from_bytes(image).unwrap();
+    let image = ever_block::StateInit::construct_from_bytes(image).unwrap();
 
     assert!(decode_storage_fields(ABI_WRONG_STORAGE_LAYOUT, SliceData::load_cell(image.data.unwrap()).unwrap(), false).is_ok());
 }

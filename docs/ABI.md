@@ -77,7 +77,7 @@ The message body signature is generated from the *representation hash* of the ba
 4. Address data is removed from the root cell and replaced with bit `1` followed by 512 bits of the signature.
 
 :::note
-This functionality is added since `ABI v2.3` and supported staring with [0.64.0](https://github.com/tonlabs/TON-Solidity-Compiler/blob/master/Changelog_TON.md#0640-2022-08-18) version of the Solidity compiler.
+This functionality is added since `ABI v2.3` and supported staring with [0.64.0](https://github.com/tonlabs/EVERX-Solidity-Compiler/blob/master/Changelog_EVERX.md#0640-2022-08-18) version of the Solidity compiler.
 :::
 
 ## Function Signature (Function ID)

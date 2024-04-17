@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2022 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2023 EverX. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -7,7 +7,7 @@
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
+* See the License for the specific EVERX DEV software governing permissions and
 * limitations under the License.
 */
 
@@ -15,8 +15,8 @@ mod tokenize_tests {
     use crate::token::{Detokenizer, Tokenizer};
     use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
     use std::collections::BTreeMap;
-    use ton_block::{Grams, MsgAddress};
-    use ton_types::{AccountId, BuilderData, Cell, SliceData, ED25519_PUBLIC_KEY_LENGTH};
+    use ever_block::{Grams, MsgAddress};
+    use ever_block::{AccountId, BuilderData, Cell, SliceData, ED25519_PUBLIC_KEY_LENGTH};
 
     #[test]
     fn test_tokenize_ints() {
@@ -1081,8 +1081,8 @@ mod tokenize_tests {
 mod types_check_tests {
     use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
     use std::collections::BTreeMap;
-    use ton_block::MsgAddress;
-    use ton_types::Cell;
+    use ever_block::MsgAddress;
+    use ever_block::Cell;
 
     #[test]
     fn test_type_check() {
