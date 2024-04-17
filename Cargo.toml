@@ -20,3 +20,4 @@ ever_block = { git = 'https://github.com/everx-labs/ever-block.git', tag = '1.10
 
 [dev-dependencies]
 pretty_assertions = '1.3'
+
