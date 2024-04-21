@@ -1,5 +1,11 @@
 # Everscale Smart Contracts ABI 2.3 Specification
 
+> **NOTE**: This is an older specification version.
+> 
+> For the current ABI specification refer to the [ABI.md](ABI.md) file.
+>
+> All changes between versions are documented in the [Changelog](../CHANGELOG.md).
+
 ABI 2.3 introduces the new method to calculate external inbound message body signature. It is aimed to fix the below described problem in ABI v2.2.   
 Big thanks to Everscale community member https://github.com/mnill Ilia Kirichek who found these problems.
 
@@ -20,6 +26,6 @@ To solve the problem signature must be dependent on the destination address.
 3. *Representation hash* of the bag is signed using the *Ed25519* algorithm.
 4. Address data is removed from the root cell and replaced with bit `1` followed by 512 bits of the signature.
 
-> This fucntionality is supported staring with [0.64.0](https://github.com/tonlabs/TON-Solidity-Compiler/blob/master/Changelog_TON.md#0640-2022-08-18) version of the Solidity compiler.
+> This fucntionality is supported staring with [0.64.0](https://github.com/tonlabs/TVM-Solidity-Compiler/blob/master/Changelog.md#0640-2022-08-18) version of the Solidity compiler.
 
 

@@ -1,6 +1,12 @@
-# TON Smart Contracts ABI 2.1 Specification
+# EVERX Smart Contracts ABI 2.1 Specification
 
-- [TON Smart Contracts ABI 2.1 Specification](#ton-smart-contracts-abi-21-specification)
+> **NOTE**: This is an older specification version.
+> 
+> For the current ABI specification refer to the [ABI.md](ABI.md) file.
+>
+> All changes between versions are documented in the [Changelog](../CHANGELOG.md).
+
+- [EVERX Smart Contracts ABI 2.1 Specification](#ever-smart-contracts-abi-21-specification)
   - [ABI JSON](#abi-json)
   - [Functions](#functions)
   - [Events](#events)
@@ -84,7 +90,7 @@ This section stays the same as in ABI 2.0
 
 ## Fields
 This is a new section introduced in ABI 2.1. It describes internal structure of the smart contracts data.
-This section helps to decode contract data with TON-SDK function [decode_account_data](https://github.com/tonlabs/TON-SDK/blob/master/docs/mod_abi.md#decode_account_data)
+This section helps to decode contract data with EVERX-SDK function [decode_account_data](https://github.com/tonlabs/EVERX-SDK/blob/master/docs/mod_abi.md#decode_account_data)
 
 Structure of the smart contract data is described as a list of variables names with corresponding data types.
 It includes contract state variables and some internal contract specific hidden variables.

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2023 EverX. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -7,7 +7,7 @@
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
+* See the License for the specific EVERX DEV software governing permissions and
 * limitations under the License.
 */
 
@@ -25,11 +25,11 @@ use num_traits::cast::ToPrimitive;
 use serde_json::Value;
 use std::{
     collections::{BTreeMap, HashMap},
-    io::Cursor,
+    convert::TryInto,
     str::FromStr,
 };
-use ton_block::{Grams, MsgAddress};
-use ton_types::{deserialize_tree_of_cells, error, fail, Cell, Result};
+use ever_block::{Grams, MsgAddress};
+use ever_block::{error, fail, read_single_root_boc, Cell, Result, ED25519_PUBLIC_KEY_LENGTH};
 
 /// This struct should be used to parse string values as tokens.
 pub struct Tokenizer;
@@ -90,7 +90,6 @@ impl Tokenizer {
     pub fn tokenize_optional_params(
         params: &[Param],
         values: &Value,
-        default_values: &HashMap<String, TokenValue>,
     ) -> Result<HashMap<String, TokenValue>> {
         if let Value::Object(map) = values {
             let mut map = map.clone();
@@ -99,8 +98,6 @@ impl Tokenizer {
                 if let Some(value) = map.remove(&param.name) {
                     let token_value = Self::tokenize_parameter(&param.kind, &value, &param.name)?;
                     tokens.insert(param.name.clone(), token_value);
-                } else if let Some(value) = default_values.get(&param.name) {
-                    tokens.insert(param.name.clone(), value.clone());
                 }
             }
             if !map.is_empty() {
@@ -117,7 +114,7 @@ impl Tokenizer {
             Ok(tokens)
         } else {
             fail!(AbiError::InvalidInputData {
-                msg: "Contract function parameters should be passed as a JSON object".to_string()
+                msg: "Contract parameters should be passed as a JSON object".to_string()
             })
         }
     }
@@ -279,7 +276,7 @@ impl Tokenizer {
 
     /// Checks if given number can be fit into given bits count
     fn check_uint_size(number: &BigUint, size: usize) -> bool {
-        (number.bits() as usize) < size
+        (number.bits() as usize) <= size
     }
 
     /// Tries to parse a value as grams.
@@ -292,7 +289,7 @@ impl Tokenizer {
     fn tokenize_uint(size: usize, value: &Value, name: &str) -> Result<TokenValue> {
         let number = Self::read_uint(value, name)?;
 
-        if !Self::check_uint_size(&number, size + 1) {
+        if !Self::check_uint_size(&number, size) {
             fail!(AbiError::InvalidParameterValue {
                 val: value.clone(),
                 name: name.to_string(),
@@ -362,12 +359,10 @@ impl Tokenizer {
             name: name.to_string(),
             err: format!("can not decode base64: {}", err),
         })?;
-        let cell = deserialize_tree_of_cells(&mut Cursor::new(data)).map_err(|err| {
-            AbiError::InvalidParameterValue {
-                val: value.clone(),
-                name: name.to_string(),
-                err: format!("can not deserialize cell: {}", err),
-            }
+        let cell = read_single_root_boc(&data).map_err(|err| AbiError::InvalidParameterValue {
+            val: value.clone(),
+            name: name.to_string(),
+            err: format!("can not deserialize cell: {}", err),
         })?;
         Ok(TokenValue::Cell(cell))
     }
@@ -447,7 +442,7 @@ impl Tokenizer {
                 expected: "JSON object".to_string()
             })
         }
-        
+
         let tokens = Self::tokenize_all_params(params, value)?;
 
         Ok(TokenValue::Tuple(tokens))
@@ -494,16 +489,14 @@ impl Tokenizer {
                 name: name.to_string(),
                 err: format!("can not decode hex: {}", err),
             })?;
-            if data.len() != ed25519_dalek::PUBLIC_KEY_LENGTH {
-                fail!(AbiError::InvalidParameterLength {
+            let bytes = data
+                .try_into()
+                .map_err(|_| AbiError::InvalidParameterLength {
                     val: value.clone(),
                     name: name.to_string(),
-                    expected: format!("{} bytes", ed25519_dalek::PUBLIC_KEY_LENGTH),
-                })
-            };
-            Ok(TokenValue::PublicKey(Some(
-                ed25519_dalek::PublicKey::from_bytes(&data)?,
-            )))
+                    expected: format!("{} bytes", ED25519_PUBLIC_KEY_LENGTH),
+                })?;
+            Ok(TokenValue::PublicKey(Some(bytes)))
         }
     }
 

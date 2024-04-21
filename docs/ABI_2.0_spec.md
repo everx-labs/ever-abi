@@ -1,33 +1,40 @@
-# TON Smart Contracts ABI 2.0 Specification
-- [TON Smart Contracts ABI 2.0 Specification](#ton-smart-contracts-abi-20-specification)
-  - [New in ABI v2.](#new-in-abi-v2)
+# EVERX Smart Contracts ABI 2.0 Specification
+
+> **NOTE**: This is an older specification version.
+> 
+> For the current ABI specification refer to the [ABI.md](ABI.md) file.
+>
+> All changes between versions are documented in the [Changelog](../CHANGELOG.md).
+
+- [EVERX Smart Contracts ABI 2.0 Specification](#ever-smart-contracts-abi-20-specification)
+	- [New in ABI v2.](#new-in-abi-v2)
 - [Motivation](#motivation)
 - [Specification](#specification)
-  - [Message body](#message-body)
-    - [External Inbound Messages](#external-inbound-messages)
-    - [External Outbound Messages](#external-outbound-messages)
-    - [Internal Messages](#internal-messages)
-  - [Message Body Signing](#message-body-signing)
-    - [Signing Algorithm](#signing-algorithm)
-  - [Function Signature (Function ID)](#function-signature-function-id)
-    - [Function Signature Syntax](#function-signature-syntax)
-    - [Signature Calculation Syntax](#signature-calculation-syntax)
-    - [Sample Implementation](#sample-implementation)
-    - [Event ID](#event-id)
-  - [Encoding](#encoding)
-  - [Header parameter types](#header-parameter-types)
-    - [Function parameter types:](#function-parameter-types)
-  - [Cell Data Overflow](#cell-data-overflow)
-  - [Cell Reference Limit Overflow](#cell-reference-limit-overflow)
-  - [Contract Interface Specification](#contract-interface-specification)
-    - [Header section](#header-section)
-    - [**Functions** section](#functions-section)
-    - [Events section](#events-section)
-    - [Data section](#data-section)
-    - [Getters section](#getters-section)
+	- [Message body](#message-body)
+		- [External Inbound Messages](#external-inbound-messages)
+		- [External Outbound Messages](#external-outbound-messages)
+		- [Internal Messages](#internal-messages)
+	- [Message Body Signing](#message-body-signing)
+		- [Signing Algorithm](#signing-algorithm)
+	- [Function Signature (Function ID)](#function-signature-function-id)
+		- [Function Signature Syntax](#function-signature-syntax)
+		- [Signature Calculation Syntax](#signature-calculation-syntax)
+		- [Sample Implementation](#sample-implementation)
+		- [Event ID](#event-id)
+	- [Encoding](#encoding)
+	- [Header parameter types](#header-parameter-types)
+		- [Function parameter types:](#function-parameter-types)
+	- [Cell Data Overflow](#cell-data-overflow)
+	- [Cell Reference Limit Overflow](#cell-reference-limit-overflow)
+	- [Contract Interface Specification](#contract-interface-specification)
+		- [Header section](#header-section)
+		- [**Functions** section](#functions-section)
+		- [Events section](#events-section)
+		- [Data section](#data-section)
+		- [Getters section](#getters-section)
 - [Problem of mappings or arrays that contains "big" structures as values.](#problem-of-mappings-or-arrays-that-contains-big-structures-as-values)
-  - [Introduction](#introduction)
-  - [Solving of the problem:](#solving-of-the-problem)
+	- [Introduction](#introduction)
+	- [Solving of the problem:](#solving-of-the-problem)
   
 ## New in ABI v2.
 
@@ -204,7 +211,7 @@ The goal of the ABI specification is to design ABI types that are cheap to read 
     - Note: analog of `bytes` in Solidity. In C lang can be used as `void*`.
 - `fixedbytes<M>`: a fixed-size array of `M` `uint8` type elements. Encoding is equivalent to `bytes`
 - `map(K,V)` is a dictionary of `V` type values with `K` type key. `K` may be any of `int<M>/uint<M>` types with `M` from `1` to `1023`. Dictionary is encoded as  `HashmapE` type (one bit put into cell data as dictionary root and one reference with data is added if the dictionary is not empty).
-- `address` is an account address in TON blockchain. Encoded as `MsgAddress` struct (see TL-B schema in TON blockchain spec).
+- `address` is an account address in blockchain. Encoded as `MsgAddress` struct (see TL-B schema in blockchain spec).
 - `cell`: a type for defining a raw tree of cells. Stored as a reference in the current cell. Must be decoded with `LDREF`  command and stored as-is.
     - Note: this type is useful to store payloads as a tree of cells analog to contract code and data in the form of `StateInit` structure of `message` structure.
 
@@ -341,7 +348,7 @@ Getters specification is not yet supported and this section is ignored.
 
 Several months ago we did breaking change in TVM. Opcode DICTSET had worked in this way: if some_data+len(key)+len(value) doesn't fit in one cell (1023 bits) then value are stored in ref of cell. Now if it doesn't fit in one cell opcode will throw exception.
 
-We haven't faced with this problem because solidity compiler doesn't support this feature (mappings or arrays that contain "big" structures as values). We are going to support it but ton-abi throws exception then it generates message.
+We haven't faced with this problem because solidity compiler doesn't support this feature (mappings or arrays that contain "big" structures as values). We are going to support it but ever-abi throws exception then it generates message.
 
 ## Solving of the problem:
 
