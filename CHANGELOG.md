@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.5.0
+
+- the crate was renamed from `ton_abi` to `ever_abi`
+- supported renaming of other crates
+
+## Version 2.4.10
+
+### Fixed
+- Fixed decoding of a large-size elements array.
+
+## Version 2.4.0
+
+### New
+- ABI v2.4 specification implemented
+- Param in fields section extended with `init: boolean`
+- `ref(T)` – new type added
+
+- Default values for parameter types:
+- - `int<N>` – `N` zero bits.
+- - `uint<N>` – `N` zero bits.
+- - `varint<N>`/`varuint<N>` – `x` zero bits, where `x = [log2(N)]`.
+- - `bool` – equivalent to [`int<N>`](#uintn), where `N = 1`.
+- - `tuple(T1, T2, ..., Tn)` – default values for each type, i.e. `D(tuple(T1, T2, ..., Tn)) = tuple(D(T1), D(T2), ..., D(Tn))`, where `D` is defined as a function that takes ABI type and returns the corresponding default value.
+- - `map(K,V)` – 1 zero bit, i.e. `b{0}`.
+- - `cell` – reference to an empty cell, i.e. `^EmptyCell`.
+- - `address` – `addr_none$00` constructor, i.e. 2 zero bits.
+- - `bytes` – reference to an empty cell, i.e. `^EmptyCell`.
+- - `string` – reference to an empty cell, i.e. `^EmptyCell`.
+- - `optional(T)` – 1 zero bit, i.e. `b{0}`.
+- - `T[]` – `x{00000000} b{0}`, i.e. 33 zero bits.
+- - `T[k]` – encoded as an array with `k` default values of type `T`
+- - `ref(T)` – reference to a cell, cell is encoded as the default value of type `T`.
+
+### Breaking
+- `data` section in ABI JSON is removed.
+- `fixedbytes` type serialization changed. Now it is limited to 127 bytes and serialized into cell
+body instead of chained cells in current cell reference
+
+## Version 2.3.147
+
+- Use crypto functions from ever-types
+
 ## Version 2.3.130
 
 - Revert tests
@@ -49,7 +91,7 @@ All notable changes to this project will be documented in this file.
 
     This prevents a problem where a message to one of several contracts with identical public keys and function signatures may be duplicated and sent to any other of this set of contracts and be successful.
 
-    > This functionality is supported staring with [0.64.0](https://github.com/tonlabs/TON-Solidity-Compiler/blob/master/Changelog_TON.md#0640-2022-08-18) version of the Solidity compiler.
+    > This functionality is supported staring with [0.64.0](https://github.com/tonlabs/TVM-Solidity-Compiler/blob/master/Changelog.md#0640-2022-08-18) version of the Solidity compiler.
 
 
 ## Version 2.2 - 2021-07-19

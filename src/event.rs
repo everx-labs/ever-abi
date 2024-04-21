@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2023 EverX. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -7,14 +7,14 @@
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
+* See the License for the specific EVERX DEV software governing permissions and
 * limitations under the License.
 */
 
-use {Function, Param, Token, TokenValue};
-use contract::{AbiVersion, SerdeEvent};
-use ton_types::{Result, SliceData};
+use crate::contract::{AbiVersion, SerdeEvent};
 use crate::error::AbiError;
+use crate::{Function, Param, Token, TokenValue};
+use ever_block::{Result, SliceData};
 
 /// Contract event specification.
 #[derive(Debug, Clone, PartialEq)]
@@ -26,7 +26,7 @@ pub struct Event {
     /// Event input.
     pub inputs: Vec<Param>,
     /// Event ID
-    pub id: u32
+    pub id: u32,
 }
 
 impl Event {
@@ -36,7 +36,7 @@ impl Event {
             abi_version,
             name: serde_event.name,
             inputs: serde_event.inputs,
-            id: 0
+            id: 0,
         };
         event.id = if let Some(id) = serde_event.id {
             id
@@ -48,9 +48,7 @@ impl Event {
 
     /// Returns all input params of given function.
     pub fn input_params(&self) -> Vec<Param> {
-        self.inputs.iter()
-            .map(|p| p.clone())
-            .collect()
+        self.inputs.iter().map(|p| p.clone()).collect()
     }
 
     /// Returns true if function has input parameters, false in not
@@ -60,7 +58,9 @@ impl Event {
 
     /// Retruns ABI function signature
     pub fn get_function_signature(&self) -> String {
-        let input_types = self.inputs.iter()
+        let input_types = self
+            .inputs
+            .iter()
             .map(|param| param.kind.type_signature())
             .collect::<Vec<String>>()
             .join(",");
@@ -84,7 +84,9 @@ impl Event {
     pub fn decode_input(&self, mut data: SliceData, allow_partial: bool) -> Result<Vec<Token>> {
         let id = data.get_next_u32()?;
 
-        if id != self.get_id() { Err(AbiError::WrongId { id } )? }
+        if id != self.get_id() {
+            Err(AbiError::WrongId { id })?
+        }
 
         TokenValue::decode_params(&self.input_params(), data, &self.abi_version, allow_partial)
     }

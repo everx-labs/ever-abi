@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2023 EverX. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -7,35 +7,29 @@
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
+* See the License for the specific EVERX DEV software governing permissions and
 * limitations under the License.
 */
 
-use token::Detokenizer;
-use Int;
+use crate::token::Detokenizer;
+use crate::{Function, Int, Param, ParamType, Token, TokenValue, Uint};
 
-use Token;
-use {Param, ParamType};
-use {TokenValue, Uint};
-use Function;
-use ton_types::BuilderData;
-use ton_types::IBitstring;
+use ever_block::BuilderData;
+use ever_block::IBitstring;
 
 use crate::contract::ABI_VERSION_2_0;
 
 #[test]
 fn int_json_representation() {
-    let value = Detokenizer::detokenize_to_json_value(
-        &[
-            Token::new("u8", TokenValue::Uint(Uint::new(1, 8))),
-            Token::new("i32", TokenValue::Int(Int::new(-1, 32))),
-            Token::new("u256", TokenValue::Uint(Uint::new(1, 256))),
-            Token::new("u128", TokenValue::Uint(Uint::new(1, 128))),
-            Token::new("i256", TokenValue::Int(Int::new(-1, 256))),
-            Token::new("vi16", TokenValue::VarInt(16, (-1i32).into())),
-            Token::new("vu32", TokenValue::VarUint(32, 1u32.into())),
-        ],
-    )
+    let value = Detokenizer::detokenize_to_json_value(&[
+        Token::new("u8", TokenValue::Uint(Uint::new(1, 8))),
+        Token::new("i32", TokenValue::Int(Int::new(-1, 32))),
+        Token::new("u256", TokenValue::Uint(Uint::new(1, 256))),
+        Token::new("u128", TokenValue::Uint(Uint::new(1, 128))),
+        Token::new("i256", TokenValue::Int(Int::new(-1, 256))),
+        Token::new("vi16", TokenValue::VarInt(16, (-1i32).into())),
+        Token::new("vu32", TokenValue::VarUint(32, 1u32.into())),
+    ])
     .unwrap();
     assert_eq!(
         value,
@@ -63,29 +57,39 @@ fn test_encode_internal_output() {
         output_id: 0,
     };
 
-    let tokens =
-        [
-            Token::new("u8", TokenValue::Uint(Uint::new(1, 8))),
-            Token::new("i32", TokenValue::Int(Int::new(-1, 32))),
-            Token::new("u256", TokenValue::Uint(Uint::new(1, 256))),
-            Token::new("u128", TokenValue::Uint(Uint::new(1, 128))),
-            Token::new("i256", TokenValue::Int(Int::new(-1, 256))),
-        ];
+    let tokens = [
+        Token::new("u8", TokenValue::Uint(Uint::new(1, 8))),
+        Token::new("i32", TokenValue::Int(Int::new(-1, 32))),
+        Token::new("u256", TokenValue::Uint(Uint::new(1, 256))),
+        Token::new("u128", TokenValue::Uint(Uint::new(1, 128))),
+        Token::new("i256", TokenValue::Int(Int::new(-1, 256))),
+    ];
     let test_tree = func.encode_internal_output(1u32 << 31, &tokens).unwrap();
 
     let mut expected_tree = BuilderData::new();
-    expected_tree.append_u32(1u32 << 31).unwrap();        // answer_id
+    expected_tree.append_u32(1u32 << 31).unwrap(); // answer_id
     expected_tree.append_u8(1).unwrap();
     expected_tree.append_i32(-1).unwrap();
-    expected_tree.append_raw(
-        &hex::decode("0000000000000000000000000000000000000000000000000000000000000001").unwrap(),
-        32 * 8).unwrap();
-    expected_tree.append_raw(
-        &hex::decode("00000000000000000000000000000001").unwrap(),
-        16 * 8).unwrap();
-    expected_tree.append_raw(
-        &hex::decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap(),
-        32 * 8).unwrap();
+    expected_tree
+        .append_raw(
+            &hex::decode("0000000000000000000000000000000000000000000000000000000000000001")
+                .unwrap(),
+            32 * 8,
+        )
+        .unwrap();
+    expected_tree
+        .append_raw(
+            &hex::decode("00000000000000000000000000000001").unwrap(),
+            16 * 8,
+        )
+        .unwrap();
+    expected_tree
+        .append_raw(
+            &hex::decode("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+                .unwrap(),
+            32 * 8,
+        )
+        .unwrap();
     assert_eq!(test_tree, expected_tree);
 }
 
@@ -98,10 +102,13 @@ fn test_simple_param_deserialization() {
 
     let deserialized: Param = serde_json::from_str(s).unwrap();
 
-    assert_eq!(deserialized, Param {
-        name: "a".to_owned(),
-        kind: ParamType::Int(9),
-    });
+    assert_eq!(
+        deserialized,
+        Param {
+            name: "a".to_owned(),
+            kind: ParamType::Int(9),
+        }
+    );
 }
 
 #[test]
@@ -123,13 +130,22 @@ fn test_tuple_param_deserialization() {
 
     let deserialized: Param = serde_json::from_str(s).unwrap();
 
-    assert_eq!(deserialized, Param {
-        name: "a".to_owned(),
-        kind: ParamType::Tuple(vec![
-            Param { name: "a".to_owned(), kind: ParamType::Int(8) },
-            Param { name: "b".to_owned(), kind: ParamType::Int(8) },
-        ]),
-    });
+    assert_eq!(
+        deserialized,
+        Param {
+            name: "a".to_owned(),
+            kind: ParamType::Tuple(vec![
+                Param {
+                    name: "a".to_owned(),
+                    kind: ParamType::Int(8)
+                },
+                Param {
+                    name: "b".to_owned(),
+                    kind: ParamType::Int(8)
+                },
+            ]),
+        }
+    );
 }
 
 #[test]
@@ -161,25 +177,34 @@ fn test_tuples_array_deserialization() {
 
     let deserialized: Param = serde_json::from_str(s).unwrap();
 
-    assert_eq!(deserialized, Param {
-        name: "a".to_owned(),
-        kind: ParamType::Array(Box::new(ParamType::Tuple(vec![
-            Param {
-                name: "a".to_owned(),
-                kind: ParamType::Bool
-            },
-            Param {
-                name: "b".to_owned(),
-                kind: ParamType::FixedArray(
-                    Box::new(ParamType::Tuple(vec![
-                        Param { name: "a".to_owned(), kind: ParamType::Uint(8) },
-                        Param { name: "b".to_owned(), kind: ParamType::Int(15) },
-                    ])),
-                    5
-                )
-            },
-        ]))),
-    });
+    assert_eq!(
+        deserialized,
+        Param {
+            name: "a".to_owned(),
+            kind: ParamType::Array(Box::new(ParamType::Tuple(vec![
+                Param {
+                    name: "a".to_owned(),
+                    kind: ParamType::Bool
+                },
+                Param {
+                    name: "b".to_owned(),
+                    kind: ParamType::FixedArray(
+                        Box::new(ParamType::Tuple(vec![
+                            Param {
+                                name: "a".to_owned(),
+                                kind: ParamType::Uint(8)
+                            },
+                            Param {
+                                name: "b".to_owned(),
+                                kind: ParamType::Int(15)
+                            },
+                        ])),
+                        5
+                    )
+                },
+            ]))),
+        }
+    );
 }
 
 #[test]
@@ -201,24 +226,31 @@ fn test_tuples_array_map_map() {
 
     let deserialized: Param = serde_json::from_str(s).unwrap();
 
-    assert_eq!(deserialized, Param {
-        name: "d".to_owned(),
-        kind: ParamType::Map(
+    assert_eq!(
+        deserialized,
+        Param {
+            name: "d".to_owned(),
+            kind: ParamType::Map(
                 Box::new(ParamType::Uint(32)),
                 Box::new(ParamType::Map(
                     Box::new(ParamType::Uint(32)),
                     Box::new(ParamType::FixedArray(
-                        Box::new(ParamType::Array(
-                            Box::new(ParamType::Tuple(vec![
-                                Param { name: "a".to_owned(), kind: ParamType::Uint(256) },
-                                Param { name: "b".to_owned(), kind: ParamType::Uint(256) },
-                            ]))
-                        )),
+                        Box::new(ParamType::Array(Box::new(ParamType::Tuple(vec![
+                            Param {
+                                name: "a".to_owned(),
+                                kind: ParamType::Uint(256)
+                            },
+                            Param {
+                                name: "b".to_owned(),
+                                kind: ParamType::Uint(256)
+                            },
+                        ])))),
                         5
                     )),
                 ))
             ),
-    });
+        }
+    );
 }
 
 #[test]
@@ -249,11 +281,20 @@ fn test_optional_tuple_param_deserialization() {
 
     let deserialized: Param = serde_json::from_str(s).unwrap();
 
-    assert_eq!(deserialized, Param {
-        name: "a".to_owned(),
-        kind: ParamType::Optional(Box::new(ParamType::Tuple(vec![
-            Param { name: "a".to_owned(), kind: ParamType::Int(8) },
-            Param { name: "b".to_owned(), kind: ParamType::Int(8) },
-        ]))),
-    });
+    assert_eq!(
+        deserialized,
+        Param {
+            name: "a".to_owned(),
+            kind: ParamType::Optional(Box::new(ParamType::Tuple(vec![
+                Param {
+                    name: "a".to_owned(),
+                    kind: ParamType::Int(8)
+                },
+                Param {
+                    name: "b".to_owned(),
+                    kind: ParamType::Int(8)
+                },
+            ]))),
+        }
+    );
 }
