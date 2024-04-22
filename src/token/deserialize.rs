@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2019-2021 TON Labs. All Rights Reserved.
+* Copyright (C) 2019-2023 EverX. All Rights Reserved.
 *
 * Licensed under the SOFTWARE EVALUATION License (the "License"); you may not use
 * this file except in compliance with the License.
@@ -7,12 +7,12 @@
 * Unless required by applicable law or agreed to in writing, software
 * distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific TON DEV software governing permissions and
+* See the License for the specific EVERX DEV software governing permissions and
 * limitations under the License.
 */
 
 use crate::{
-    contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_2, ABI_VERSION_2_4},
+    contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_2, ABI_VERSION_2_4},
     error::AbiError,
     int::{Int, Uint},
     param::Param,
@@ -24,8 +24,8 @@ use num_bigint::{BigInt, BigUint};
 use num_traits::ToPrimitive;
 use serde_json;
 use std::{collections::BTreeMap, convert::TryInto};
-use ton_block::{types::Grams, MsgAddress};
-use ton_types::{
+use ever_block::{types::Grams, MsgAddress};
+use ever_block::{
     error, fail, BuilderData, Cell, HashmapE, HashmapType, IBitstring, Result, SliceData,
 };
 
@@ -78,7 +78,7 @@ impl TokenValue {
             ParamType::Address => {
                 let mut slice = find_next_bits(slice, 1)?;
                 let address =
-                    <MsgAddress as ton_block::Deserializable>::construct_from(&mut slice)?;
+                    <MsgAddress as ever_block::Deserializable>::construct_from(&mut slice)?;
                 Ok((TokenValue::Address(address), slice))
             }
             ParamType::Bytes => Self::read_bytes(slice, last, abi_version),
@@ -86,7 +86,7 @@ impl TokenValue {
             ParamType::String => Self::read_string(slice, last, abi_version),
             ParamType::Token => {
                 let mut slice = find_next_bits(slice, 1)?;
-                let gram = <Grams as ton_block::Deserializable>::construct_from(&mut slice)?;
+                let gram = <Grams as ever_block::Deserializable>::construct_from(&mut slice)?;
                 Ok((TokenValue::Token(gram), slice))
             }
             ParamType::Time => Self::read_time(slice),
@@ -240,9 +240,6 @@ impl TokenValue {
         abi_version: &AbiVersion,
         allow_partial: bool,
     ) -> Result<(Vec<Self>, SliceData)> {
-        let value_len = Self::max_bit_size(item_type, abi_version);
-        let value_in_ref = Self::map_value_in_ref(32, value_len);
-
         let original = cursor.clone();
         cursor = find_next_bits(cursor, 1)?;
         let map = HashmapE::with_hashmap(32, cursor.get_dictionary()?.reference_opt(0));
@@ -258,7 +255,14 @@ impl TokenValue {
             index.append_u32(i as u32)?;
             match map.get(SliceData::load_builder(index)?) {
                 Ok(Some(mut item_slice)) => {
-                    if value_in_ref {
+                    let do_load_ref = 
+                        if abi_version == &ABI_VERSION_1_0 || abi_version == &ABI_VERSION_2_0 {
+                            item_slice.remaining_bits() == 0 && Self::max_bit_size(item_type, abi_version) != 0
+                        } else {
+                            let value_len = Self::max_bit_size(item_type, abi_version);
+                            Self::map_value_in_ref(32, value_len)
+                        };
+                    if do_load_ref  {
                         item_slice = SliceData::load_cell(item_slice.checked_drain_reference()?)?;
                     }
                     let (token, _) =
