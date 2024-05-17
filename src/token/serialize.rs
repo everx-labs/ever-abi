@@ -23,7 +23,7 @@ use crate::{
 use num_bigint::{BigInt, BigUint, Sign};
 use std::collections::BTreeMap;
 use ever_block::Serializable;
-use ever_block::{error, fail, BuilderData, Cell, HashmapE, IBitstring, Result, SliceData};
+use ever_block::{fail, BuilderData, Cell, HashmapE, IBitstring, Result, SliceData};
 
 pub struct SerializedValue {
     pub data: BuilderData,

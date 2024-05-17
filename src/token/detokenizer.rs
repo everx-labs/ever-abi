@@ -20,7 +20,7 @@ use crate::{
 use num_bigint::{BigInt, BigUint};
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::{BTreeMap, HashMap};
-use ever_block::{write_boc, Cell, Result};
+use ever_block::{base64_encode, write_boc, Cell, Result};
 
 pub struct Detokenizer;
 
@@ -125,7 +125,7 @@ impl Token {
     {
         let data = write_boc(cell).map_err(|err| serde::ser::Error::custom(err.to_string()))?;
 
-        let data = base64::encode(&data);
+        let data = base64_encode(&data);
         serializer.serialize_str(&data)
     }
 
