@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.5.6
+
+- Fix build warnings
+- Remove extra crates base64, sha2
+
 ## Version 2.5.0
 
 - the crate was renamed from `ton_abi` to `ever_abi`

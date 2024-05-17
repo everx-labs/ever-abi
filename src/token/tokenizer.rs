@@ -28,8 +28,10 @@ use std::{
     convert::TryInto,
     str::FromStr,
 };
-use ever_block::{Grams, MsgAddress};
-use ever_block::{error, fail, read_single_root_boc, Cell, Result, ED25519_PUBLIC_KEY_LENGTH};
+use ever_block::{
+    base64_decode, error, fail, read_single_root_boc, Cell, Grams, MsgAddress, Result,
+    ED25519_PUBLIC_KEY_LENGTH,
+};
 
 /// This struct should be used to parse string values as tokens.
 pub struct Tokenizer;
@@ -354,7 +356,7 @@ impl Tokenizer {
             return Ok(TokenValue::Cell(Cell::default()));
         }
 
-        let data = base64::decode(string).map_err(|err| AbiError::InvalidParameterValue {
+        let data = base64_decode(string).map_err(|err| AbiError::InvalidParameterValue {
             val: value.clone(),
             name: name.to_string(),
             err: format!("can not decode base64: {}", err),
