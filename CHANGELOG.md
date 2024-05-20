@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.6.0
+
+- Use modern crates anyhow and thiserror instead of failure
+
 ## Version 2.5.6
 
 - Fix build warnings
