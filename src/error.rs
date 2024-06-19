@@ -13,44 +13,44 @@
 
 use crate::contract::AbiVersion;
 
-#[derive(Debug, failure::Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum AbiError {
-    #[fail(display = "Invalid data: {}", msg)]
+    #[error("Invalid data: {}", .msg)]
     InvalidData { msg: String },
 
-    #[fail(display = "{} is not supported in ABI v{}", subject, version)]
+    #[error("{} is not supported in ABI v{}", .subject, .version)]
     NotSupported {
         subject: String,
         version: AbiVersion,
     },
 
-    #[fail(display = "Invalid name: {}", name)]
+    #[error("Invalid name: {}", .name)]
     InvalidName { name: String },
 
-    #[fail(display = "Invalid function id: {:X}", id)]
+    #[error("Invalid function id: {:X}", .id)]
     InvalidFunctionId { id: u32 },
 
-    #[fail(display = "Deserialization error {}: {}", msg, cursor)]
+    #[error("Deserialization error {}: {}", .msg, .cursor)]
     DeserializationError {
         msg: &'static str,
         cursor: ever_block::SliceData,
     },
 
-    #[fail(display = "Not implemented")]
+    #[error("Not implemented")]
     NotImplemented,
 
-    #[fail(
-        display = "Wrong parameters count. Expected: {}, provided: {}",
-        expected, provided
+    #[error(
+        "Wrong parameters count. Expected: {}, provided: {}",
+        .expected, .provided
     )]
     WrongParametersCount { expected: usize, provided: usize },
 
-    #[fail(display = "Token types do not match expected function parameter types")]
+    #[error("Token types do not match expected function parameter types")]
     WrongParameterType,
 
-    #[fail(
-        display = "Wrong data format in `{}` parameter:\n{}\n{} expected",
-        name, val, expected
+    #[error(
+        "Wrong data format in `{}` parameter:\n{}\n{} expected",
+        .name, .val, .expected
     )]
     WrongDataFormat {
         val: serde_json::Value,
@@ -58,9 +58,9 @@ pub enum AbiError {
         expected: String,
     },
 
-    #[fail(
-        display = "Invalid parameter `{}` length, expected {}:\n{}",
-        name, expected, val
+    #[error(
+        "Invalid parameter `{}` length, expected {}:\n{}",
+        .name, .expected, .val
     )]
     InvalidParameterLength {
         name: String,
@@ -68,41 +68,41 @@ pub enum AbiError {
         expected: String,
     },
 
-    #[fail(display = "Invalid parameter `{}` value:\n{}\n{}", name, val, err)]
+    #[error("Invalid parameter `{}` value:\n{}\n{}", .name, .val, .err)]
     InvalidParameterValue {
         name: String,
         val: serde_json::Value,
         err: String,
     },
 
-    #[fail(display = "Incomplete deserialization error")]
+    #[error("Incomplete deserialization error")]
     IncompleteDeserializationError,
 
-    #[fail(display = "Invalid input data: {}", msg)]
+    #[error("Invalid input data: {}", .msg)]
     InvalidInputData { msg: String },
 
-    #[fail(display = "Invalid version: {}", 0)]
+    #[error("Invalid version: {}", .0)]
     InvalidVersion(String),
 
-    #[fail(display = "Wrong function ID: {:x}", id)]
+    #[error("Wrong function ID: {:x}", .id)]
     WrongId { id: u32 },
 
-    #[fail(display = "Serde json error: {}", err)]
+    #[error("Serde json error: {}", .err)]
     SerdeError { err: serde_json::Error },
 
-    #[fail(display = "Tuple description should contain non empty `components` field")]
+    #[error("Tuple description should contain non empty `components` field")]
     EmptyComponents,
 
-    #[fail(
-        display = "Type description contains non empty `components` field but it is not a tuple"
+    #[error(
+        "Type description contains non empty `components` field but it is not a tuple"
     )]
     UnusedComponents,
 
-    #[fail(
-        display = "Message destination address is required to encode signed external inbound message body since ABI version 2.3"
+    #[error(
+        "Message destination address is required to encode signed external inbound message body since ABI version 2.3"
     )]
     AddressRequired,
 
-    #[fail(display = "Wrong data layout")]
+    #[error("Wrong data layout")]
     WrongDataLayout
 }

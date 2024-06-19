@@ -24,8 +24,7 @@ use chrono::prelude::Utc;
 use num_bigint::{BigInt, BigUint};
 use std::collections::BTreeMap;
 use std::fmt;
-use ever_block::{Grams, MsgAddress};
-use ever_block::{Cell, Result, BuilderData};
+use ever_block::{fail, BuilderData, Cell, Grams, MsgAddress, Result};
 
 mod deserialize;
 mod detokenizer;
@@ -313,13 +312,12 @@ impl TokenValue {
             ParamType::Time => Ok(TokenValue::Time(Utc::now().timestamp_millis() as u64)),
             ParamType::Expire => Ok(TokenValue::Expire(u32::max_value())),
             ParamType::PublicKey => Ok(TokenValue::PublicKey(None)),
-            any_type => Err(AbiError::InvalidInputData {
+            any_type => fail!(AbiError::InvalidInputData {
                 msg: format!(
                     "Type {} doesn't have default value and must be explicitly defined",
                     any_type
                 ),
-            }
-            .into()),
+            })
         }
     }
 
