@@ -44,7 +44,7 @@ impl From<SliceData> for Cursor {
 
 impl TokenValue {
     /// Deserializes value from `SliceData` to `TokenValue`
-    fn read_from(
+    pub fn read_from(
         param_type: &ParamType,
         mut cursor: Cursor,
         last: bool,
@@ -80,6 +80,21 @@ impl TokenValue {
                 let address =
                     <MsgAddress as ever_block::Deserializable>::construct_from(&mut slice)?;
                 Ok((TokenValue::Address(address), slice))
+            }
+            ParamType::AddressStd => {
+                let mut slice = find_next_bits(slice, 1)?;
+                let address =
+                    <MsgAddress as ever_block::Deserializable>::construct_from(&mut slice)?;
+                match address {
+                    MsgAddress::AddrNone => {}
+                    MsgAddress::AddrStd(_) => {}
+                    MsgAddress::AddrVar(_) | MsgAddress::AddrExt(_) => {
+                        fail!(AbiError::InvalidData {
+                            msg: "Expected std or none address".to_string(),
+                        })
+                    }
+                }
+                Ok((TokenValue::AddressStd(address), slice))
             }
             ParamType::Bytes => Self::read_bytes(slice, last, abi_version),
             ParamType::FixedBytes(size) => Self::read_fixed_bytes(*size, slice, last, abi_version),
@@ -535,7 +550,6 @@ impl TokenValue {
         let mut tokens = vec![];
 
         for param in params {
-            // println!("{:?}", param);
             let last = Some(param) == params.last() && last;
             let (token_value, new_cursor) =
                 Self::read_from(&param.kind, cursor, last, abi_version, allow_partial)?;

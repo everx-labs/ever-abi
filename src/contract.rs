@@ -33,7 +33,7 @@ use ever_block::{
 };
 
 pub const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_1_0;
-pub const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_4;
+pub const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_7;
 
 pub const ABI_VERSION_1_0: AbiVersion = AbiVersion::from_parts(1, 0);
 pub const ABI_VERSION_2_0: AbiVersion = AbiVersion::from_parts(2, 0);
@@ -41,6 +41,7 @@ pub const ABI_VERSION_2_1: AbiVersion = AbiVersion::from_parts(2, 1);
 pub const ABI_VERSION_2_2: AbiVersion = AbiVersion::from_parts(2, 2);
 pub const ABI_VERSION_2_3: AbiVersion = AbiVersion::from_parts(2, 3);
 pub const ABI_VERSION_2_4: AbiVersion = AbiVersion::from_parts(2, 4);
+pub const ABI_VERSION_2_7: AbiVersion = AbiVersion::from_parts(2, 7);
 
 pub type PublicKeyData = [u8; ED25519_PUBLIC_KEY_LENGTH];
 pub type SignatureData = [u8; ED25519_SIGNATURE_LENGTH];
@@ -212,6 +213,9 @@ struct SerdeContract {
     /// Contract storage fields.
     #[serde(default)]
     pub fields: Vec<SerdeParam>,
+    /// Contract getters.
+    #[serde(default)]
+    pub getters: Vec<SerdeFunction>,
 }
 
 pub struct DecodedMessage {
@@ -236,6 +240,8 @@ pub struct Contract {
     fields: Vec<Param>,
     /// List of `fields` parameters with `init == true`
     init_fields: HashSet<String>,
+    /// Contract getters.
+    getters: HashMap<String, Function>,
 }
 
 impl Contract {
@@ -291,6 +297,7 @@ impl Contract {
             data: HashMap::new(),
             fields: Vec::new(),
             init_fields: HashSet::new(),
+            getters: HashMap::new(),
         };
 
         for function in serde_contract.functions {
@@ -299,6 +306,15 @@ impl Contract {
             result.functions.insert(
                 function.name.clone(),
                 Function::from_serde(version.clone(), function, result.header.clone()),
+            );
+        }
+
+        for getter in serde_contract.getters {
+            Self::check_params_support(&version, getter.inputs.iter())?;
+            Self::check_params_support(&version, getter.outputs.iter())?;
+            result.getters.insert(
+                getter.name.clone(),
+                Function::from_serde(version.clone(), getter, result.header.clone()),
             );
         }
 
@@ -346,6 +362,16 @@ impl Contract {
     /// Returns `Function` struct with provided function name.
     pub fn function(&self, name: &str) -> Result<&Function> {
         self.functions.get(name).ok_or_else(|| {
+            AbiError::InvalidName {
+                name: name.to_owned(),
+            }
+            .into()
+        })
+    }
+
+    /// Returns `Function` struct with provided function name.
+    pub fn getter(&self, name: &str) -> Result<&Function> {
+        self.getters.get(name).ok_or_else(|| {
             AbiError::InvalidName {
                 name: name.to_owned(),
             }

@@ -226,6 +226,7 @@ fn test_abi_parse() {
         data,
         fields: vec![],
         init_fields: Default::default(),
+        getters: Default::default(),
     };
 
     assert_eq!(parsed_contract, expected_contract);

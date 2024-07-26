@@ -22,7 +22,7 @@ use crate::{
 
 use num_bigint::{BigInt, BigUint, Sign};
 use std::collections::BTreeMap;
-use ever_block::Serializable;
+use ever_block::{Serializable};
 use ever_block::{fail, BuilderData, Cell, HashmapE, IBitstring, Result, SliceData};
 
 pub struct SerializedValue {
@@ -162,6 +162,7 @@ impl TokenValue {
                 Self::write_map(key_type, value_type, value, abi_version)
             }
             TokenValue::Address(address) => Ok(address.write_to_new_cell()?),
+            TokenValue::AddressStd(address) => Ok(address.write_to_new_cell()?),
             TokenValue::Bytes(ref arr) => Self::write_bytes(arr, abi_version),
             TokenValue::FixedBytes(ref arr) => Self::write_fixed_bytes(arr, abi_version),
             TokenValue::String(ref string) => Self::write_bytes(string.as_bytes(), abi_version),
@@ -238,7 +239,7 @@ impl TokenValue {
         Ok(builder)
     }
 
-    fn write_varint(value: &BigInt, size: usize) -> Result<BuilderData> {
+    pub fn write_varint(value: &BigInt, size: usize) -> Result<BuilderData> {
         let vec = value.to_signed_bytes_be();
 
         if vec.len() > size - 1 {
@@ -249,7 +250,7 @@ impl TokenValue {
         Self::write_varnumber(&vec, size)
     }
 
-    fn write_varuint(value: &BigUint, size: usize) -> Result<BuilderData> {
+    pub fn write_varuint(value: &BigUint, size: usize) -> Result<BuilderData> {
         let vec = value.to_bytes_be();
 
         if vec.len() > size - 1 {
@@ -274,7 +275,7 @@ impl TokenValue {
 
     // creates dictionary with indexes of an array items as keys and items as values
     // and prepends dictionary to cell
-    fn put_array_into_dictionary(
+    pub fn put_array_into_dictionary(
         param_type: &ParamType,
         array: &[TokenValue],
         abi_version: &AbiVersion,
@@ -339,7 +340,7 @@ impl TokenValue {
         }
     }
 
-    fn write_bytes(data: &[u8], abi_version: &AbiVersion) -> Result<BuilderData> {
+    pub fn bytes_to_cells(data: &[u8], abi_version: &AbiVersion) -> Result<Cell> {
         let cell_len = BuilderData::bits_capacity() / 8;
         let mut len = data.len();
         let mut cell_capacity = if abi_version == &ABI_VERSION_1_0 {
@@ -354,15 +355,20 @@ impl TokenValue {
         while len > 0 {
             len -= cell_capacity;
             builder.append_raw(&data[len..len + cell_capacity], cell_capacity * 8)?;
-            let mut new_builder = BuilderData::new();
-            new_builder.checked_append_reference(builder.into_cell()?)?;
-            builder = new_builder;
+            if len > 0 {
+                let mut new_builder = BuilderData::new();
+                new_builder.checked_append_reference(builder.into_cell()?)?;
+                builder = new_builder;
+            }
             cell_capacity = std::cmp::min(cell_len, len);
         }
-        // if bytes are empty then we need builder with ref to empty cell
-        if builder.references_used() == 0 {
-            builder.checked_append_reference(Cell::default())?;
-        }
+        Ok(builder.into_cell()?)
+    }
+
+    fn write_bytes(data: &[u8], abi_version: &AbiVersion) -> Result<BuilderData> {
+        let cell = Self::bytes_to_cells(data, abi_version)?;
+        let mut builder = BuilderData::new();
+        builder.checked_append_reference(cell)?;
         Ok(builder)
     }
 
@@ -370,12 +376,12 @@ impl TokenValue {
         super::MAX_HASH_MAP_INFO_ABOUT_KEY + key_len + value_len > 1023
     }
 
-    fn write_map(
+    pub fn map_token_to_hashmap_e(
         key_type: &ParamType,
         value_type: &ParamType,
         value: &BTreeMap<String, TokenValue>,
         abi_version: &AbiVersion,
-    ) -> Result<BuilderData> {
+    ) -> Result<HashmapE> {
         let key_len = Self::get_map_key_size(key_type)?;
         let value_len = Self::max_bit_size(value_type, abi_version);
         let value_in_ref = Self::map_value_in_ref(key_len, value_len);
@@ -409,10 +415,18 @@ impl TokenValue {
                 hashmap.set_builder(slice_key, &data)?;
             }
         }
+        return Ok(hashmap);
+    }
 
+    fn write_map(
+        key_type: &ParamType,
+        value_type: &ParamType,
+        value: &BTreeMap<String, TokenValue>,
+        abi_version: &AbiVersion,
+    ) -> Result<BuilderData> {
+        let hashmap = Self::map_token_to_hashmap_e(key_type, value_type, value, abi_version)?;
         let mut builder = BuilderData::new();
         hashmap.write_to(&mut builder)?;
-
         Ok(builder)
     }
 

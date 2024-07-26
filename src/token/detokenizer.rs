@@ -175,6 +175,7 @@ impl Serialize for TokenValue {
                 Token::detokenize_hashmap(key_type, map, serializer)
             }
             TokenValue::Address(ref address) => serializer.serialize_str(&address.to_string()),
+            TokenValue::AddressStd(ref address) => serializer.serialize_str(&address.to_string()),
             TokenValue::Bytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::FixedBytes(ref arr) => Token::detokenize_bytes(arr, serializer),
             TokenValue::String(string) => serializer.serialize_str(string),

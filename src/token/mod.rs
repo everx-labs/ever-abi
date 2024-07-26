@@ -110,6 +110,9 @@ pub enum TokenValue {
     /// MsgAddress
     ///
     Address(MsgAddress),
+    /// AddrStd or AddrNone
+    ///
+    AddressStd(MsgAddress),
     /// Raw byte array
     ///
     /// Encoded as separate cells chain
@@ -173,7 +176,8 @@ impl fmt::Display for TokenValue {
 
                 write!(f, "{{{}}}", s)
             }
-            TokenValue::Address(a) => write!(f, "{}", a),
+            TokenValue::Address(a)
+             | TokenValue::AddressStd(a) => write!(f, "{}", a),
             TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) => write!(f, "{:?}", arr),
             TokenValue::String(string) => write!(f, "{}", string),
             TokenValue::Token(g) => write!(f, "{}", g),
@@ -245,6 +249,7 @@ impl TokenValue {
                 }
             }
             TokenValue::Address(_) => *param_type == ParamType::Address,
+            TokenValue::AddressStd(_) => *param_type == ParamType::AddressStd,
             TokenValue::Bytes(_) => *param_type == ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => *param_type == ParamType::FixedBytes(arr.len()),
             TokenValue::String(_) => *param_type == ParamType::String,
@@ -293,6 +298,7 @@ impl TokenValue {
                 ParamType::Map(Box::new(key_type.clone()), Box::new(value_type.clone()))
             }
             TokenValue::Address(_) => ParamType::Address,
+            TokenValue::AddressStd(_) => ParamType::AddressStd,
             TokenValue::Bytes(_) => ParamType::Bytes,
             TokenValue::FixedBytes(ref arr) => ParamType::FixedBytes(arr.len()),
             TokenValue::String(_) => ParamType::String,
@@ -324,7 +330,7 @@ impl TokenValue {
     pub fn get_map_key_size(param_type: &ParamType) -> Result<usize> {
         match param_type {
             ParamType::Int(size) | ParamType::Uint(size) => Ok(*size),
-            ParamType::Address => Ok(crate::token::STD_ADDRESS_BIT_LENGTH),
+            ParamType::Address | ParamType::AddressStd => Ok(crate::token::STD_ADDRESS_BIT_LENGTH),
             _ => Err(ever_block::error!(AbiError::InvalidData {
                 msg: "Only integer and std address values can be map keys".to_owned()
             })),
@@ -349,6 +355,7 @@ impl TokenValue {
             | ParamType::VarInt(_)
             | ParamType::Bool
             | ParamType::Address
+            | ParamType::AddressStd
             | ParamType::Token
             | ParamType::Time
             | ParamType::Expire
@@ -390,6 +397,7 @@ impl TokenValue {
             ParamType::Cell => 0,
             ParamType::Map(_, _) => 1,
             ParamType::Address => 591,
+            ParamType::AddressStd => 2 + (1 + 5 + 30) + 8 + 256,
             ParamType::FixedBytes(size) if &ABI_VERSION_2_4 <= abi_version => size * 8,
             ParamType::Bytes | ParamType::FixedBytes(_) => 0,
             ParamType::String => 0,
@@ -432,6 +440,7 @@ impl TokenValue {
                 Default::default(),
             ),
             ParamType::Address => TokenValue::Address(MsgAddress::AddrNone),
+            ParamType::AddressStd => TokenValue::AddressStd(MsgAddress::AddrNone),
             ParamType::Bytes => TokenValue::Bytes(vec![]),
             ParamType::FixedBytes(size) => TokenValue::FixedBytes(vec![0; *size]),
             ParamType::String => TokenValue::String(Default::default()),
@@ -459,7 +468,7 @@ impl Token {
     pub fn types_check(tokens: &[Token], params: &[Param]) -> bool {
         params.len() == tokens.len() && {
             params.iter().zip(tokens).all(|(param, token)| {
-                // println!("{} {} {}", token.name, token.value, param.kind);
+                // println!("{} {} {} {}", token.name, token.value, param.name, param.kind);
                 token.value.type_check(&param.kind) && token.name == param.name
             })
         }

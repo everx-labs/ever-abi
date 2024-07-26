@@ -722,10 +722,26 @@ mod tokenize_tests {
     }
 
     #[test]
+    fn test_tokenize_std_address() {
+        let input = r#"{
+            "var": "-177:555_"
+        }"#;
+
+        let params = vec![
+            Param::new("var", ParamType::AddressStd),
+        ];
+
+        assert!(
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap())
+                .is_err()
+        );
+    }
+
+    #[test]
     fn test_tokenize_bytes() {
         let input = r#"{
             "a": "ABCDEF",
-            "b": "ABCDEF0102",
+            "b": "ABCDEF",
             "c": "55555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
         }"#;
 

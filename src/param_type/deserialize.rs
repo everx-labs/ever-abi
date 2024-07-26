@@ -122,7 +122,7 @@ pub fn read_type(name: &str) -> Result<ParamType> {
             let value_type = read_type(types[1])?;
 
             match key_type {
-                ParamType::Int(_) | ParamType::Uint(_) | ParamType::Address => {
+                ParamType::Int(_) | ParamType::Uint(_) | ParamType::Address | ParamType::AddressStd => {
                     ParamType::Map(Box::new(key_type), Box::new(value_type))
                 }
                 _ => fail!(AbiError::InvalidName {
@@ -132,6 +132,7 @@ pub fn read_type(name: &str) -> Result<ParamType> {
         }
         "cell" => ParamType::Cell,
         "address" => ParamType::Address,
+        "address_std" => ParamType::AddressStd,
         "token" => ParamType::Token,
         "bytes" => ParamType::Bytes,
         s if s.starts_with("fixedbytes") => {

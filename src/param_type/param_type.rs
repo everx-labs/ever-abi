@@ -44,6 +44,8 @@ pub enum ParamType {
     Map(Box<ParamType>, Box<ParamType>),
     /// message address
     Address,
+    /// std address
+    AddressStd,
     /// byte array
     Bytes,
     /// fixed size byte array
@@ -99,6 +101,7 @@ impl ParamType {
                 value_type.type_signature()
             ),
             ParamType::Address => format!("address"),
+            ParamType::AddressStd => format!("address_std"),
             ParamType::Bytes => format!("bytes"),
             ParamType::FixedBytes(size) => format!("fixedbytes{}", size),
             ParamType::String => format!("string"),
