@@ -55,6 +55,7 @@ impl Tokenizer {
                 Self::tokenize_hashmap(key_type, value_type, value, name)
             }
             ParamType::Address => Self::tokenize_address(value, name),
+            ParamType::AddressStd => Self::tokenize_address_std(value, name),
             ParamType::Bytes => Self::tokenize_bytes(value, None, name),
             ParamType::FixedBytes(size) => Self::tokenize_bytes(value, Some(*size), name),
             ParamType::String => Self::tokenize_string(value, name),
@@ -265,7 +266,7 @@ impl Tokenizer {
     /// Checks if given number can be fit into given bits count
     fn check_int_size(number: &BigInt, size: usize) -> bool {
         // `BigInt::bits` returns fewest bits necessary to express the number, not including
-        // the sign and it works well for all values except `-2^n`. Such values can be encoded
+        // the sign, and it works well for all values except `-2^n`. Such values can be encoded
         // using `n` bits, but `bits` function returns `n` (and plus one bit for sign) so we
         // have to explicitly check such situation by comparing bits sizes of given number
         // and increased number
@@ -401,15 +402,14 @@ impl Tokenizer {
             name: name.to_string(),
             expected: "hex-encoded string".to_string(),
         })?;
-        let mut data = hex::decode(string).map_err(|err| AbiError::InvalidParameterValue {
+        let data = hex::decode(string).map_err(|err| AbiError::InvalidParameterValue {
             val: value.clone(),
             name: name.to_string(),
             err: format!("can not decode hex: {}", err),
         })?;
         match size {
             Some(size) => {
-                if data.len() >= size {
-                    data.truncate(size);
+                if data.len() == size {
                     Ok(TokenValue::FixedBytes(data))
                 } else {
                     fail!(AbiError::InvalidParameterLength {
@@ -519,18 +519,37 @@ impl Tokenizer {
         )?)))
     }
 
-    fn tokenize_address(value: &Value, name: &str) -> Result<TokenValue> {
-        let address =
-            MsgAddress::from_str(&value.as_str().ok_or_else(|| AbiError::WrongDataFormat {
-                val: value.clone(),
-                name: name.to_string(),
-                expected: "address string".to_string(),
-            })?)
+    fn get_msg_address(value: &Value, name: &str) -> Result<MsgAddress> {
+        Ok(MsgAddress::from_str(&value.as_str().ok_or_else(|| AbiError::WrongDataFormat {
+            val: value.clone(),
+            name: name.to_string(),
+            expected: "address string".to_string(),
+        })?)
             .map_err(|err| AbiError::InvalidParameterValue {
                 val: value.clone(),
                 name: name.to_string(),
                 err: format!("can not parse address: {}", err),
-            })?;
+            })?)
+    }
+
+    fn tokenize_address(value: &Value, name: &str) -> Result<TokenValue> {
+        let address = Self::get_msg_address(value, name)?;
         Ok(TokenValue::Address(address))
+    }
+
+    fn tokenize_address_std(value: &Value, name: &str) -> Result<TokenValue> {
+        let address = Self::get_msg_address(value, name)?;
+        match address {
+            MsgAddress::AddrNone => {}
+            MsgAddress::AddrStd(_) => {}
+            MsgAddress::AddrVar(_) | MsgAddress::AddrExt(_) => {
+                fail!(AbiError::InvalidParameterValue {
+                    val: value.clone(),
+                    name: name.to_string(),
+                    err: "Expected std or none address".to_string(),
+                })
+            }
+        }
+        Ok(TokenValue::AddressStd(address))
     }
 }

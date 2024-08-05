@@ -1297,6 +1297,20 @@ fn test_ref_type() {
 }
 
 #[test]
+fn test_std_addr() {
+    let var_addr = MsgAddress::from_str("-177:555_").unwrap();
+    let slice = SliceData::load_cell(var_addr.serialize().unwrap()).unwrap();
+
+    let params = vec![
+        Param::new("std", ParamType::AddressStd),
+    ];
+
+    assert!(
+        TokenValue::decode_params(&params, slice.clone(), &MAX_SUPPORTED_VERSION, false).is_err()
+    )
+}
+
+#[test]
 fn test_partial_decoding() {
     let mut builder = BuilderData::new();
     builder.append_u32(0).unwrap();

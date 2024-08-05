@@ -2,9 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.7.0
+
+### New
+- ABI v2.7 specification implemented:
+  - New section [getters](docs/ABI.md#getters) introduced.
+  - [address_std](docs/ABI.md#address_std) – new type added
+
 ## Version 2.6.0
 
-- Use modern crates anyhow and thiserror instead of failure
+- Use modern crates `anyhow` and `thiserror` instead of `failure`
 
 ## Version 2.5.6
 
@@ -32,7 +39,7 @@ All notable changes to this project will be documented in this file.
 - - `int<N>` – `N` zero bits.
 - - `uint<N>` – `N` zero bits.
 - - `varint<N>`/`varuint<N>` – `x` zero bits, where `x = [log2(N)]`.
-- - `bool` – equivalent to [`int<N>`](#uintn), where `N = 1`.
+- - `bool` – equivalent to [`int<N>`](docs/ABI.md#uintn), where `N = 1`.
 - - `tuple(T1, T2, ..., Tn)` – default values for each type, i.e. `D(tuple(T1, T2, ..., Tn)) = tuple(D(T1), D(T2), ..., D(Tn))`, where `D` is defined as a function that takes ABI type and returns the corresponding default value.
 - - `map(K,V)` – 1 zero bit, i.e. `b{0}`.
 - - `cell` – reference to an empty cell, i.e. `^EmptyCell`.
@@ -157,4 +164,4 @@ Initial design of Application Binary Interface for TVM blockchain:
 - [Function signature concept](docs/ABI.md#function-signature-function-id)
 - Basic [types](docs/ABI.md#types-reference) and the rules of their encoding
 - Cell overflow handling
-- [JSON interface](docs/ABI.md#abi-json) sturcture
+- [JSON interface](docs/ABI.md#abi-json) structure

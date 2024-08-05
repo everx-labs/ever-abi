@@ -2,7 +2,7 @@
 build = 'common/build/build.rs'
 edition = '2021'
 name = 'ever_abi'
-version = '2.6.10'
+version = '2.7.0'
 
 [dependencies]
 anyhow = '1.0'
@@ -19,4 +19,3 @@ ever_block = { git = 'https://github.com/everx-labs/ever-block.git', tag = '1.11
 
 [dev-dependencies]
 pretty_assertions = '1.3'
-
