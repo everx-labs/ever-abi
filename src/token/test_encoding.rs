@@ -1141,7 +1141,7 @@ fn test_big_map_value() {
         ParamType::Uint(256),
         ParamType::Tuple(params_from_tokens(&tuple_tokens)),
         BTreeMap::from_iter(vec![(
-            "0x000000000000000000000000000000000000000000000000000000000000007b".to_owned(),
+            "123".to_owned(),
             tuple.clone(),
         )]),
     );
