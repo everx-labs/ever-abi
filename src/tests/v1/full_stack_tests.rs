@@ -177,7 +177,7 @@ fn test_signed_call() {
     }"#;
     let header = "{}";
 
-    let expected_params = r#"{"value":"0x000000000000000000000000000000000000000000000000000000000000000c","period":"30"}"#;
+    let expected_params = r#"{"value":"12","period":"30"}"#;
 
     let key = ed25519_generate_private_key().unwrap();
 
@@ -350,7 +350,7 @@ fn test_update_decode_contract_data() {
 
     let params = r#"{
         "subscription": "0:1111111111111111111111111111111111111111111111111111111111111111",
-        "owner": "0x2222222222222222222222222222222222222222222222222222222222222222"
+        "owner": "15438945231642159389809464667825054380435997955418741871927677867721750618658"
      }
     "#;
 

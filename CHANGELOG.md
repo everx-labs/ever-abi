@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.8.0
+
+- `uint256` type is returned in radix 10.
+
 ## Version 2.7.0
 
 ### New
