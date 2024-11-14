@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.8.1
+
+- `address` can be set as `null`. See [address](./docs/ABI.md#address).
+
 ## Version 2.8.0
 
 - `uint256` type is returned in radix 10.

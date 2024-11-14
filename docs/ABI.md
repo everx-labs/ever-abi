@@ -613,6 +613,7 @@ Contract address in type `address`, can be any of the [existing variants](../arc
 **Format**
 
 ```jsx
+null // None
 "" // None
 ":A...A" // External
 "[N..N:]W:A...A" // Internal

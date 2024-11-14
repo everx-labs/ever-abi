@@ -155,7 +155,7 @@ mod tokenize_tests {
             &params,
             &serde_json::from_str(input_not_fit).unwrap()
         )
-        .is_err());
+            .is_err());
 
         // negative values for uint
         let input_num = r#"{ "a" : -1 }"#;
@@ -683,12 +683,16 @@ mod tokenize_tests {
     fn test_tokenize_address() {
         let input = r#"{
             "std": "-17:5555555555555555555555555555555555555555555555555555555555555555",
-            "var": "-177:555_"
+            "var": "-177:555_",
+            "noneAddr": "",
+            "noneAddr2": null
         }"#;
 
         let params = vec![
             Param::new("std", ParamType::Address),
             Param::new("var", ParamType::Address),
+            Param::new("noneAddr", ParamType::Address),
+            Param::new("noneAddr2", ParamType::Address),
         ];
 
         let expected_tokens = vec![
@@ -703,6 +707,14 @@ mod tokenize_tests {
                 value: TokenValue::Address(
                     MsgAddress::with_variant(None, -177, SliceData::new(vec![0x55, 0x50])).unwrap(),
                 ),
+            },
+            Token {
+                name: "noneAddr".to_owned(),
+                value: TokenValue::Address(MsgAddress::AddrNone),
+            },
+            Token {
+                name: "noneAddr2".to_owned(),
+                value: TokenValue::Address(MsgAddress::AddrNone),
             },
         ];
 
