@@ -112,7 +112,7 @@ impl Tokenizer {
                 return Err(AbiError::InvalidInputData {
                     msg: format!("Contract doesn't have following parameters: {}", unknown),
                 }
-                .into());
+                    .into());
             }
             Ok(tokens)
         } else {
@@ -520,6 +520,10 @@ impl Tokenizer {
     }
 
     fn get_msg_address(value: &Value, name: &str) -> Result<MsgAddress> {
+        if value.is_null() {
+            return Ok(MsgAddress::AddrNone);
+        }
+
         Ok(MsgAddress::from_str(&value.as_str().ok_or_else(|| AbiError::WrongDataFormat {
             val: value.clone(),
             name: name.to_string(),
