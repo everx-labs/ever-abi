@@ -18,10 +18,10 @@ use crate::{
     PublicKeyData, SignatureData,
 };
 
-use serde_json::Value;
-use std::{collections::HashMap, str::FromStr};
 use ever_block::MsgAddressInt;
 use ever_block::{BuilderData, Ed25519PrivateKey, Result, SliceData};
+use serde_json::Value;
+use std::{collections::HashMap, str::FromStr};
 
 /// Encodes `parameters` for given `function` of contract described by `abi` into `BuilderData`
 /// which can be used as message body for calling contract

@@ -14,9 +14,9 @@
 mod tokenize_tests {
     use crate::token::{Detokenizer, Tokenizer};
     use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
-    use std::collections::BTreeMap;
-    use ever_block::{Grams, MsgAddress};
     use ever_block::{AccountId, BuilderData, Cell, SliceData, ED25519_PUBLIC_KEY_LENGTH};
+    use ever_block::{Grams, MsgAddress};
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_tokenize_ints() {
@@ -155,7 +155,7 @@ mod tokenize_tests {
             &params,
             &serde_json::from_str(input_not_fit).unwrap()
         )
-            .is_err());
+        .is_err());
 
         // negative values for uint
         let input_num = r#"{ "a" : -1 }"#;
@@ -739,13 +739,10 @@ mod tokenize_tests {
             "var": "-177:555_"
         }"#;
 
-        let params = vec![
-            Param::new("var", ParamType::AddressStd),
-        ];
+        let params = vec![Param::new("var", ParamType::AddressStd)];
 
         assert!(
-            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap())
-                .is_err()
+            Tokenizer::tokenize_all_params(&params, &serde_json::from_str(input).unwrap()).is_err()
         );
     }
 
@@ -1108,9 +1105,9 @@ mod tokenize_tests {
 
 mod types_check_tests {
     use crate::{Int, Param, ParamType, Token, TokenValue, Uint};
-    use std::collections::BTreeMap;
-    use ever_block::MsgAddress;
     use ever_block::Cell;
+    use ever_block::MsgAddress;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_type_check() {

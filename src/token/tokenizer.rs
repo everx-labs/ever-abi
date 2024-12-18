@@ -20,6 +20,10 @@ use crate::{
     token::{Token, TokenValue},
 };
 
+use ever_block::{
+    base64_decode, error, fail, read_single_root_boc, Cell, Grams, MsgAddress, Result,
+    ED25519_PUBLIC_KEY_LENGTH,
+};
 use num_bigint::{BigInt, BigUint, Sign};
 use num_traits::cast::ToPrimitive;
 use serde_json::Value;
@@ -27,10 +31,6 @@ use std::{
     collections::{BTreeMap, HashMap},
     convert::TryInto,
     str::FromStr,
-};
-use ever_block::{
-    base64_decode, error, fail, read_single_root_boc, Cell, Grams, MsgAddress, Result,
-    ED25519_PUBLIC_KEY_LENGTH,
 };
 
 /// This struct should be used to parse string values as tokens.
@@ -112,7 +112,7 @@ impl Tokenizer {
                 return Err(AbiError::InvalidInputData {
                     msg: format!("Contract doesn't have following parameters: {}", unknown),
                 }
-                    .into());
+                .into());
             }
             Ok(tokens)
         } else {
@@ -524,16 +524,18 @@ impl Tokenizer {
             return Ok(MsgAddress::AddrNone);
         }
 
-        Ok(MsgAddress::from_str(&value.as_str().ok_or_else(|| AbiError::WrongDataFormat {
-            val: value.clone(),
-            name: name.to_string(),
-            expected: "address string".to_string(),
-        })?)
+        Ok(
+            MsgAddress::from_str(&value.as_str().ok_or_else(|| AbiError::WrongDataFormat {
+                val: value.clone(),
+                name: name.to_string(),
+                expected: "address string".to_string(),
+            })?)
             .map_err(|err| AbiError::InvalidParameterValue {
                 val: value.clone(),
                 name: name.to_string(),
                 err: format!("can not parse address: {}", err),
-            })?)
+            })?,
+        )
     }
 
     fn tokenize_address(value: &Value, name: &str) -> Result<TokenValue> {

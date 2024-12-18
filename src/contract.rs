@@ -19,18 +19,17 @@ use crate::{
     param_type::ParamType,
     token::Token,
     TokenValue,
-
 };
+use ever_block::{
+    error, fail, BuilderData, HashmapE, Result, SliceData, ED25519_PUBLIC_KEY_LENGTH,
+    ED25519_SIGNATURE_LENGTH,
+};
+use ever_block::{MsgAddressInt, Serializable};
 use serde::de::Error as SerdeError;
 use serde_json;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::io;
-use ever_block::{MsgAddressInt, Serializable};
-use ever_block::{
-    error, fail, BuilderData, HashmapE, Result, SliceData, ED25519_PUBLIC_KEY_LENGTH,
-    ED25519_SIGNATURE_LENGTH,
-};
 
 pub const MIN_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_1_0;
 pub const MAX_SUPPORTED_VERSION: AbiVersion = ABI_VERSION_2_7;
@@ -580,7 +579,8 @@ impl Contract {
     // Gets public key from contract data
     pub fn get_pubkey(data: &SliceData) -> Result<Option<PublicKeyData>> {
         let map = HashmapE::with_hashmap(Self::DATA_MAP_KEYLEN, data.reference_opt(0));
-        Ok(map.get(SliceData::load_builder(0u64.write_to_new_cell()?)?)?
+        Ok(map
+            .get(SliceData::load_builder(0u64.write_to_new_cell()?)?)?
             .map(|slice| slice.get_bytestring(0).as_slice().try_into())
             .transpose()?)
     }
@@ -612,7 +612,7 @@ impl Contract {
         mut init_fields: HashMap<String, TokenValue>,
     ) -> Result<BuilderData> {
         self.check_init_fields_support()?;
-        
+
         let mut tokens = vec![];
         for param in &self.fields {
             let token = init_fields
