@@ -17,16 +17,16 @@ use crate::{
     contract::{AbiVersion, SerdeFunction, ABI_VERSION_1_0, ABI_VERSION_2_3},
     error::AbiError,
     param::Param,
-    token::{SerializedValue, Token, TokenValue, Cursor},
+    token::{Cursor, SerializedValue, Token, TokenValue},
     ParamType, PublicKeyData, SignatureData,
 };
 
-use std::collections::HashMap;
-use ever_block::{MsgAddressInt, Serializable};
 use ever_block::{
-    fail, sha256_digest, BuilderData, Cell, Ed25519PrivateKey, IBitstring, Result,
-    SliceData, ED25519_SIGNATURE_LENGTH, MAX_DATA_BYTES,
+    fail, sha256_digest, BuilderData, Cell, Ed25519PrivateKey, IBitstring, Result, SliceData,
+    ED25519_SIGNATURE_LENGTH, MAX_DATA_BYTES,
 };
+use ever_block::{MsgAddressInt, Serializable};
+use std::collections::HashMap;
 
 /// Contract function specification.
 #[derive(Debug, Clone, PartialEq)]
@@ -314,7 +314,8 @@ impl Function {
                 };
             }
 
-            (tokens, cursor) = TokenValue::decode_params_with_cursor(header, cursor, abi_version, true, false)?;
+            (tokens, cursor) =
+                TokenValue::decode_params_with_cursor(header, cursor, abi_version, true, false)?;
         }
         if abi_version != &ABI_VERSION_1_0 {
             id = cursor.slice.get_next_u32()?;
@@ -389,7 +390,8 @@ impl Function {
                             &[0u8; MAX_DATA_BYTES],
                             TokenValue::max_bit_size(&ParamType::Address, &self.abi_version),
                         )?;
-                        remove_bits = TokenValue::max_bit_size(&ParamType::Address, &self.abi_version);
+                        remove_bits =
+                            TokenValue::max_bit_size(&ParamType::Address, &self.abi_version);
                     } else {
                         sign_builder.append_bit_one()?;
                         sign_builder.append_raw(

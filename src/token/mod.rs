@@ -13,18 +13,19 @@
 
 //! EVERX ABI params.
 use crate::{
+    contract::{AbiVersion, ABI_VERSION_2_4},
     error::AbiError,
     int::{Int, Uint},
     param::Param,
     param_type::ParamType,
-    PublicKeyData, contract::{AbiVersion, ABI_VERSION_2_4},
+    PublicKeyData,
 };
 
 use chrono::prelude::Utc;
+use ever_block::{fail, BuilderData, Cell, Grams, MsgAddress, Result};
 use num_bigint::{BigInt, BigUint};
 use std::collections::BTreeMap;
 use std::fmt;
-use ever_block::{fail, BuilderData, Cell, Grams, MsgAddress, Result};
 
 mod deserialize;
 mod detokenizer;
@@ -176,8 +177,7 @@ impl fmt::Display for TokenValue {
 
                 write!(f, "{{{}}}", s)
             }
-            TokenValue::Address(a)
-             | TokenValue::AddressStd(a) => write!(f, "{}", a),
+            TokenValue::Address(a) | TokenValue::AddressStd(a) => write!(f, "{}", a),
             TokenValue::Bytes(ref arr) | TokenValue::FixedBytes(ref arr) => write!(f, "{:?}", arr),
             TokenValue::String(string) => write!(f, "{}", string),
             TokenValue::Token(g) => write!(f, "{}", g),
@@ -323,7 +323,7 @@ impl TokenValue {
                     "Type {} doesn't have default value and must be explicitly defined",
                     any_type
                 ),
-            })
+            }),
         }
     }
 
@@ -371,9 +371,9 @@ impl TokenValue {
             | ParamType::FixedBytes(_)
             | ParamType::Ref(_) => 1,
             // tuple refs is sum of inner types refs
-            ParamType::Tuple(params) => params
-                .iter()
-                .fold(0, |acc, param| acc + Self::max_refs_count(&param.kind, abi_version)),
+            ParamType::Tuple(params) => params.iter().fold(0, |acc, param| {
+                acc + Self::max_refs_count(&param.kind, abi_version)
+            }),
             // large optional is serialized into reference
             ParamType::Optional(param_type) => {
                 if Self::is_large_optional(param_type, abi_version) {
@@ -406,9 +406,9 @@ impl TokenValue {
             ParamType::Expire => 32,
             ParamType::PublicKey => 257,
             ParamType::Ref(_) => 0,
-            ParamType::Tuple(params) => params
-                .iter()
-                .fold(0, |acc, param| acc + Self::max_bit_size(&param.kind, abi_version)),
+            ParamType::Tuple(params) => params.iter().fold(0, |acc, param| {
+                acc + Self::max_bit_size(&param.kind, abi_version)
+            }),
             ParamType::Optional(param_type) => {
                 if Self::is_large_optional(&param_type, abi_version) {
                     1

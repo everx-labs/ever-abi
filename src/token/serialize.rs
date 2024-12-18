@@ -20,10 +20,11 @@ use crate::{
     PublicKeyData,
 };
 
+use crate::contract::MAX_SUPPORTED_VERSION;
+use ever_block::Serializable;
+use ever_block::{fail, BuilderData, Cell, HashmapE, IBitstring, Result, SliceData};
 use num_bigint::{BigInt, BigUint, Sign};
 use std::collections::BTreeMap;
-use ever_block::{Serializable};
-use ever_block::{fail, BuilderData, Cell, HashmapE, IBitstring, Result, SliceData};
 
 pub struct SerializedValue {
     pub data: BuilderData,
@@ -64,12 +65,11 @@ impl TokenValue {
         abi_version: &AbiVersion,
     ) -> Result<BuilderData> {
         values.reverse();
-        let mut packed_cells = match values.pop() {
-            Some(cell) => vec![cell],
-            None => fail!(AbiError::InvalidData {
-                msg: "No cells".to_owned()
-            }),
-        };
+        let mut packed_cells: Vec<SerializedValue> = vec![SerializedValue {
+            data: BuilderData::new(),
+            max_bits: 0,
+            max_refs: 0,
+        }];
         while let Some(value) = values.pop() {
             let builder = packed_cells.last_mut().unwrap();
 
@@ -473,6 +473,11 @@ impl TokenValue {
 
 #[test]
 fn test_pack_cells() {
+    assert_eq!(
+        TokenValue::pack_cells_into_chain(vec![], &MAX_SUPPORTED_VERSION).unwrap(),
+        BuilderData::new()
+    );
+
     let cells = vec![
         BuilderData::with_bitstring(vec![1, 2, 0x80])
             .unwrap()

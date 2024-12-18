@@ -16,18 +16,18 @@ use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::str::FromStr;
 
-use ever_block::{AnycastInfo, Grams, MsgAddress, Serializable};
 use ever_block::dictionary::{HashmapE, HashmapType};
 use ever_block::{
     AccountId, BuilderData, Cell, IBitstring, Result, SliceData, ED25519_PUBLIC_KEY_LENGTH,
 };
+use ever_block::{AnycastInfo, Grams, MsgAddress, Serializable};
 
 use crate::contract::{
     AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_2,
-    MAX_SUPPORTED_VERSION, ABI_VERSION_2_4, ABI_VERSION_2_3,
+    ABI_VERSION_2_3, ABI_VERSION_2_4, MAX_SUPPORTED_VERSION,
 };
 use crate::token::Cursor;
-use crate::{Int, Param, ParamType, Token, TokenValue, Uint, AbiError};
+use crate::{AbiError, Int, Param, ParamType, Token, TokenValue, Uint};
 
 fn put_array_into_map<T: Serializable>(array: &[T]) -> HashmapE {
     let mut map = HashmapE::with_bit_len(32);
@@ -84,11 +84,13 @@ fn test_parameters_set(
         let cursor = Cursor {
             slice,
             used_bits: 32,
-            used_refs: 1
+            used_refs: 1,
         };
 
         let decoded_tokens =
-            TokenValue::decode_params_with_cursor(&params, cursor, version, false, true).unwrap().0;
+            TokenValue::decode_params_with_cursor(&params, cursor, version, false, true)
+                .unwrap()
+                .0;
         assert_eq!(decoded_tokens, inputs);
     }
 }
@@ -1140,10 +1142,7 @@ fn test_big_map_value() {
     let value_map = TokenValue::Map(
         ParamType::Uint(256),
         ParamType::Tuple(params_from_tokens(&tuple_tokens)),
-        BTreeMap::from_iter(vec![(
-            "123".to_owned(),
-            tuple.clone(),
-        )]),
+        BTreeMap::from_iter(vec![("123".to_owned(), tuple.clone())]),
     );
 
     let value_array = TokenValue::Array(
@@ -1301,9 +1300,7 @@ fn test_std_addr() {
     let var_addr = MsgAddress::from_str("-177:555_").unwrap();
     let slice = SliceData::load_cell(var_addr.serialize().unwrap()).unwrap();
 
-    let params = vec![
-        Param::new("std", ParamType::AddressStd),
-    ];
+    let params = vec![Param::new("std", ParamType::AddressStd)];
 
     assert!(
         TokenValue::decode_params(&params, slice.clone(), &MAX_SUPPORTED_VERSION, false).is_err()
@@ -1530,67 +1527,62 @@ fn test_default_values() {
 fn test_wrong_layout() {
     let mut builder = BuilderData::new();
     builder.append_u32(123).unwrap();
-    builder.checked_append_reference(
-        BuilderData::with_raw(456u64.to_be_bytes().as_slice(), 64).unwrap().into_cell().unwrap(),
-    ).unwrap();
+    builder
+        .checked_append_reference(
+            BuilderData::with_raw(456u64.to_be_bytes().as_slice(), 64)
+                .unwrap()
+                .into_cell()
+                .unwrap(),
+        )
+        .unwrap();
 
     let slice = SliceData::load_builder(builder).unwrap();
 
-    let params = params_from_types(vec![
-        ParamType::Uint(32),
-        ParamType::Uint(64),
-    ]);
+    let params = params_from_types(vec![ParamType::Uint(32), ParamType::Uint(64)]);
 
-    assert!(
-        matches!(
-            TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_1_0, false)
-                .unwrap_err()
-                .downcast::<AbiError>()
-                .unwrap(),
-            AbiError::WrongDataLayout,
-        )
-    );
-    assert!(
-        matches!(
-            TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_2_1, false)
-                .unwrap_err()
-                .downcast::<AbiError>()
-                .unwrap(),
-            AbiError::WrongDataLayout,
-        )
-    );
-    assert!( 
-        matches!(
-            TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_2_2, false)
-                .unwrap_err()
-                .downcast::<AbiError>()
-                .unwrap(),
-            AbiError::WrongDataLayout,
-        )
-    );
+    assert!(matches!(
+        TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_1_0, false)
+            .unwrap_err()
+            .downcast::<AbiError>()
+            .unwrap(),
+        AbiError::WrongDataLayout,
+    ));
+    assert!(matches!(
+        TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_2_1, false)
+            .unwrap_err()
+            .downcast::<AbiError>()
+            .unwrap(),
+        AbiError::WrongDataLayout,
+    ));
+    assert!(matches!(
+        TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_2_2, false)
+            .unwrap_err()
+            .downcast::<AbiError>()
+            .unwrap(),
+        AbiError::WrongDataLayout,
+    ));
 
     let addr = MsgAddress::AddrStd(Default::default());
 
     let mut builder = BuilderData::new();
-    builder.append_builder(&addr.write_to_new_cell().unwrap().into()).unwrap();
-    builder.append_builder(&addr.write_to_new_cell().unwrap().into()).unwrap();
+    builder
+        .append_builder(&addr.write_to_new_cell().unwrap().into())
+        .unwrap();
+    builder
+        .append_builder(&addr.write_to_new_cell().unwrap().into())
+        .unwrap();
 
     let slice = SliceData::load_builder(builder).unwrap();
 
-    let params = params_from_types(vec![
-        ParamType::Address,
-        ParamType::Address,
-    ]);
+    let params = params_from_types(vec![ParamType::Address, ParamType::Address]);
 
-    assert!(
-        matches!(
-            TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_2_2, false)
-                .unwrap_err()
-                .downcast::<AbiError>()
-                .unwrap(),
-            AbiError::WrongDataLayout,
-        )
-    );
+    assert!(matches!(
+        TokenValue::decode_params(&params, slice.clone(), &ABI_VERSION_2_2, false)
+            .unwrap_err()
+            .downcast::<AbiError>()
+            .unwrap(),
+        AbiError::WrongDataLayout,
+    ));
 }
 
 #[test]
@@ -1606,7 +1598,9 @@ fn test_fixed_bytes() {
     let mut builder_v24 = builder.clone();
     builder_v24.append_builder(&bytes_builder).unwrap();
 
-    builder.checked_append_reference(bytes_builder.into_cell().unwrap()).unwrap();
+    builder
+        .checked_append_reference(bytes_builder.into_cell().unwrap())
+        .unwrap();
 
     let values = vec![TokenValue::FixedBytes(bytes)];
 

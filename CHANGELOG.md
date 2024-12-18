@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 2.8.4
+
+- Supported empty data
+
 ## Version 2.8.1
 
 - `address` can be set as `null`. See [address](./docs/ABI.md#address).
@@ -15,7 +19,7 @@ All notable changes to this project will be documented in this file.
 ### New
 - ABI v2.7 specification implemented:
   - New section [getters](docs/ABI.md#getters) introduced.
-  - [address_std](docs/ABI.md#address_std) – new type added
+  - [address_std](docs/ABI.md#address_std)  new type added
 
 ## Version 2.6.0
 
@@ -41,23 +45,23 @@ All notable changes to this project will be documented in this file.
 ### New
 - ABI v2.4 specification implemented
 - Param in fields section extended with `init: boolean`
-- `ref(T)` – new type added
+- `ref(T)`  new type added
 
 - Default values for parameter types:
-- - `int<N>` – `N` zero bits.
-- - `uint<N>` – `N` zero bits.
-- - `varint<N>`/`varuint<N>` – `x` zero bits, where `x = [log2(N)]`.
-- - `bool` – equivalent to [`int<N>`](docs/ABI.md#uintn), where `N = 1`.
-- - `tuple(T1, T2, ..., Tn)` – default values for each type, i.e. `D(tuple(T1, T2, ..., Tn)) = tuple(D(T1), D(T2), ..., D(Tn))`, where `D` is defined as a function that takes ABI type and returns the corresponding default value.
-- - `map(K,V)` – 1 zero bit, i.e. `b{0}`.
-- - `cell` – reference to an empty cell, i.e. `^EmptyCell`.
-- - `address` – `addr_none$00` constructor, i.e. 2 zero bits.
-- - `bytes` – reference to an empty cell, i.e. `^EmptyCell`.
-- - `string` – reference to an empty cell, i.e. `^EmptyCell`.
-- - `optional(T)` – 1 zero bit, i.e. `b{0}`.
-- - `T[]` – `x{00000000} b{0}`, i.e. 33 zero bits.
-- - `T[k]` – encoded as an array with `k` default values of type `T`
-- - `ref(T)` – reference to a cell, cell is encoded as the default value of type `T`.
+- - `int<N>`  `N` zero bits.
+- - `uint<N>`  `N` zero bits.
+- - `varint<N>`/`varuint<N>`  `x` zero bits, where `x = [log2(N)]`.
+- - `bool`  equivalent to [`int<N>`](docs/ABI.md#uintn), where `N = 1`.
+- - `tuple(T1, T2, ..., Tn)`  default values for each type, i.e. `D(tuple(T1, T2, ..., Tn)) = tuple(D(T1), D(T2), ..., D(Tn))`, where `D` is defined as a function that takes ABI type and returns the corresponding default value.
+- - `map(K,V)`  1 zero bit, i.e. `b{0}`.
+- - `cell`  reference to an empty cell, i.e. `^EmptyCell`.
+- - `address`  `addr_none$00` constructor, i.e. 2 zero bits.
+- - `bytes`  reference to an empty cell, i.e. `^EmptyCell`.
+- - `string`  reference to an empty cell, i.e. `^EmptyCell`.
+- - `optional(T)`  1 zero bit, i.e. `b{0}`.
+- - `T[]`  `x{00000000} b{0}`, i.e. 33 zero bits.
+- - `T[k]`  encoded as an array with `k` default values of type `T`
+- - `ref(T)`  reference to a cell, cell is encoded as the default value of type `T`.
 
 ### Breaking
 - `data` section in ABI JSON is removed.

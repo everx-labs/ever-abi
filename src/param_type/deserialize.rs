@@ -12,10 +12,10 @@
 */
 
 use crate::{error::AbiError, param_type::ParamType};
+use ever_block::{fail, Result};
 use serde::de::{Error as SerdeError, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
-use ever_block::{fail, Result};
 
 impl<'a> Deserialize<'a> for ParamType {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
@@ -122,9 +122,10 @@ pub fn read_type(name: &str) -> Result<ParamType> {
             let value_type = read_type(types[1])?;
 
             match key_type {
-                ParamType::Int(_) | ParamType::Uint(_) | ParamType::Address | ParamType::AddressStd => {
-                    ParamType::Map(Box::new(key_type), Box::new(value_type))
-                }
+                ParamType::Int(_)
+                | ParamType::Uint(_)
+                | ParamType::Address
+                | ParamType::AddressStd => ParamType::Map(Box::new(key_type), Box::new(value_type)),
                 _ => fail!(AbiError::InvalidName {
                     name: "Only integer and std address values can be map keys".to_owned()
                 }),

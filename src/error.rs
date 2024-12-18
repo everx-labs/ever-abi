@@ -93,9 +93,7 @@ pub enum AbiError {
     #[error("Tuple description should contain non empty `components` field")]
     EmptyComponents,
 
-    #[error(
-        "Type description contains non empty `components` field but it is not a tuple"
-    )]
+    #[error("Type description contains non empty `components` field but it is not a tuple")]
     UnusedComponents,
 
     #[error(
@@ -104,5 +102,5 @@ pub enum AbiError {
     AddressRequired,
 
     #[error("Wrong data layout")]
-    WrongDataLayout
+    WrongDataLayout,
 }

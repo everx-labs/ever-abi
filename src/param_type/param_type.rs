@@ -13,8 +13,10 @@
 
 //! Function and event param types.
 
+use crate::contract::{
+    AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_4,
+};
 use crate::{AbiError, Param};
-use crate::contract::{AbiVersion, ABI_VERSION_1_0, ABI_VERSION_2_0, ABI_VERSION_2_1, ABI_VERSION_2_4};
 use std::fmt;
 
 use ever_block::{error, Result};

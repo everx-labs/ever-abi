@@ -11,12 +11,12 @@
 * limitations under the License.
 */
 
-use ever_block::{MsgAddressInt, Serializable, Deserializable};
 use ever_block::dictionary::HashmapE;
 use ever_block::{
     ed25519_generate_private_key, ed25519_verify, BuilderData, IBitstring, SliceData,
     ED25519_SIGNATURE_LENGTH,
 };
+use ever_block::{Deserializable, MsgAddressInt, Serializable};
 
 use crate::json_abi::*;
 
@@ -788,5 +788,10 @@ fn test_wrong_storage_layout() {
     let image = include_bytes!("FairNFTCollection.tvc");
     let image = ever_block::StateInit::construct_from_bytes(image).unwrap();
 
-    assert!(decode_storage_fields(ABI_WRONG_STORAGE_LAYOUT, SliceData::load_cell(image.data.unwrap()).unwrap(), false).is_ok());
+    assert!(decode_storage_fields(
+        ABI_WRONG_STORAGE_LAYOUT,
+        SliceData::load_cell(image.data.unwrap()).unwrap(),
+        false
+    )
+    .is_ok());
 }
