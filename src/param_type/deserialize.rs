@@ -125,9 +125,13 @@ pub fn read_type(name: &str) -> Result<ParamType> {
                 ParamType::Int(_)
                 | ParamType::Uint(_)
                 | ParamType::Address
-                | ParamType::AddressStd => ParamType::Map(Box::new(key_type), Box::new(value_type)),
+                | ParamType::AddressStd
+                | ParamType::FixedBytes(_) => {
+                    ParamType::Map(Box::new(key_type), Box::new(value_type))
+                }
                 _ => fail!(AbiError::InvalidName {
-                    name: "Only integer and std address values can be map keys".to_owned()
+                    name: "Only integer, fixed bytes and std address values can be map keys"
+                        .to_owned()
                 }),
             }
         }

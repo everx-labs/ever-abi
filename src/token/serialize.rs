@@ -19,8 +19,6 @@ use crate::{
     token::{Token, TokenValue, Tokenizer},
     PublicKeyData,
 };
-
-use crate::contract::MAX_SUPPORTED_VERSION;
 use ever_block::Serializable;
 use ever_block::{fail, BuilderData, Cell, HashmapE, IBitstring, Result, SliceData};
 use num_bigint::{BigInt, BigUint, Sign};
@@ -474,7 +472,7 @@ impl TokenValue {
 #[test]
 fn test_pack_cells() {
     assert_eq!(
-        TokenValue::pack_cells_into_chain(vec![], &MAX_SUPPORTED_VERSION).unwrap(),
+        TokenValue::pack_cells_into_chain(vec![], &crate::contract::MAX_SUPPORTED_VERSION).unwrap(),
         BuilderData::new()
     );
 

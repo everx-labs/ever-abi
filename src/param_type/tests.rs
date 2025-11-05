@@ -78,6 +78,15 @@ mod param_type_tests {
             "map(int456,address)".to_owned()
         );
 
+        assert_eq!(
+            ParamType::Map(
+                Box::new(ParamType::FixedBytes(30)),
+                Box::new(ParamType::Address)
+            )
+            .type_signature(),
+            "map(fixedbytes30,address)".to_owned()
+        );
+
         assert_eq!(ParamType::String.type_signature(), "string".to_owned());
 
         assert_eq!(
@@ -144,6 +153,19 @@ mod deserialize_tests {
                 ParamType::Optional(Box::new(ParamType::Bytes)),
                 ParamType::Ref(Box::new(ParamType::Bool)),
             ]
+        );
+    }
+
+    #[test]
+    fn param_type_deserialization2() {
+        let s = r#"["map(fixedbytes32,bool)"]"#;
+        let deserialized: Vec<ParamType> = serde_json::from_str(s).unwrap();
+        assert_eq!(
+            deserialized,
+            vec![ParamType::Map(
+                Box::new(ParamType::FixedBytes(32)),
+                Box::new(ParamType::Bool)
+            ),]
         );
     }
 }

@@ -330,9 +330,10 @@ impl TokenValue {
     pub fn get_map_key_size(param_type: &ParamType) -> Result<usize> {
         match param_type {
             ParamType::Int(size) | ParamType::Uint(size) => Ok(*size),
+            ParamType::FixedBytes(size) => Ok(8 * size),
             ParamType::Address | ParamType::AddressStd => Ok(crate::token::STD_ADDRESS_BIT_LENGTH),
             _ => Err(ever_block::error!(AbiError::InvalidData {
-                msg: "Only integer and std address values can be map keys".to_owned()
+                msg: "Only integer, fixed bytes and std address values can be map keys".to_owned()
             })),
         }
     }
